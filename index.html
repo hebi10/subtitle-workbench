@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self' https: blob:; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 영상 자막 생성기</title>
+    <link rel="icon" href="./favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">영상 원본 로컬 처리</p>
+          <h1>AI Subtitle Studio</h1>
+        </div>
+        <p class="topbar-note">영상은 업로드하지 않고 브라우저 안에서 오디오를 추출합니다.</p>
+      </header>
+
+      <main class="workspace is-idle">
+        <nav class="workspace-tabs" role="tablist" aria-label="작업 탭">
+          <button id="tab-generate" class="workspace-tab is-active" type="button" role="tab" aria-controls="panel-generate" aria-selected="true" tabindex="0" data-tab-target="generate">생성</button>
+          <button id="tab-edit" class="workspace-tab" type="button" role="tab" aria-controls="panel-edit" aria-selected="false" tabindex="-1" data-tab-target="edit">편집</button>
+          <button id="tab-export" class="workspace-tab" type="button" role="tab" aria-controls="panel-export" aria-selected="false" tabindex="-1" data-tab-target="export">내보내기</button>
+        </nav>
+
+        <section id="jobResults" class="job-results" aria-label="파일별 작업 결과" hidden>
+          <label for="jobResultSelect">작업 결과</label>
+          <select id="jobResultSelect" aria-describedby="jobResultsHelp"></select>
+          <p id="jobResultsHelp">결과와 편집 내용은 현재 페이지에서 유지됩니다. 닫기 전에 파일을 내려받으세요.</p>
+        </section>
+        <section id="translationRecovery" class="translation-recovery" aria-label="번역 복구" hidden>
+          <p id="translationRecoveryText" role="status"></p>
+          <button id="retryTranslationButton" class="primary-button" type="button">번역만 다시 시도</button>
+        </section>
+        <p id="batchSummary" class="batch-summary" role="status"></p>
+        <div id="errorBox" class="error-box" role="alert" hidden></div>
+
+        <section id="panel-generate" class="workspace-panel is-active" role="tabpanel" aria-labelledby="tab-generate" tabindex="0" data-tab-panel="generate">
+          <section class="tool-panel">
+            <div class="panel-head">
+              <p class="eyebrow">Step 01</p>
+              <h2>소스와 연결</h2>
+            </div>
+
+            <label id="dropzone" class="file-drop" for="videoFile">
+              <input id="videoFile" class="visually-hidden-file" type="file" accept="video/*,audio/*" multiple />
+              <span class="file-drop-title">영상 또는 오디오 선택</span>
+              <span id="fileMeta" class="file-drop-meta">MP4, MOV, WEBM, MP3, M4A</span>
+            </label>
+
+            <p class="privacy-note">영상 원본은 브라우저에서 처리합니다. 추출한 음성과 자막 텍스트는 전사·번역을 위해 OpenAI 또는 선택한 Worker로 전송됩니다.</p>
+
+            <form id="settingsForm" class="settings-form">
+              <fieldset class="connection-card">
+                <legend>API 연결 방식</legend>
+                <div class="segmented-control" role="radiogroup" aria-label="API 연결 방식">
+                  <label>
+                    <input type="radio" name="connectionMode" value="browser" />
+                    <span>직접 연결</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="connectionMode" value="worker" checked />
+                    <span>Worker 연결</span>
+                  </label>
+                </div>
+
+                <label id="apiKeyField" class="connection-field">
+                  OpenAI API 키
+                  <input id="apiKey" type="password" autocomplete="off" placeholder="sk-..." />
+                </label>
+
+                <label id="proxyUrlField" class="connection-field">
+                  Worker 프록시 URL
+                  <input id="proxyUrl" type="url" placeholder="https://your-worker.workers.dev" />
+                </label>
+
+                <details class="connection-guide">
+                  <summary>연결 방법과 준비사항</summary>
+                  <p><strong>직접 연결:</strong> 본인의 OpenAI API 키로 바로 사용합니다.</p>
+                  <p><strong>Worker 연결:</strong> 미리 구성한 중계 서버를 사용합니다. 본인의 API 키와 관리자에게 받은 Worker URL이 필요합니다.</p>
+                  <p>API 키는 <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">OpenAI에서 발급</a>할 수 있습니다. API 사용 요금은 ChatGPT 구독과 별도입니다.</p>
+                </details>
+                <p id="connectionHelp" class="form-help">
+                  사용자 API 키를 제한된 Worker를 통해 OpenAI로 전달합니다.
+                </p>
+
+                <div id="legacyCredentialControls" hidden inert aria-hidden="true">
+                <label class="remember-row">
+                  <input id="rememberCredentials" type="checkbox" />
+                  이 기기에 암호화해 저장
+                </label>
+
+                <div id="credentialPassphraseFields" class="credential-passphrase-fields" hidden>
+                  <label class="connection-field">
+                    로컬 암호
+                    <input
+                      id="localPassphrase"
+                      type="password"
+                      autocomplete="new-password"
+                      placeholder="10자 이상 입력"
+                    />
+                  </label>
+
+                  <label
+                    id="localPassphraseConfirmationField"
+                    class="connection-field"
+                    hidden
+                  >
+                    로컬 암호 확인
+                    <input
+                      id="localPassphraseConfirmation"
+                      type="password"
+                      autocomplete="new-password"
+                      placeholder="로컬 암호 다시 입력"
+                    />
+                  </label>
+
+                  <div class="credential-action-row">
+                    <button
+                      id="saveCredentialButton"
+                      class="primary-button"
+                      type="button"
+                      hidden
+                    >
+                      API 키 암호화 저장
+                    </button>
+                    <button
+                      id="unlockCredentialButton"
+                      class="ghost-button"
+                      type="button"
+                      hidden
+                    >
+                      저장된 API 키 잠금 해제
+                    </button>
+                  </div>
+                </div>
+
+                </div>
+
+                <button
+                  id="deleteCredentialButton"
+                  class="ghost-button credential-delete-button"
+                  type="button"
+                >
+                  기존 저장 키 삭제
+                </button>
+                <p id="credentialStatus" class="credential-status" aria-live="polite">API 키는 저장하지 않고 현재 탭에서만 사용합니다. 새로고침 후 다시 입력해 주세요.</p>
+                <p
+                  id="credentialError"
+                  class="credential-error"
+                  aria-live="polite"
+                  hidden
+                ></p>
+              </fieldset>
+
+              <fieldset class="subtitle-settings">
+                <legend>자막 언어</legend>
+                <div class="settings-grid">
+                  <label class="toggle-row">
+                    <input id="translationEnabled" type="checkbox" checked />
+                    번역 자막 생성
+                  </label>
+                  <label>
+                    원본 언어
+                    <select id="sourceLanguage">
+                      <option value="auto">자동 감지</option>
+                      <option value="en">영어</option>
+                      <option value="ja">일본어</option>
+                      <option value="zh">중국어</option>
+                      <option value="ko">한국어</option>
+                      <option value="es">스페인어</option>
+                      <option value="fr">프랑스어</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    번역 언어
+                    <select id="targetLanguage">
+                      <option value="ko">한국어</option>
+                      <option value="en">영어</option>
+                      <option value="ja">일본어</option>
+                      <option value="zh">중국어</option>
+                      <option value="es">스페인어</option>
+                      <option value="fr">프랑스어</option>
+                      <option value="custom">다른 언어 직접 입력</option>
+                    </select>
+                  </label>
+                  <label id="customTargetLanguageField" hidden>
+                    번역할 언어 이름 또는 코드
+                    <input id="customTargetLanguage" type="text" placeholder="예: 독일어 또는 de" />
+                  </label>
+                </div>
+                <p class="form-help">번역을 끄면 원문 자막만 생성합니다.</p>
+              </fieldset>
+
+              <div id="runControls" class="run-controls" aria-label="자막 생성 실행">
+                <p id="startRequirement" class="start-requirement" aria-live="polite"></p>
+                <button id="startButton" class="primary-button" type="button" disabled>자막 생성 시작</button>
+                <button id="cancelButton" class="ghost-button" type="button" disabled>중단</button>
+              </div>
+
+              <details class="advanced-settings">
+                <summary>고급 설정</summary>
+                <fieldset class="advanced-group">
+                  <legend>인식과 번역 모델</legend>
+                  <p class="form-help">STT는 음성을 글로 바꾸는 음성인식 모델입니다. 처음에는 기본값을 사용하세요.</p>
+                  <div class="settings-grid">
+                    <label>
+                      음성인식 모델 (STT)
+                      <input id="sttModel" type="text" value="whisper-1" />
+                    </label>
+                    <label>
+                      번역 모델
+                      <input id="translationModel" type="text" value="gpt-5.5" />
+                    </label>
+                    <label>
+                      오디오 비트레이트
+                      <select id="audioBitrate">
+                        <option value="48k">48k</option>
+                        <option value="64k">64k</option>
+                        <option value="32k">32k</option>
+                        <option value="24k">24k</option>
+                      </select>
+                    </label>
+                  </div>
+                </fieldset>
+                <fieldset class="advanced-group">
+                  <legend>오디오 분할</legend>
+                  <p class="form-help">dB 값이 낮을수록 더 작은 소리를 무음으로 봅니다. 패딩은 문장 잘림을 줄이는 조각 앞뒤 여유 시간입니다.</p>
+                  <div class="settings-grid">
+                    <label>
+                      무음 기준 dB
+                      <input id="noiseDb" type="number" value="-35" step="1" />
+                    </label>
+                    <label>
+                      무음 길이 초
+                      <input id="silenceDuration" type="number" value="0.6" min="0.1" step="0.1" />
+                    </label>
+                    <label>
+                      목표 분할 분
+                      <input id="targetMinutes" type="number" value="7" min="1" step="1" />
+                    </label>
+                    <label>
+                      최소 분할 분
+                      <input id="minMinutes" type="number" value="3" min="1" step="1" />
+                    </label>
+                    <label>
+                      최대 분할 분
+                      <input id="maxMinutes" type="number" value="15" min="2" step="1" />
+                    </label>
+                    <label>
+                      탐색 범위 분
+                      <input id="searchMinutes" type="number" value="4" min="1" step="1" />
+                    </label>
+                    <label>
+                      앞뒤 여유 시간 (패딩·초)
+                      <input id="paddingSeconds" type="number" value="0.5" min="0" step="0.1" />
+                    </label>
+                  </div>
+                </fieldset>
+                <fieldset class="advanced-group">
+                  <legend>자막 길이와 읽기 속도</legend>
+                  <p class="form-help">CPS는 1초에 읽는 글자 수입니다. 값을 낮추면 자막을 더 천천히 읽을 수 있게 나눕니다.</p>
+                  <div class="settings-grid">
+                    <label>
+                      자막 최대 글자
+                      <input id="maxSubtitleChars" type="number" value="42" min="12" step="1" />
+                    </label>
+                    <label>
+                      자막 최대 초
+                      <input id="maxSubtitleSeconds" type="number" value="4.5" min="1" step="0.1" />
+                    </label>
+                    <label>
+                      최대 읽기 속도 CPS
+                      <input id="maxSubtitleCps" type="number" value="18" min="6" step="1" />
+                    </label>
+                  </div>
+                </fieldset>
+              </details>
+            </form>
+
+            <div id="generatePlayerMount">
+            <div id="mediaPlayer">
+            <p id="mediaEmptyState" class="media-empty-state">영상이나 오디오를 선택하면 이곳에서 미리 볼 수 있습니다.</p>
+            <video id="videoPreview" class="video-preview" controls preload="metadata" playsinline hidden></video>
+
+            <div id="subtitlePanel" class="subtitle-panel video-subtitle-panel" data-active="false" aria-live="polite" hidden>
+              <div id="subtitlePrimary" class="subtitle-primary">자막을 생성하거나 파일을 불러오면 여기에 표시됩니다.</div>
+              <div id="subtitleSecondary" class="subtitle-secondary"></div>
+            </div>
+            </div>
+            </div>
+
+
+          </section>
+
+          <div class="generate-main">
+            <section id="runPanel" class="run-panel" data-run-state="idle">
+            <div class="status-head">
+              <div>
+                <p class="eyebrow">Processing</p>
+                <h2 id="progressText" aria-live="polite">대기 중</h2>
+              </div>
+              <div class="status-meta">
+                <span id="statusBadge" class="status-badge" data-state="idle">대기</span>
+                <span id="durationValue" class="duration-pill">0:00</span>
+              </div>
+            </div>
+
+            <div id="overallProgress" class="progress-track" role="progressbar" aria-label="전체 자막 생성 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div id="progressBar" class="progress-bar"></div>
+            </div>
+
+            <ol id="stepList" class="step-list"></ol>
+
+
+            <details id="chunksDetails" class="chunks-details">
+              <summary>
+                <span>분할 조각</span>
+                <strong id="chunkSummary">없음</strong>
+              </summary>
+              <div id="chunksList" class="chunks-list"></div>
+            </details>
+
+            <div class="section-title">
+              <h3>생성 미리보기</h3>
+              <span id="subtitleCount">0개</span>
+            </div>
+            <span id="previewLimit" class="preview-limit"></span>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>시간</th>
+                    <th>원문</th>
+                    <th>번역</th>
+                  </tr>
+                </thead>
+                <tbody id="previewBody">
+                  <tr>
+                    <td colspan="3" class="empty-cell">생성된 자막이 없습니다.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="panel-edit" class="workspace-panel" role="tabpanel" aria-labelledby="tab-edit" tabindex="0" data-tab-panel="edit">
+          <section class="editor-layout">
+            <div class="editor-main panel-card">
+              <div class="panel-head panel-head-row">
+                <div>
+                  <p class="eyebrow">Step 02</p>
+                  <h2>자막 편집</h2>
+                </div>
+                <span id="editorCount" class="count-pill">0개</span>
+              </div>
+
+              <div id="editorEmptyActions" class="empty-actions">
+                <p>이미 자막 파일이 있으신가요? 불러와 바로 편집하거나 새 자막을 생성하세요.</p>
+                <div class="empty-action-buttons">
+                  <button id="importSubtitlesEmpty" class="primary-button" type="button">기존 자막 불러오기</button>
+                  <button id="goGenerateEmpty" class="ghost-button" type="button">자막 생성으로 이동</button>
+                </div>
+              </div>
+              <div class="editor-toolbar">
+                <label>
+                  검색
+                  <input id="editorSearch" type="search" placeholder="원문, 번역, 오류 검색" />
+                </label>
+                <label>
+                  필터
+                  <select id="editorStatusFilter">
+                    <option value="all">전체</option>
+                    <option value="failed">번역 실패만</option>
+                    <option value="warning">품질 경고만</option>
+                  </select>
+                </label>
+                <label>
+                  전체 싱크 초
+                  <input id="editorGlobalOffset" type="number" value="0" step="0.1" />
+                </label>
+                <button id="applyGlobalOffset" class="ghost-button" type="button">전체 적용</button>
+                <button id="mergeShortSubtitles" class="ghost-button" type="button">짧은 자막 병합</button>
+              </div>
+
+              <div class="edit-history-controls" aria-label="편집 이력">
+                <button id="undoEdit" class="ghost-button" type="button" disabled>실행 취소</button>
+                <button id="redoEdit" class="ghost-button" type="button" disabled>다시 실행</button>
+                <span id="editHistoryStatus" role="status">편집 이력이 없습니다.</span>
+              </div>
+
+              <div class="table-wrap editor-table-wrap">
+                <table class="editor-table">
+                  <thead>
+                    <tr>
+                      <th>시간</th>
+                      <th>원문</th>
+                      <th>번역</th>
+                      <th>싱크</th>
+                    </tr>
+                  </thead>
+                  <tbody id="editorBody">
+                    <tr>
+                      <td colspan="4" class="empty-cell">편집할 자막이 없습니다.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <aside class="panel-card player-card">
+              <label class="subtitle-file-button" for="attachMediaFile">
+                영상·오디오 연결
+                <input id="attachMediaFile" class="visually-hidden-file" type="file" accept="video/*,audio/*" />
+              </label>
+              <p class="form-help">현재 자막을 유지한 채 재생할 파일을 연결합니다.</p>
+              <div id="editPlayerMount"></div>
+              <div class="section-title">
+                <h3 id="subtitlePlayerTitle">자막 플레이어</h3>
+                <span id="subtitleFileMeta">SRT, VTT, JSON 자막 파일을 불러올 수 있습니다.</span>
+              </div>
+
+              <div class="subtitle-player-controls">
+                <label class="subtitle-file-button" for="subtitleFile">
+                  자막 파일 선택
+                  <input id="subtitleFile" class="visually-hidden-file" type="file" accept=".srt,.vtt,.json,text/vtt,application/json" />
+                </label>
+
+                <label class="subtitle-mode-field">
+                  표시 모드
+                  <select id="subtitleDisplayMode">
+                    <option value="translated">번역만</option>
+                    <option value="original">원문만</option>
+                    <option value="both">원문 + 번역</option>
+                  </select>
+                </label>
+
+                <div class="subtitle-sync-controls" aria-label="자막 싱크 조절">
+                  <button class="ghost-button" type="button" data-sync-adjust="-0.5">-0.5초</button>
+                  <button class="ghost-button" type="button" data-sync-adjust="0.5">+0.5초</button>
+                  <button id="subtitleSyncReset" class="ghost-button" type="button">초기화</button>
+                  <span id="subtitleOffsetValue">0.0초</span>
+                </div>
+              </div>
+
+              <p class="subtitle-player-note">현재 영상 재생 시간에 맞는 자막만 영상 아래 패널에 표시됩니다.</p>
+            </aside>
+          </section>
+        </section>
+
+        <section id="panel-export" class="workspace-panel" role="tabpanel" aria-labelledby="tab-export" tabindex="0" data-tab-panel="export">
+          <section class="panel-card">
+            <div class="panel-head panel-head-row">
+              <div>
+                <p class="eyebrow">Step 03</p>
+                <h2>내보내기</h2>
+              </div>
+              <div class="export-meta">
+                <span id="exportSubtitleCount">0개</span>
+              </div>
+            </div>
+
+            <div class="section-title">
+              <h3>파일 다운로드</h3>
+              <span>SRT, VTT, JSON</span>
+            </div>
+            <div id="exportEmptyActions" class="empty-actions">
+              <p>내려받을 자막이 없습니다. 기존 파일을 불러오거나 자막을 먼저 생성하세요.</p>
+              <div class="empty-action-buttons">
+                <button id="importSubtitlesExport" class="primary-button" type="button">기존 자막 불러오기</button>
+                <button id="goGenerateExport" class="ghost-button" type="button">자막 생성으로 이동</button>
+              </div>
+            </div>
+            <dl class="format-guide">
+              <div><dt>SRT</dt><dd>영상 편집기와 일반 플레이어에 사용할 때</dd></div>
+              <div><dt>VTT</dt><dd>웹사이트의 영상 자막으로 사용할 때</dd></div>
+              <div><dt>JSON</dt><dd>원문·번역을 함께 저장하고 이 도구에서 다시 편집할 때</dd></div>
+            </dl>
+            <div id="downloads" class="downloads"></div>
+            <div id="translationFailureSummary" class="translation-failure-summary" hidden></div>
+
+            <details class="log-panel">
+              <summary>ffmpeg 로그</summary>
+              <pre id="logOutput"></pre>
+            </details>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>

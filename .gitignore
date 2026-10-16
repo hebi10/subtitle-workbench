@@ -1,0 +1,35 @@
+.chrome-profile/
+.edge-profile/
+.playwright-cli/
+.superpowers/
+.impeccable/
+# Local planning and deployment review notes
+docs/superpowers/
+docs/security/
+output/
+node_modules/
+ui-check-*.png
+
+.env
+.env.*
+!.env.example
+!.env.*.example
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+!.dev.vars.*.example
+
+# Android build artifacts and per-machine SDK paths
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/*.jks
+android/*.keystore
+android/*.log
+*.apk
+*.aab
+*.jks
+*.keystore
+.DS_Store
+Thumbs.db

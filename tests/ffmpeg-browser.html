@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self' https: blob:; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>자체 호스팅 FFmpeg 실제 검증</title>
+</head>
+<body>
+  <button id="run" type="button">FFmpeg 실제 처리 검증</button>
+  <pre id="result">테스트에서 만든 1초 무음만 사용합니다. API 호출 없음.</pre>
+  <script type="module" src="./ffmpeg-browser.mjs"></script>
+</body>
+</html>

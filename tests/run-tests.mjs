@@ -1,0 +1,17 @@
+import './core.test.mjs';
+import './limited-concurrency.test.mjs';
+import './markup.test.mjs';
+import './openai.test.mjs';
+import './subtitle-editor.test.mjs';
+import './subtitle-player.test.mjs';
+import './ui-state.test.mjs';
+import './ffmpeg-pipeline.test.mjs';
+import './job-history.test.mjs';
+import './zip-download.test.mjs';
+import './credential-vault.test.mjs';
+import './connection-settings.test.mjs';
+import './openai-proxy-worker.test.mjs';
+import './credential-ui-state.test.mjs';
+import './credential-controller.test.mjs';
+import './edit-history.test.mjs';
+import './job-runner.test.mjs';

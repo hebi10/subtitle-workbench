@@ -1,0 +1,187 @@
+{
+  "formatVersion": 1,
+  "packages": [
+    {
+      "name": "@ffmpeg/ffmpeg",
+      "version": "0.12.10",
+      "tarball": "https://registry.npmjs.org/@ffmpeg/ffmpeg/-/ffmpeg-0.12.10.tgz",
+      "integrity": "sha512-lVtk8PW8e+NUzGZhPTWj2P1J4/NyuCrbDD3O9IGpSeLYtUZKBqZO8CNj1WYGghep/MXoM8e1qVY1GztTkf8YYQ==",
+      "tarballSha256": "b2f2418be6cc3c29a0765c1376ebfbfea94073b287767460851a3ce487666d8f",
+      "declaredLicense": "MIT",
+      "source": {
+        "type": "git",
+        "url": "git+https://github.com/ffmpegwasm/ffmpeg.wasm.git"
+      }
+    },
+    {
+      "name": "@ffmpeg/util",
+      "version": "0.12.2",
+      "tarball": "https://registry.npmjs.org/@ffmpeg/util/-/util-0.12.2.tgz",
+      "integrity": "sha512-ouyoW+4JB7WxjeZ2y6KpRvB+dLp7Cp4ro8z0HIVpZVCM7AwFlHa0c4R8Y/a4M3wMqATpYKhC7lSFHQ0T11MEDw==",
+      "tarballSha256": "1a37765f61421a6da0dc955a3b5a8872c6a0ce46928d50dfa99ce3a12a85ba1a",
+      "declaredLicense": "MIT",
+      "source": {
+        "type": "git",
+        "url": "git+https://github.com/ffmpegwasm/ffmpeg.wasm.git"
+      }
+    },
+    {
+      "name": "@ffmpeg/core",
+      "version": "0.12.6",
+      "tarball": "https://registry.npmjs.org/@ffmpeg/core/-/core-0.12.6.tgz",
+      "integrity": "sha512-PrjWBTfGn2WVn9T7wGnzfFwChbqWeZc7tM9vvJZVRadYFUDakfzy7W0LpYC0cvvK0xT82qlBsk38lQhJ/Hps5A==",
+      "tarballSha256": "9812c82188e8ca434a3d0e9edc2435458b55df0ce3f700a8df867c22ec8a8ced",
+      "declaredLicense": "MIT",
+      "source": {
+        "type": "git",
+        "url": "git+https://github.com/ffmpegwasm/ffmpeg.wasm.git"
+      }
+    }
+  ],
+  "licenses": [
+    {
+      "path": "LICENSE.ffmpeg-wasm-MIT",
+      "url": "https://raw.githubusercontent.com/ffmpegwasm/ffmpeg.wasm/e0d4c62a229ba58ea0c6e6b881e289f2fefe97c4/LICENSE",
+      "sha256": "3e123e29517d76504ffce77b3f8e2ccffd4712493f27694b0aba3e376676459f"
+    },
+    {
+      "path": "COPYING.FFmpeg.GPLv2",
+      "url": "https://raw.githubusercontent.com/FFmpeg/FFmpeg/n5.1.4/COPYING.GPLv2",
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+    },
+    {
+      "path": "COPYING.FFmpeg.LGPLv2.1",
+      "url": "https://raw.githubusercontent.com/FFmpeg/FFmpeg/n5.1.4/COPYING.LGPLv2.1",
+      "sha256": "b634ab5640e258563c536e658cad87080553df6f34f62269a21d554844e58bfe"
+    },
+    {
+      "path": "LICENSE.FFmpeg.md",
+      "url": "https://raw.githubusercontent.com/FFmpeg/FFmpeg/n5.1.4/LICENSE.md",
+      "sha256": "cb48bf09a11f5fb576cddb0431c8f5ed0a60157a9ec942adffc13907cbe083f2"
+    }
+  ],
+  "patches": [
+    {
+      "path": "ffmpeg/const.js",
+      "sourceSha256": "e16b2532be2545bc9537dfbd3db834447462ad90aa201e4c5ca238fdc7a9df95",
+      "reason": "Replace the upstream CDN default with the vendored same-origin core."
+    },
+    {
+      "path": "ffmpeg/package.json",
+      "sourceSha256": "77b05f31fad0877f9faea71b101e6de1e8fea8c91f9f3f1afae342ee80a4d66d",
+      "reason": "Declare the selected ESM-only distribution for local Node verification."
+    },
+    {
+      "path": "util/package.json",
+      "sourceSha256": "fea2cb67290d3dc0a220c944595b63d98a9331a0532270dc8ab4a4f66fd4703a",
+      "reason": "Declare the selected ESM-only distribution for local Node verification."
+    },
+    {
+      "path": "core/package.json",
+      "sourceSha256": "3f033e0c34bf81780777ebc7dbf378f0860a2dc18e96d2664270ff4adf59b33f",
+      "reason": "Declare the selected ESM-only distribution for local Node verification."
+    }
+  ],
+  "files": [
+    {
+      "path": "COPYING.FFmpeg.GPLv2",
+      "bytes": 18092,
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+    },
+    {
+      "path": "COPYING.FFmpeg.LGPLv2.1",
+      "bytes": 26526,
+      "sha256": "b634ab5640e258563c536e658cad87080553df6f34f62269a21d554844e58bfe"
+    },
+    {
+      "path": "core/ffmpeg-core.js",
+      "bytes": 114494,
+      "sha256": "c972f5abeafcd5f3949e54edfbdc74a9badb27025809feb1945d468ffbcfb7f1"
+    },
+    {
+      "path": "core/ffmpeg-core.wasm",
+      "bytes": 32129114,
+      "sha256": "2390efa7fb66e7e42dbae15427571a5ffc96b829480904c30f471f0a78967f61"
+    },
+    {
+      "path": "core/package.json",
+      "bytes": 950,
+      "sha256": "d8d86cd6acf3d4dcef08d775968bff32cd8b05492df0d156d999dc2a758f0e8f"
+    },
+    {
+      "path": "ffmpeg/classes.js",
+      "bytes": 8698,
+      "sha256": "ac411e19c69cffcf2669aa9e56c90dc120d5f6ac89d7aafb0000fc7841376c70"
+    },
+    {
+      "path": "ffmpeg/const.js",
+      "bytes": 957,
+      "sha256": "cc713dd32c90e85d860190147cae8d692275ef983fa98374d8296983be702d8b"
+    },
+    {
+      "path": "ffmpeg/errors.js",
+      "bytes": 332,
+      "sha256": "619310d7ef5fe5fefa0a31927db862b7c291713cfef4d71753fa8aafd18f4db6"
+    },
+    {
+      "path": "ffmpeg/index.js",
+      "bytes": 30,
+      "sha256": "b08695fea8eff663c7e4ff4c28bd6e356aeb95e608f2a8a3f12fc1fe29d91123"
+    },
+    {
+      "path": "ffmpeg/package.json",
+      "bytes": 1569,
+      "sha256": "c472e457757269a4c6b80f8624fb18ab25f85e4e0acbe66d6c2a0fdd703043bf"
+    },
+    {
+      "path": "ffmpeg/types.js",
+      "bytes": 295,
+      "sha256": "72f80e6fd44fcd18b55c9a0deb3bc70b9bb37480cf969045ca4521f5a11300f5"
+    },
+    {
+      "path": "ffmpeg/utils.js",
+      "bytes": 138,
+      "sha256": "8c2e0e16445f8d3a0acbb812f2c60541a92c88ed0bf9ffe96c52e7fb6c8b1d72"
+    },
+    {
+      "path": "ffmpeg/worker.js",
+      "bytes": 4810,
+      "sha256": "b35bf79766eb53547655c5142ab90b50134f0b6de56ab5cdb2ae73d1e8aeaca5"
+    },
+    {
+      "path": "LICENSE.ffmpeg-wasm-MIT",
+      "bytes": 1066,
+      "sha256": "3e123e29517d76504ffce77b3f8e2ccffd4712493f27694b0aba3e376676459f"
+    },
+    {
+      "path": "LICENSE.FFmpeg.md",
+      "bytes": 4376,
+      "sha256": "cb48bf09a11f5fb576cddb0431c8f5ed0a60157a9ec942adffc13907cbe083f2"
+    },
+    {
+      "path": "util/const.js",
+      "bytes": 53,
+      "sha256": "f08f7b0bf73a3e74270343a6892a305a2c98039b1e586260d185ca0dfafd510c"
+    },
+    {
+      "path": "util/errors.js",
+      "bytes": 175,
+      "sha256": "3658a446ec7df01b5406cdfbc6c9338466db0fc673b69eefe141ded8dda5a147"
+    },
+    {
+      "path": "util/index.js",
+      "bytes": 4775,
+      "sha256": "0b33f10af6800c3ca00a4533963f66a8adc541269ec40e605b0336dc026880c0"
+    },
+    {
+      "path": "util/package.json",
+      "bytes": 1376,
+      "sha256": "4e4f4aea0bc77217c7bbe161d0b10652287617d8c951754908385dd9341204d4"
+    },
+    {
+      "path": "util/types.js",
+      "bytes": 11,
+      "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    }
+  ]
+}
