@@ -18,7 +18,7 @@ public class ProcessRecoveryDeviceTest {
         String phase = InstrumentationRegistry.getArguments().getString("phase", "roundtrip");
         try (JobStore store = new JobStore(context)) {
             if (!"verify".equals(phase)) {
-                String id = store.create("content://test/recovery", "복구 검증 영상", 9_000_000, new JSONObject());
+                String id = store.create("content://test/recovery", "복구 검증 영상", 10_800_000, new JSONObject());
                 JSONArray cues = new JSONArray("[{\"start\":1,\"end\":2,\"original\":\"saved\",\"translated\":\"저장됨\"}]");
                 store.saveTranscription(id, 0, new JSONObject().put("text", "saved"), cues, 1);
                 store.saveTranslation(id, 0, 0, cues);
@@ -29,7 +29,7 @@ public class ProcessRecoveryDeviceTest {
             }
             String id = context.getSharedPreferences("recovery_fixture", Context.MODE_PRIVATE).getString("id", "");
             assertFalse(id.isEmpty());
-            assertEquals(22, store.get(id).getInt("totalChunks"));
+            assertEquals(26, store.get(id).getInt("totalChunks"));
             assertEquals(1, store.get(id).getInt("completedChunks"));
             assertTrue(store.isChunkComplete(id, 0));
             assertTrue(store.hasTranscription(id, 1));
@@ -37,6 +37,12 @@ public class ProcessRecoveryDeviceTest {
             assertFalse(store.isChunkComplete(id, 1));
             assertEquals("paused", store.get(id).getString("status"));
             assertEquals("저장됨", store.cues(id).getJSONObject(0).getString("translated"));
+            JSONObject progress = store.get(id).getJSONObject("progress");
+            assertEquals(420_000L, progress.getLong("processedMs"));
+            assertEquals(2, progress.getInt("transcribedChunks"));
+            assertEquals(1, progress.getInt("translatedChunks"));
+            assertEquals(5, progress.getInt("percent"));
+            assertTrue(progress.getLong("lastSavedAt") > 0);
             if ("interrupt-write".equals(phase)) {
                 // The host force-stops this instrumentation after observing the marker.
                 // A subsequent phase=verify must see only the prior committed checkpoint.

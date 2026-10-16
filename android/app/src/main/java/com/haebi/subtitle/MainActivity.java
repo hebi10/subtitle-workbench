@@ -3,6 +3,7 @@ package com.haebi.subtitle;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
@@ -35,12 +36,14 @@ public final class MainActivity extends Activity {
     private static final int PICK_VIDEO = 101, EXPORT = 102, IMPORT = 103;
     private static final int MAX_TEXT_BYTES = 8 * 1024 * 1024;
     private final ExecutorService io = Executors.newSingleThreadExecutor();
+    private final ExecutorService connectionIo = Executors.newSingleThreadExecutor();
+    private volatile OpenAiClient.Cancellation connectionCancellation;
     private WebView web;
     private JobStore store;
     private SecretStore secrets;
     private String pendingId;
     private PendingDocument documents;
-    private boolean destroyed;
+    private volatile boolean destroyed;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -134,30 +137,58 @@ public final class MainActivity extends Activity {
             if (params == null) params = new JSONObject();
             Object result;
             switch (method) {
-                case "status": result = new JSONObject().put("jobs", store.list()).put("hasKey", secrets.hasKey()).put("settings", readSettings()); break;
+                case "status": result = new JSONObject().put("jobs", store.list()).put("hasKey", secrets.hasKey())
+                        .put("settings", readSettings()).put("keyCheck", readConnectionCheck()).put("maxDurationMs", JobStore.MAX_DURATION_MS); break;
                 case "getSettings": result = readSettings(); break;
                 case "setSettings":
                     JSONObject options = checkedSettings(params.getJSONObject("settings"));
-                    if (!getSharedPreferences("app_settings", MODE_PRIVATE).edit().putString("settings", options.toString()).commit())
+                    if (!getSharedPreferences("app_settings", MODE_PRIVATE).edit().putString("settings", options.toString()).remove("keyCheck").commit())
                         throw new IllegalStateException("설정을 저장할 수 없습니다.");
                     result = options; break;
                 case "setKey":
+                    requireIdleForKeyChange();
                     String key = params.getString("key").trim();
                     if (key.isEmpty() || key.length() > 1024 || key.contains("\n") || key.contains("\r"))
                         throw new IllegalArgumentException("유효한 API 키를 입력해 주세요.");
+                    invalidateConnectionCheck();
                     secrets.setKey(key);
                     result = new JSONObject().put("hasKey", true); break;
+                case "clearKey":
+                    requireIdleForKeyChange();
+                    invalidateConnectionCheck();
+                    secrets.clearKey();
+                    result = new JSONObject().put("hasKey", false); break;
+                case "checkConnection":
+                    checkConnection(id, checkedSettings(params.has("settings") ? params.getJSONObject("settings") : readSettings()));
+                    return;
+                case "openApiKeyPage":
+                    runOnUiThread(() -> {
+                        try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://platform.openai.com/api-keys"))); }
+                        catch (Exception error) { emitError("API 키 발급 페이지를 열 수 없습니다. 브라우저에서 platform.openai.com을 열어 주세요."); }
+                    });
+                    result = true; break;
                 case "pickVideo":
                     if (!secrets.hasKey()) throw new IllegalArgumentException("먼저 API 키를 저장해 주세요.");
                     startPicker(id, PICK_VIDEO, params.optJSONObject("settings"), null, null, null); return;
                 case "resume":
                     if (!secrets.hasKey()) throw new IllegalArgumentException("API 키를 다시 저장해 주세요.");
                     String resumeId = params.getString("jobId");
-                    if (!"completed".equals(store.get(resumeId).getString("status"))) {
+                    if (queueResume(store, resumeId, params.has("translationModel") ? params.getString("translationModel") : null)) {
                         String requestId = id;
                         runOnUiThread(() -> {
+                            // A queued bridge request may outlive this Activity. Keep the durable
+                            // queue for next launch instead of starting with a destroyed UI executor.
+                            if (destroyed) return;
                             try { JobService.start(this, resumeId); reply(requestId, true, null); }
-                            catch (Exception error) { reply(requestId, null, "백그라운드 작업을 시작하지 못했습니다. 앱에서 다시 이어해 주세요."); }
+                            catch (Exception error) {
+                                io.execute(() -> {
+                                    synchronized (JobStore.WORKER_LOCK) {
+                                        if (!JobService.isWorking(resumeId) && "queued".equals(store.get(resumeId).optString("status")))
+                                            store.setStatus(resumeId, "paused", "백그라운드 작업을 시작하지 못했습니다. 앱에서 다시 이어해 주세요.");
+                                    }
+                                    reply(requestId, null, "백그라운드 작업을 시작하지 못했습니다. 앱에서 다시 이어해 주세요.");
+                                });
+                            }
                         });
                         return;
                     }
@@ -197,19 +228,104 @@ public final class MainActivity extends Activity {
         return new JSONObject().put("job", store.get(id)).put("cues", store.cues(id));
     }
 
+    /** Persist start intent before posting to the UI thread, so key edits cannot race service startup. */
+    static boolean queueResume(JobStore store, String id, String model) {
+        synchronized (JobStore.WORKER_LOCK) {
+            JSONObject job = store.get(id);
+            String status = job.optString("status");
+            if ("completed".equals(status)) return false;
+            if (JobService.isWorking(id) || "queued".equals(status) || "running".equals(status))
+                throw new IllegalArgumentException("작업이 시작되었거나 진행 중인 요청을 정리하고 있습니다. 잠시 기다려 주세요.");
+            if (model != null) store.updateTranslationModel(id, model);
+            store.setStatus(id, "queued", "");
+            return true;
+        }
+    }
+
     private JSONObject readSettings() throws Exception {
-        return checkedSettings(new JSONObject(getSharedPreferences("app_settings", MODE_PRIVATE).getString("settings", "{}")));
+        SharedPreferences preferences = getSharedPreferences("app_settings", MODE_PRIVATE);
+        JSONObject saved = new JSONObject(preferences.getString("settings", "{}"));
+        if (preferences.getInt("settingsVersion", 0) < 2) {
+            saved = AppSettings.upgrade(saved);
+            if (!preferences.edit().putString("settings", saved.toString()).putInt("settingsVersion", 2).remove("keyCheck").commit())
+                throw new IllegalStateException("설정을 저장할 수 없습니다.");
+        }
+        return checkedSettings(saved);
     }
 
     private static JSONObject checkedSettings(JSONObject settings) throws Exception {
-        JSONObject result = new JSONObject();
-        String source = settings.optString("sourceLanguage", "auto");
-        String target = settings.optString("targetLanguage", "ko");
-        String model = settings.optString("translationModel", "gpt-5.5").trim();
-        if (!source.matches("auto|[a-z]{2,3}") || !target.matches("[a-z]{2,3}") || !model.matches("[A-Za-z0-9_.:-]{1,100}"))
-            throw new IllegalArgumentException("언어와 번역 모델 설정을 확인해 주세요.");
-        return result.put("sourceLanguage", source).put("targetLanguage", target).put("translationModel", model)
-                .put("translate", settings.optBoolean("translate", true));
+        return AppSettings.checked(settings);
+    }
+
+    private Object readConnectionCheck() {
+        if (!secrets.hasKey()) return JSONObject.NULL;
+        try { return new JSONObject(getSharedPreferences("app_settings", MODE_PRIVATE).getString("keyCheck", "")); }
+        catch (Exception ignored) { return JSONObject.NULL; }
+    }
+
+    private void invalidateConnectionCheck() {
+        OpenAiClient.Cancellation active = connectionCancellation;
+        if (active != null) active.cancel();
+        SharedPreferences preferences = getSharedPreferences("app_settings", MODE_PRIVATE);
+        if (!preferences.edit().remove("keyCheck").putLong("keyRevision", preferences.getLong("keyRevision", 0) + 1).commit())
+            throw new IllegalArgumentException("연결 확인 상태를 저장하지 못했습니다. 다시 시도해 주세요.");
+    }
+
+    private void requireIdleForKeyChange() {
+        JSONArray jobs = store.list();
+        for (int i = 0; i < jobs.length(); i++) {
+            JSONObject job = jobs.optJSONObject(i);
+            if (job != null && (JobService.isWorking(job.optString("id")) || "running".equals(job.optString("status")) || "queued".equals(job.optString("status"))))
+                throw new IllegalArgumentException("API 키를 바꾸거나 삭제하려면 진행 중인 작업을 일시정지한 뒤 잠시 기다려 주세요.");
+        }
+    }
+
+    private void checkConnection(String requestId, JSONObject settings) {
+        if (!secrets.hasKey()) throw new IllegalArgumentException("먼저 API 키를 저장해 주세요.");
+        if (connectionCancellation != null) throw new IllegalArgumentException("API 연결을 확인하고 있습니다. 잠시 기다려 주세요.");
+        String apiKey = secrets.getKey();
+        SharedPreferences preferences = getSharedPreferences("app_settings", MODE_PRIVATE);
+        long revision = preferences.getLong("keyRevision", 0);
+        String persistedSettings = preferences.getString("settings", "{}");
+        OpenAiClient.Cancellation token = new OpenAiClient.Cancellation();
+        connectionCancellation = token;
+        connectionIo.execute(() -> {
+            JSONObject checked = null;
+            String failure = null;
+            try { checked = new OpenAiClient(apiKey, token).checkConnection(settings); }
+            catch (Exception error) {
+                failure = token.isCancelled() ? "연결 확인이 취소되었습니다. 다시 확인해 주세요." : connectionError(error);
+            }
+            final JSONObject result = checked;
+            final String errorMessage = failure;
+            if (destroyed) return;
+            try { io.execute(() -> {
+                if (connectionCancellation == token) connectionCancellation = null;
+                if (destroyed) return;
+                boolean unchanged = revision == preferences.getLong("keyRevision", 0)
+                        && persistedSettings.equals(preferences.getString("settings", "{}"));
+                if (!unchanged || token.isCancelled()) { reply(requestId, null, "API 키 또는 설정이 바뀌었습니다. 연결을 다시 확인해 주세요."); return; }
+                if (result != null) {
+                    if (!preferences.edit().putString("keyCheck", result.toString()).commit()) {
+                        reply(requestId, null, "연결 확인 결과를 저장하지 못했습니다."); return;
+                    }
+                } else preferences.edit().remove("keyCheck").apply();
+                reply(requestId, result, errorMessage);
+            }); } catch (java.util.concurrent.RejectedExecutionException ignored) { }
+        });
+    }
+
+    private static String connectionError(Exception error) {
+        switch (OpenAiClient.failureCode(error)) {
+            case "authentication": return "API 키가 유효하지 않습니다. 키를 다시 입력해 주세요.";
+            case "permission": return "이 API 키에 모델 접근 권한이 없습니다. 프로젝트 권한을 확인해 주세요.";
+            case "model_unavailable": return "선택한 모델을 사용할 수 없습니다. 모델 이름과 계정 접근 권한을 확인해 주세요.";
+            case "quota": return "API 사용 한도 또는 결제 상태를 확인해 주세요.";
+            case "rate_limit": return "API 요청이 많습니다. 잠시 뒤 연결을 다시 확인해 주세요.";
+            case "network": return "네트워크 연결을 확인한 뒤 다시 시도해 주세요.";
+            case "server": return "OpenAI 서버가 응답하지 않습니다. 잠시 뒤 다시 시도해 주세요.";
+            default: return "API 연결을 확인하지 못했습니다. 키와 모델 설정을 확인해 주세요.";
+        }
     }
 
     static JSONArray checkedCues(JSONArray cues) throws Exception {
@@ -281,12 +397,12 @@ public final class MainActivity extends Activity {
                     getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
                     MediaChunks.Info info = new MediaChunks(this).inspect(uri);
                     if (!info.hasAudio || info.durationMs <= 0) throw new IllegalArgumentException("읽을 수 있는 음성 트랙이 있는 영상을 선택해 주세요.");
-                    String jobId = store.create(uri.toString(), info.displayName, info.durationMs, settings);
-                    runOnUiThread(() -> {
-                        try { JobService.start(this, jobId); }
-                        catch (Exception error) { store.setStatus(jobId, "paused", "앱에서 이어하기를 눌러 주세요."); }
-                    });
+                    if (info.durationMs > JobStore.MAX_DURATION_MS) throw new IllegalArgumentException("최대 3시간(180분) 영상까지 지원합니다. 더 짧은 영상을 선택해 주세요.");
+                    if (getCacheDir().getUsableSpace() < 64L * 1024 * 1024)
+                        throw new IllegalArgumentException("오디오 추출과 작업 저장을 위해 기기 저장 공간을 64MB 이상 확보해 주세요.");
+                    String jobId = store.createPrepared(uri.toString(), info.displayName, info.durationMs, settings);
                     reply(id, jobPayload(jobId), null);
+                    emitNotice("영상이 준비되었습니다. 작업 정보를 확인한 뒤 생성 시작을 눌러 주세요.");
                 } else if (requestCode == IMPORT) {
                     try (InputStream stream = getContentResolver().openInputStream(uri)) {
                         if (stream == null) throw new IllegalArgumentException("파일을 읽을 수 없습니다.");
@@ -303,8 +419,9 @@ public final class MainActivity extends Activity {
                 }
                 documents.clear();
             } catch (Exception error) {
-                reply(id, null, error instanceof IllegalArgumentException ? error.getMessage() : "파일 접근에 실패했습니다. 기기에 저장된 파일을 다시 선택해 주세요.");
-                emitError("파일 선택 또는 저장을 마치지 못했습니다. 앱에서 다시 시도해 주세요.");
+                String safeMessage = error instanceof IllegalArgumentException ? error.getMessage() : "파일 접근에 실패했습니다. 기기에 저장된 파일을 다시 선택해 주세요.";
+                reply(id, null, safeMessage);
+                emitError(safeMessage);
             }
         });
     }
@@ -355,6 +472,9 @@ public final class MainActivity extends Activity {
 
     @Override protected void onDestroy() {
         destroyed = true;
+        OpenAiClient.Cancellation active = connectionCancellation;
+        if (active != null) active.cancel();
+        connectionIo.shutdownNow();
         io.execute(() -> store.close());
         io.shutdown();
         if (web != null) web.destroy();

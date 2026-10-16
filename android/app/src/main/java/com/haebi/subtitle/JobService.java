@@ -30,6 +30,7 @@ public final class JobService extends Service {
     private static final int NOTIFICATION_ID = 1001;
     // Shared across service instances: a rapid stop/start cannot overlap an old closing worker.
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor();
+    private static volatile String workingId;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final AtomicBoolean draining = new AtomicBoolean();
     private volatile String activeId;
@@ -39,6 +40,16 @@ public final class JobService extends Service {
     private PowerManager.WakeLock wakeLock;
     private int lastStartId;
     private boolean cacheChecked;
+    private final Runnable heartbeat = new Runnable() {
+        @Override public void run() {
+            if (stopping) return;
+            String id = activeId;
+            if (id != null) store.heartbeat(id);
+            main.postDelayed(this, 5_000L);
+        }
+    };
+
+    public static boolean isWorking(String id) { return id != null && id.equals(workingId); }
 
     public static void start(Context context, String id) {
         context.startForegroundService(new Intent(context, JobService.class).setAction(START).putExtra("jobId", id));
@@ -65,6 +76,7 @@ public final class JobService extends Service {
         PowerManager power = getSystemService(PowerManager.class);
         wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "haebi:subtitle-chunk");
         wakeLock.setReferenceCounted(false);
+        main.postDelayed(heartbeat, 5_000L);
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
@@ -83,12 +95,8 @@ public final class JobService extends Service {
         if (stopping) { stopSelfResult(startId); return START_NOT_STICKY; }
         try {
             startInForeground(notification("작업 준비 중", 0, 0));
-            if (START.equals(action) && id != null) {
-                JSONObject job = store.get(id);
-                String status = job.optString("status");
-                boolean sameLiveJob = id.equals(activeId) && cancellation != null && !cancellation.isCancelled();
-                if (!"completed".equals(status) && !sameLiveJob) store.setStatus(id, "queued", "");
-            }
+            // The caller persists queued before sending START. A delayed intent must never
+            // undo a later pause, error, or completion; the drain only selects runnable rows.
             scheduleDrain();
             return START_STICKY;
         } catch (RuntimeException error) {
@@ -119,9 +127,12 @@ public final class JobService extends Service {
                     OpenAiClient.Cancellation token = new OpenAiClient.Cancellation();
                     activeId = id;
                     cancellation = token;
-                    if (!store.claim(id)) { activeId = null; cancellation = null; continue; }
+                    synchronized (JobStore.WORKER_LOCK) {
+                        if (!store.claim(id)) { activeId = null; cancellation = null; continue; }
+                        workingId = id;
+                    }
                     try {
-                        process(job, token);
+                        process(store.get(id), token);
                         token.check();
                         store.finishRunning(id, "completed", "");
                     } catch (Exception error) {
@@ -131,6 +142,7 @@ public final class JobService extends Service {
                         releaseWakeLock();
                         activeId = null;
                         cancellation = null;
+                        synchronized (JobStore.WORKER_LOCK) { workingId = null; }
                     }
                 }
             } finally {
@@ -148,9 +160,24 @@ public final class JobService extends Service {
         String id = job.getString("id");
         JSONObject settings = job.getJSONObject("settings");
         String key = new SecretStore(this).getKey();
-        OpenAiClient api = new OpenAiClient(key, token);
+        OpenAiClient api = new OpenAiClient(key, token, (attempt, maximum) -> {
+            JSONObject snapshot = store.get(id);
+            int chunk = snapshot.optJSONObject("progress").optInt("currentChunk") - 1;
+            progress(id, "waiting", chunk, null, "연결과 API 응답 대기 중 · 재시도 " + attempt + "/" + maximum);
+        });
         MediaChunks media = new MediaChunks(this);
         Uri source = Uri.parse(job.getString("uri"));
+        // Recheck the persisted URI before a paid request, even when the next work is translation.
+        progress(id, "running", -1, null, "원본 파일 접근 권한을 확인하는 중");
+        try {
+            MediaChunks.Info info = media.inspect(source, token::isCancelled);
+            if (!info.hasAudio) throw new MediaChunks.NoAudioException();
+            if (Math.abs(info.durationMs - job.getLong("durationMs")) > 1_000L) {
+                throw new java.io.IOException("원본 영상의 길이가 변경되었습니다. 저장된 작업과 같은 원본 파일을 복원해 주세요.");
+            }
+        } catch (java.io.IOException error) {
+            throw new java.io.IOException("원본 영상을 확인할 수 없습니다. 파일을 원래 위치에 복원하고 접근 권한을 확인한 뒤 이어해 주세요. 저장된 자막은 유지됩니다.", error);
+        }
         int total = job.getInt("totalChunks");
         for (ChunkPlan.Segment chunk : ChunkPlan.create(job.getLong("durationMs"), JobStore.CHUNK_MS, JobStore.PADDING_MS)) {
             token.check();
@@ -160,18 +187,21 @@ public final class JobService extends Service {
             holdWakeLock(30 * 60 * 1000L);
             try {
                 if (!store.hasTranscription(id, chunk.index)) {
-                    progress(id, "extracting", "오디오 추출 " + (chunk.index + 1) + "/" + total);
+                    progress(id, "extracting", chunk.index, null, "오디오 추출 " + (chunk.index + 1) + "/" + total);
                     File directory = new File(getCacheDir(), "subtitle-engine");
                     File file = new File(directory, "subtitle-audio-" + id + "-" + chunk.index + ".m4a");
                     try {
-                        media.export(source, file, chunk.extractStartMs, chunk.extractEndMs, token::isCancelled);
+                        media.export(source, file, chunk.extractStartMs, chunk.extractEndMs, token::isCancelled,
+                                percent -> progress(id, "extracting", chunk.index, percent,
+                                        "오디오 추출 " + (chunk.index + 1) + "/" + total));
                         token.check();
                         holdWakeLock(10 * 60 * 1000L);
-                        progress(id, "transcribing", "음성 인식 " + (chunk.index + 1) + "/" + total);
+                        progress(id, "transcribing", chunk.index, null, "음성 인식 API 응답 대기 · " + (chunk.index + 1) + "/" + total);
                         JSONObject raw = api.transcribe(file, settings);
                         JSONArray cues = Transcript.normalize(raw, chunk.extractStartMs, chunk.startMs, chunk.endMs);
                         int batches = settings.optBoolean("translate", true) ? (cues.length() + JobStore.BATCH_SIZE - 1) / JobStore.BATCH_SIZE : 0;
                         store.saveTranscription(id, chunk.index, raw, cues, batches);
+                        refreshNotification(id);
                     } finally {
                         // This is only our regenerable AAC cache, never the source content URI.
                         if (file.exists()) file.delete();
@@ -184,22 +214,29 @@ public final class JobService extends Service {
                     token.check();
                     if (store.hasTranslation(id, chunk.index, batch)) continue;
                     holdWakeLock(10 * 60 * 1000L);
-                    progress(id, "translating", "번역 " + (chunk.index + 1) + "/" + total + " · " + (batch + 1) + "/" + batches);
+                    progress(id, "translating", chunk.index, null, "번역 API 응답 대기 · 구간 " + (chunk.index + 1) + "/" + total + " · 묶음 " + (batch + 1) + "/" + batches);
                     int first = batch * JobStore.BATCH_SIZE;
                     JSONArray translated = api.translate(JobStore.slice(cues, first, Math.min(cues.length(), first + JobStore.BATCH_SIZE)), settings);
                     store.saveTranslation(id, chunk.index, batch, translated);
+                    progress(id, "checkpoint", chunk.index, null, "번역 묶음 저장 · 구간 " + (chunk.index + 1) + "/" + total + " · " + (batch + 1) + "/" + batches);
                 }
                 token.check();
                 store.completeChunk(id, chunk.index);
-                progress(id, "checkpoint", "구간 저장 " + (chunk.index + 1) + "/" + total);
+                progress(id, "checkpoint", chunk.index, null, "구간 저장 " + (chunk.index + 1) + "/" + total);
             } finally { releaseWakeLock(); }
         }
     }
 
-    private void progress(String id, String stage, String text) {
-        store.stage(id, stage);
+    private void progress(String id, String stage, int chunk, Integer extractionPercent, String text) {
+        store.progress(id, stage, chunk, extractionPercent, text);
+        refreshNotification(id);
+    }
+
+    private void refreshNotification(String id) {
         JSONObject job = store.get(id);
-        getSystemService(NotificationManager.class).notify(NOTIFICATION_ID, notification(text, job.optInt("completedChunks"), job.optInt("totalChunks")));
+        JSONObject progress = job.optJSONObject("progress");
+        getSystemService(NotificationManager.class).notify(NOTIFICATION_ID,
+                notification(progress.optString("message") + " · " + progress.optInt("percent") + "% 저장됨", progress.optInt("percent"), 100));
     }
 
     private Notification notification(String text, int done, int total) {
@@ -225,6 +262,7 @@ public final class JobService extends Service {
 
     @Override public void onDestroy() {
         stopping = true;
+        main.removeCallbacks(heartbeat);
         OpenAiClient.Cancellation token = cancellation;
         if (token != null) token.cancel();
         releaseWakeLock();

@@ -11,6 +11,9 @@ import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
@@ -21,27 +24,61 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 
 /** Streaming uploads: neither the source video nor the entire audio file enters heap memory. */
 final class OpenAiClient {
     private static final long MAX_AUDIO_BYTES = 24L * 1024 * 1024;
     private static final int MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
+    private static final int MAX_ERROR_BYTES = 16 * 1024;
+    private static final long MAX_RETRY_WAIT_MS = 30000;
     private static final ScheduledExecutorService DEADLINES = Executors.newSingleThreadScheduledExecutor(task -> {
         Thread thread = new Thread(task, "subtitle-api-deadline"); thread.setDaemon(true); return thread;
     });
     private final String key;
     private final Cancellation cancellation;
     private final ConnectionFactory connections;
+    private final BiConsumer<Integer, Integer> retryListener;
 
     OpenAiClient(String key, Cancellation cancellation) {
-        this(key, cancellation, path -> (HttpURLConnection) new URL("https://api.openai.com/v1" + path).openConnection());
+        this(key, cancellation, (next, maximum) -> { });
+    }
+
+    OpenAiClient(String key, Cancellation cancellation, BiConsumer<Integer, Integer> retryListener) {
+        this(key, cancellation, path -> (HttpURLConnection) new URL("https://api.openai.com/v1" + path).openConnection(), retryListener);
     }
 
     OpenAiClient(String key, Cancellation cancellation, ConnectionFactory connections) {
+        this(key, cancellation, connections, (next, maximum) -> { });
+    }
+
+    OpenAiClient(String key, Cancellation cancellation, ConnectionFactory connections, BiConsumer<Integer, Integer> retryListener) {
         if (key == null || key.trim().isEmpty()) throw new IllegalArgumentException("OpenAI API 키를 먼저 저장해 주세요.");
         this.key = key.trim();
         this.cancellation = cancellation;
         this.connections = connections;
+        this.retryListener = retryListener;
+    }
+
+    JSONObject checkConnection(JSONObject settings) throws IOException, JSONException {
+        String translationModel = settings.optBoolean("translate", true) ? translationModel(settings) : "";
+        checkModel("whisper-1");
+        if (!translationModel.isEmpty()) checkModel(translationModel);
+        return new JSONObject().put("checkedAt", System.currentTimeMillis()).put("transcriptionModel", "whisper-1")
+            .put("translationModel", translationModel)
+            .put("message", "API 키 인증과 모델 접근 권한을 확인했습니다. 실제 처리 가능 여부·결제 상태·잔여 할당량을 보장하는 검사는 아닙니다.");
+    }
+
+    private void checkModel(String model) throws IOException, JSONException {
+        JSONObject response = request("/models/" + model, null, 0, null);
+        if (!model.equals(response.optString("id"))) throw new ApiFailure("unknown", 0);
+    }
+
+    private static String translationModel(JSONObject settings) {
+        String model = settings.optString("translationModel", "gpt-6-luna").trim();
+        if (model.isEmpty()) model = "gpt-6-luna";
+        if (!model.matches("[A-Za-z0-9._:-]{1,100}")) throw new IllegalArgumentException("번역 모델 이름을 확인해 주세요.");
+        return model;
     }
 
     JSONObject transcribe(File file, JSONObject settings) throws IOException, JSONException {
@@ -87,8 +124,7 @@ final class OpenAiClient {
         JSONObject schema = new JSONObject().put("type", "object").put("additionalProperties", false)
             .put("required", new JSONArray().put("translations"))
             .put("properties", new JSONObject().put("translations", new JSONObject().put("type", "array").put("items", itemSchema)));
-        String model = settings.optString("translationModel", "gpt-5.5");
-        if (!model.matches("[A-Za-z0-9._:-]{1,100}")) throw new IllegalArgumentException("번역 모델 이름을 확인해 주세요.");
+        String model = translationModel(settings);
         JSONObject body = new JSONObject().put("model", model).put("store", false)
             .put("reasoning", new JSONObject().put("effort", "low"))
             .put("text", new JSONObject().put("verbosity", "low").put("format", new JSONObject().put("type", "json_schema").put("name", "subtitle_translations").put("strict", true).put("schema", schema)))
@@ -120,7 +156,9 @@ final class OpenAiClient {
     }
 
     private JSONObject request(String path, String contentType, long length, Upload upload) throws IOException, JSONException {
-        for (int attempt = 0; attempt < 3; attempt++) {
+        boolean readOnly = upload == null;
+        int maxAttempts = readOnly ? 1 : 3;
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
             cancellation.check();
             HttpURLConnection connection = null;
             ScheduledFuture<?> deadline = null;
@@ -130,38 +168,89 @@ final class OpenAiClient {
                 cancellation.attach(connection);
                 HttpURLConnection timedConnection = connection;
                 // HttpURLConnection has no write timeout: bound the entire attempt, including uploads.
-                deadline = DEADLINES.schedule(timedConnection::disconnect, 180, TimeUnit.SECONDS);
+                deadline = DEADLINES.schedule(timedConnection::disconnect, readOnly ? 15 : 180, TimeUnit.SECONDS);
                 connection.setInstanceFollowRedirects(false);
-                connection.setConnectTimeout(30000);
-                connection.setReadTimeout(120000);
-                connection.setRequestMethod("POST");
+                connection.setConnectTimeout(readOnly ? 10000 : 30000);
+                connection.setReadTimeout(readOnly ? 15000 : 120000);
+                connection.setRequestMethod(readOnly ? "GET" : "POST");
                 connection.setRequestProperty("Authorization", "Bearer " + key);
-                connection.setRequestProperty("Content-Type", contentType);
                 connection.setRequestProperty("Accept", "application/json");
-                connection.setDoOutput(true);
                 connection.setUseCaches(false);
-                connection.setFixedLengthStreamingMode(length);
-                try (OutputStream output = connection.getOutputStream()) { upload.write(output); }
+                if (!readOnly) {
+                    connection.setRequestProperty("Content-Type", contentType);
+                    connection.setDoOutput(true);
+                    connection.setFixedLengthStreamingMode(length);
+                    try (OutputStream output = connection.getOutputStream()) { upload.write(output); }
+                }
                 cancellation.check();
                 int status = connection.getResponseCode();
                 if (status >= 200 && status < 300) {
-                    try (InputStream input = connection.getInputStream()) { return new JSONObject(readBounded(input)); }
+                    try (InputStream input = connection.getInputStream()) {
+                        String response = readBounded(input);
+                        try { return new JSONObject(response); }
+                        catch (JSONException invalid) { throw new ApiFailure("unknown", 0); }
+                    }
                 }
-                if (status != 429 && status < 500) throw new ApiFailure(status);
-                if (attempt == 2) throw new ApiFailure(status);
-                retryDelay = Math.max(retryDelay, retryAfter(connection.getHeaderField("Retry-After")));
+                ApiFailure failure = new ApiFailure(httpFailureCode(status, readErrorCode(connection)), status);
+                if (!isRetryable(failure) || attempt + 1 == maxAttempts) throw failure;
+                long requestedWait = retryAfter(connection.getHeaderField("Retry-After"));
+                // Do not retry earlier than the server permits when its wait exceeds our foreground bound.
+                if (requestedWait > MAX_RETRY_WAIT_MS) throw failure;
+                retryDelay = Math.max(retryDelay, requestedWait);
             } catch (ApiFailure | ResponseTooLarge error) { throw error; }
             catch (IOException error) {
                 cancellation.check();
-                if (attempt == 2) throw new IOException("네트워크 요청이 실패했습니다. 연결을 확인한 뒤 이어하기를 눌러 주세요.");
+                if (attempt + 1 == maxAttempts) throw new ApiFailure("network", 0);
             } finally {
                 if (deadline != null) deadline.cancel(false);
                 cancellation.detach(connection);
                 if (connection != null) connection.disconnect();
             }
-            cancellation.waitFor(Math.min(30000, retryDelay));
+            retryListener.accept(attempt + 2, maxAttempts);
+            cancellation.waitFor(retryDelay);
         }
-        throw new IOException("API 요청에 실패했습니다.");
+        throw new ApiFailure("unknown", 0);
+    }
+
+    private String readErrorCode(HttpURLConnection connection) throws IOException {
+        try (InputStream input = connection.getErrorStream()) {
+            if (input == null) return "";
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            byte[] buffer = new byte[2048];
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                cancellation.check();
+                if (output.size() + count > MAX_ERROR_BYTES) return "";
+                output.write(buffer, 0, count);
+            }
+            JSONObject error = new JSONObject(output.toString(StandardCharsets.UTF_8.name())).optJSONObject("error");
+            String code = error == null ? "" : error.optString("code", "");
+            return code.matches("[a-z_]{1,100}") ? code : "";
+        } catch (JSONException invalid) { return ""; }
+        catch (IOException unreadable) { cancellation.check(); return ""; }
+    }
+
+    static String failureCode(Throwable error) {
+        if (error instanceof ApiFailure) return ((ApiFailure) error).code;
+        if (error instanceof SocketTimeoutException || error instanceof SocketException || error instanceof UnknownHostException) return "network";
+        if (error instanceof IllegalArgumentException || error instanceof JSONException) return "invalid_request";
+        return "unknown";
+    }
+
+    static boolean isRetryable(Throwable error) {
+        String code = failureCode(error);
+        return code.equals("rate_limit") || code.equals("network") || code.equals("server");
+    }
+
+    private static String httpFailureCode(int status, String providerCode) {
+        if (status == 401) return "authentication";
+        if (status == 403) return "permission";
+        if (status == 404) return "model_unavailable";
+        if (status == 429) return providerCode.equals("insufficient_quota") || providerCode.equals("billing_hard_limit_reached")
+            || providerCode.equals("billing_not_active") || providerCode.equals("usage_limit_reached") ? "quota" : "rate_limit";
+        if (status == 408) return "network";
+        if (status >= 500 && status <= 599) return "server";
+        return status >= 400 && status <= 499 ? "invalid_request" : "unknown";
     }
 
     private String readBounded(InputStream input) throws IOException {
@@ -178,9 +267,9 @@ final class OpenAiClient {
 
     private static long retryAfter(String header) {
         if (header == null) return 0;
-        try { return Math.max(0, Math.min(30000, (long) (Double.parseDouble(header) * 1000))); }
+        try { return Math.max(0, Math.min(MAX_RETRY_WAIT_MS + 1, (long) (Double.parseDouble(header) * 1000))); }
         catch (NumberFormatException ignored) {
-            try { return Math.max(0, Math.min(30000, ZonedDateTime.parse(header, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli() - System.currentTimeMillis())); }
+            try { return Math.max(0, Math.min(MAX_RETRY_WAIT_MS + 1, ZonedDateTime.parse(header, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli() - System.currentTimeMillis())); }
             catch (RuntimeException invalidDate) { return 0; }
         }
     }
@@ -193,7 +282,24 @@ final class OpenAiClient {
     interface ConnectionFactory { HttpURLConnection open(String path) throws IOException; }
     private static final class ResponseTooLarge extends IOException { ResponseTooLarge() { super("API 응답 크기가 제한을 초과했습니다."); } }
     private static final class ApiFailure extends IOException {
-        ApiFailure(int status) { super("OpenAI API 오류 (" + status + "). " + (status == 401 ? "API 키를 확인해 주세요." : status == 429 ? "사용 한도 또는 결제 상태를 확인하고 잠시 뒤 이어해 주세요." : "모델·계정·네트워크 상태를 확인한 뒤 이어하기를 눌러 주세요.")); }
+        final String code;
+        ApiFailure(String code, int status) {
+            super((status > 0 ? "OpenAI API 오류 (" + status + "). " : "") + failureMessage(code));
+            this.code = code;
+        }
+        private static String failureMessage(String code) {
+            switch (code) {
+                case "authentication": return "API 키가 유효하지 않습니다. 키를 다시 저장해 주세요.";
+                case "permission": return "API 키 또는 프로젝트에 요청 권한이 없습니다. 계정과 모델 권한을 확인해 주세요.";
+                case "model_unavailable": return "요청한 모델을 찾을 수 없거나 접근할 수 없습니다. 모델 이름과 계정 권한을 확인해 주세요.";
+                case "quota": return "API 할당량이 부족합니다. 결제·사용 한도를 확인한 뒤 이어하기를 눌러 주세요.";
+                case "rate_limit": return "API 요청 속도 제한에 도달했습니다. 잠시 기다린 뒤 이어하기를 눌러 주세요.";
+                case "network": return "네트워크 요청이 실패했습니다. 연결을 확인한 뒤 이어하기를 눌러 주세요.";
+                case "server": return "OpenAI 서버에서 일시적인 오류가 발생했습니다. 잠시 뒤 이어하기를 눌러 주세요.";
+                case "invalid_request": return "API 요청을 처리할 수 없습니다. 언어·모델 설정을 확인해 주세요.";
+                default: return "API 응답을 확인할 수 없습니다. 설정을 확인한 뒤 다시 시도해 주세요.";
+            }
+        }
     }
 
     static final class Cancellation {

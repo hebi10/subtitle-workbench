@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
@@ -11,6 +10,7 @@ import test from 'node:test';
 // This fixture serves source modules directly without copying build assets.
 const require = createRequire(import.meta.url);
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
+const artifacts = join(root, 'output/android-improvements-ui');
 test('Android WebView UI with a mock native bridge', { skip: !process.env.PLAYWRIGHT_MODULE }, async () => {
   const { chromium } = require(process.env.PLAYWRIGHT_MODULE);
   const server = createServer(async (req, res) => {
@@ -30,10 +30,51 @@ test('Android WebView UI with a mock native bridge', { skip: !process.env.PLAYWR
     browser = await chromium.launch({ headless: true, ...(process.env.BROWSER_CHANNEL ? { channel: process.env.BROWSER_CHANNEL } : {}) });
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
     const errors = []; page.on('pageerror', (error) => errors.push(error.message));
+    await mkdir(artifacts, { recursive: true });
     await page.addInitScript({ path: join(root, 'android/web/mock-bridge.js') });
     await page.goto(`http://127.0.0.1:${server.address().port}`);
     await page.locator('.job').first().waitFor();
     assert.equal(await page.locator('.job').count(), 2);
+    // A native percentage must remain distinct from the number of finished chunks.
+    await page.evaluate(() => {
+      const job = window.mockNative.jobs[1];
+      job.settings = { sourceLanguage: 'en', targetLanguage: 'ko', translate: true, translationModel: 'original-model' };
+      job.progress = { percent: 12.5, processedMs: 840000, transcribedChunks: 3, translatedChunks: 2, currentChunk: 3, batchCompleted: 2, batchTotal: 5, extractionPercent: null, elapsedMs: 125000, lastSavedAt: Date.now(), message: '번역 응답을 기다리는 중' };
+      window.mockNative.hasKey = false;
+      window.nativeEvent({ type: 'status' });
+    });
+    await page.waitForFunction(() => document.getElementById('pickVideo').disabled);
+    assert.equal(await page.getByRole('button', { name: 'API 연결 설정', exact: true }).isVisible(), true);
+    assert.equal(await page.locator('.job').nth(1).locator('progress').getAttribute('value'), '12.5');
+    assert.match(await page.locator('.job').nth(1).innerText(), /전사 3.*번역 2/);
+    assert.match(await page.locator('.job').nth(1).innerText(), /2 \/ 5/);
+    assert.match(await page.locator('.job').nth(1).innerText(), /original-model/);
+    await page.getByRole('button', { name: 'API 연결 설정', exact: true }).click();
+    await page.locator('#apiKey').fill('fixture-key');
+    await page.getByRole('button', { name: 'API 키 암호화 저장', exact: true }).click();
+    await page.waitForFunction(() => document.getElementById('apiKey').value === '');
+    assert.equal(await page.evaluate(() => window.mockNative.calls.some((call) => call.method === 'checkConnection')), false);
+    await page.getByRole('button', { name: '연결 확인', exact: true }).click();
+    await page.waitForFunction(() => document.getElementById('connectionStatus').textContent.includes('접근 확인'));
+    assert.match(await page.locator('#connectionStatus').textContent(), /결제|잔액/);
+    await page.evaluate(() => { window.mockNative.failConnection = true; });
+    await page.getByRole('button', { name: '연결 확인', exact: true }).click();
+    await page.waitForFunction(() => document.getElementById('connectionStatus').textContent.includes('접근할 수 없습니다'));
+    assert.equal(await page.locator('#apiKey').inputValue(), '');
+    await page.evaluate(() => { window.mockNative.failConnection = false; });
+    await page.getByRole('button', { name: '연결 확인', exact: true }).click();
+    await page.waitForFunction(() => document.getElementById('connectionStatus').textContent.includes('접근 확인'));
+    await page.getByRole('button', { name: '저장된 키 삭제', exact: true }).click();
+    assert.equal(await page.evaluate(() => window.mockNative.calls.some((call) => call.method === 'clearKey')), false);
+    await page.getByRole('button', { name: '삭제 취소', exact: true }).click();
+    assert.equal(await page.locator('#confirmClearKey').isVisible(), false);
+    await page.getByRole('button', { name: '저장된 키 삭제', exact: true }).click();
+    await page.getByRole('button', { name: '이 기기에서 키 삭제', exact: true }).click();
+    await page.waitForFunction(() => !window.mockNative.hasKey);
+    await page.locator('#apiKey').fill('fixture-key');
+    await page.getByRole('button', { name: 'API 키 암호화 저장', exact: true }).click();
+    await page.waitForFunction(() => document.getElementById('apiKey').value === '');
+    await page.locator('#navJobs').click();
     const firstRequestId = await page.evaluate(() => window.mockNative.calls[0].id);
     assert.equal(await page.evaluate(() => window.handleNativeBack()), false);
     await page.evaluate(() => window.nativeEvent({ type: 'error', message: '네이티브 처리 오류 테스트' }));
@@ -48,7 +89,9 @@ test('Android WebView UI with a mock native bridge', { skip: !process.env.PLAYWR
     await page.locator('#navSettings').click();
     await page.locator('#sourceLanguage').selectOption('en');
     await page.locator('#targetLanguage').selectOption('ja');
+    await page.locator('#advancedSettings').evaluate((node) => { node.open = true; });
     await page.locator('#translationModel').fill('fixture-model');
+    assert.match(await page.locator('#connectionSummary').textContent(), /미확인/);
     await page.evaluate(() => window.nativeEvent({ type: 'status' }));
     await page.waitForTimeout(100);
     assert.equal(await page.locator('#translationModel').inputValue(), 'fixture-model');
@@ -60,10 +103,49 @@ test('Android WebView UI with a mock native bridge', { skip: !process.env.PLAYWR
     assert.equal(await page.locator('#sourceLanguage').inputValue(), 'en');
     assert.equal(await page.locator('#targetLanguage').inputValue(), 'ja');
     assert.equal(await page.locator('#translationModel').inputValue(), 'fixture-model');
-    await page.screenshot({ path: join(tmpdir(), 'subtitle-android-jobs.png'), fullPage: true });
+    await page.locator('#navSettings').click();
+    for (const width of [320, 390, 800]) {
+      await page.setViewportSize({ width, height: 844 });
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `settings overflow at ${width}px`);
+      await page.screenshot({ path: join(artifacts, `settings-${width}.png`), fullPage: true });
+    }
+    await page.locator('#navJobs').click();
+    await page.locator('#pickVideo').click();
+    await page.getByRole('button', { name: '생성 시작', exact: true }).waitFor();
+    assert.equal(await page.evaluate(() => window.mockNative.calls.some((call) => call.method === 'resume')), false);
+    assert.match(await page.locator('.job').last().innerText(), /OpenAI.*전송/);
+    await page.screenshot({ path: join(artifacts, 'ready-to-start.png'), fullPage: true });
+    await page.getByRole('button', { name: '생성 시작', exact: true }).click();
+    await page.waitForFunction(() => window.mockNative.calls.some((call) => call.method === 'resume' && call.params.jobId === 'ready-1'));
+    await page.locator('.job').last().getByRole('button', { name: '일시정지', exact: true }).click();
+    await page.waitForFunction(() => window.mockNative.jobs.at(-1).status === 'paused');
+    await page.evaluate(() => { window.mockNative.jobs.pop(); window.nativeEvent({ type: 'status' }); });
+    await page.waitForFunction(() => document.querySelectorAll('.job').length === 2);
+    assert.equal(await page.locator('#appMessage').isVisible(), false);
+    for (const width of [320, 390, 800]) {
+      await page.setViewportSize({ width, height: 844 });
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `jobs overflow at ${width}px`);
+      await page.screenshot({ path: join(artifacts, `jobs-${width}.png`), fullPage: true });
+    }
     await page.getByRole('button', { name: '자막 편집', exact: true }).click();
     await page.locator('.cue').first().waitFor();
     assert.equal(await page.locator('.cue').count(), 12);
+    await page.locator('#cueJump').fill('#27');
+    await page.getByRole('button', { name: '자막으로 이동', exact: true }).click();
+    assert.match(await page.locator('#pageInfo').textContent(), /3 \/ 3/);
+    assert.equal(await page.locator('.cue[data-index="26"]').evaluate((node) => document.activeElement === node), true);
+    await page.locator('#cueJump').fill('00:00:03');
+    await page.getByRole('button', { name: '자막으로 이동', exact: true }).click();
+    assert.equal(await page.locator('.cue[data-index="1"]').evaluate((node) => document.activeElement === node), true);
+    await page.locator('#cueFilter').selectOption('untranslated');
+    assert.equal(await page.locator('.cue').count(), 0);
+    await page.locator('#cueFilter').selectOption('all');
+    await page.locator('#cueJump').fill('00:99:00');
+    await page.getByRole('button', { name: '자막으로 이동', exact: true }).click();
+    assert.match(await page.locator('#jumpHint').textContent(), /형식/);
+    await page.locator('#cueJump').fill('#99999');
+    await page.getByRole('button', { name: '자막으로 이동', exact: true }).click();
+    assert.match(await page.locator('#jumpHint').textContent(), /저장된 자막이 없습니다/);
     const firstText = page.locator('.cue textarea').first();
     await firstText.fill('수정한 원문 자막 ');
     await page.waitForFunction(() => window.mockNative.cues['complete-1'][0].original === '수정한 원문 자막 ');
@@ -104,22 +186,65 @@ test('Android WebView UI with a mock native bridge', { skip: !process.env.PLAYWR
     await page.getByRole('button', { name: '저장 다시 시도' }).click();
     await page.locator('#retrySave').waitFor({ state: 'hidden' });
     await page.getByRole('button', { name: '작업 목록으로' }).click();
+    await page.evaluate(() => {
+      const job = window.mockNative.jobs[1];
+      job.durationMs = 10800000; job.totalChunks = 26; job.status = 'running'; job.stage = 'extracting';
+      job.progress.extractionPercent = null;
+      window.nativeEvent({ type: 'status' });
+    });
+    await page.waitForFunction(() => document.querySelectorAll('.job')[1].textContent.includes('진행률을 기다리는 중'));
+    assert.match(await page.locator('.job').nth(1).innerText(), /03:00:00 · 26구간/);
+    await page.evaluate(() => { window.mockNative.jobs[1].progress.extractionPercent = 37; window.nativeEvent({ type: 'status' }); });
+    await page.waitForFunction(() => document.querySelectorAll('.job')[1].textContent.includes('37%'));
+    assert.equal(await page.locator('.job').nth(1).locator('progress').getAttribute('value'), '12.5');
+    await page.evaluate(() => { window.mockNative.jobs[1].status = 'paused'; window.nativeEvent({ type: 'status' }); });
+    await page.getByRole('button', { name: '이어하기', exact: true }).waitFor();
+    await page.getByRole('button', { name: '현재 자막 보기', exact: true }).focus();
+    await page.evaluate(() => { window.mockNative.jobs[1].progress.elapsedMs = 126000; window.nativeEvent({ type: 'status' }); });
+    await page.waitForFunction(() => document.querySelectorAll('.job')[1].textContent.includes('00:02:06'));
+    assert.equal(await page.getByRole('button', { name: '현재 자막 보기', exact: true }).evaluate((node) => document.activeElement === node), true);
     await page.getByRole('button', { name: '현재 자막 보기' }).click();
     await page.waitForFunction(() => document.getElementById('editorName').textContent === '이어하기 테스트.mp4');
     assert.equal(await page.locator('.cue textarea').first().isDisabled(), true);
+    const readOnlyLoads = await page.evaluate(() => window.mockNative.calls.filter((call) => call.method === 'loadJob').length);
+    await page.evaluate(() => { window.mockNative.jobs[1].progress.elapsedMs += 1000; window.nativeEvent({ type: 'status' }); });
+    await page.waitForFunction(() => document.querySelectorAll('.job')[1].textContent.includes('00:02:07'));
+    assert.equal(await page.evaluate(() => window.mockNative.calls.filter((call) => call.method === 'loadJob').length), readOnlyLoads);
+    await page.evaluate(() => {
+      window.mockNative.cues['partial-1'][0].translated = '새로 저장된 번역 묶음';
+      window.mockNative.jobs[1].progress.lastSavedAt += 1000;
+      window.nativeEvent({ type: 'status' });
+    });
+    await page.waitForFunction(() => document.querySelectorAll('.cue textarea')[1].value === '새로 저장된 번역 묶음');
     await page.getByRole('button', { name: '작업 목록으로' }).click();
-    await page.getByRole('button', { name: '이어하기' }).click();
+    await page.evaluate(() => { window.mockNative.methodDelays = { resume: 500 }; });
+    await page.getByRole('button', { name: '이어하기', exact: true }).click();
+    await page.evaluate(() => { window.mockNative.jobs[1].progress.elapsedMs = 129000; window.nativeEvent({ type: 'status' }); });
+    await page.waitForFunction(() => document.querySelectorAll('.job')[1].textContent.includes('00:02:09'));
+    assert.equal(await page.getByRole('button', { name: '이어하기', exact: true }).isDisabled(), true);
+    assert.equal(await page.getByRole('button', { name: '현재 모델로 이어하기', exact: true }).isDisabled(), true);
+    assert.equal(await page.evaluate(() => window.mockNative.calls.filter((call) => call.method === 'resume' && call.params.jobId === 'partial-1').at(-1).params.translationModel), undefined);
+    await page.getByRole('button', { name: '일시정지' }).click();
+    await page.getByRole('button', { name: '현재 모델로 이어하기', exact: true }).click();
+    await page.waitForFunction(() => window.mockNative.calls.some((call) => call.method === 'resume' && call.params.translationModel === 'fixture-model'));
     await page.getByRole('button', { name: '일시정지' }).click();
     await page.getByRole('button', { name: '자막 불러오기' }).click();
     await page.waitForFunction(() => document.getElementById('editorName').textContent === '가져온 자막.srt');
     assert.equal(await page.locator('#cueCount').textContent(), '1개');
     assert.equal(await page.locator('.cue textarea').first().isDisabled(), false);
     assert.equal(await page.locator('#preview').isDisabled(), true);
+    await page.locator('#cueFilter').selectOption('untranslated');
+    assert.equal(await page.locator('.cue').count(), 1);
+    await page.locator('#cueFilter').selectOption('issues');
+    assert.equal(await page.locator('.cue').count(), 0);
+    await page.locator('#cueFilter').selectOption('all');
     for (const width of [320, 390, 800]) {
       await page.setViewportSize({ width, height: 844 });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `overflow at ${width}px`);
-      await page.screenshot({ path: join(tmpdir(), `subtitle-android-editor-${width}.png`), fullPage: true });
+      await page.screenshot({ path: join(artifacts, `editor-${width}.png`), fullPage: true });
     }
+    await page.getByRole('button', { name: '내보내기로 이동', exact: true }).click();
+    assert.equal(await page.locator('#exportSection').evaluate((node) => document.activeElement === node), true);
     assert.deepEqual(errors, []);
   } finally { await browser?.close(); await new Promise((resolve) => server.close(resolve)); }
 });

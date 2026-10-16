@@ -23,6 +23,7 @@ import androidx.media3.transformer.EditedMediaItem;
 import androidx.media3.transformer.Effects;
 import androidx.media3.transformer.ExportException;
 import androidx.media3.transformer.ExportResult;
+import androidx.media3.transformer.ProgressHolder;
 import androidx.media3.transformer.Transformer;
 import java.io.File;
 import java.io.FileInputStream;
@@ -43,7 +44,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
 /** Streams a bounded audio clip from the original SAF URI, without copying the source file. */
 @OptIn(markerClass = UnstableApi.class)
@@ -99,7 +102,7 @@ public final class MediaChunks {
         }
     }
 
-    private Info inspect(Uri uri, BooleanSupplier cancelled) throws IOException, InterruptedException {
+    Info inspect(Uri uri, BooleanSupplier cancelled) throws IOException, InterruptedException {
         Objects.requireNonNull(uri, "uri");
         checkCancelled(cancelled);
         Future<Info> future;
@@ -154,12 +157,19 @@ public final class MediaChunks {
      */
     public void export(Uri uri, File destination, long startMs, long endMs, BooleanSupplier cancelled)
             throws IOException, InterruptedException {
+        export(uri, destination, startMs, endMs, cancelled, percent -> { });
+    }
+
+    /** Reports measured extraction progress at most once per second; null means unavailable. */
+    public void export(Uri uri, File destination, long startMs, long endMs, BooleanSupplier cancelled,
+            Consumer<Integer> progress) throws IOException, InterruptedException {
         if (Looper.myLooper() == Looper.getMainLooper()) {
             throw new IllegalStateException("오디오 추출은 백그라운드 스레드에서 실행해야 합니다.");
         }
         Objects.requireNonNull(uri, "uri");
         Objects.requireNonNull(destination, "destination");
         Objects.requireNonNull(cancelled, "cancelled");
+        Objects.requireNonNull(progress, "progress");
         if (startMs < 0 || endMs <= startMs || endMs - startMs > MAX_CLIP_MS
                 || endMs > Long.MAX_VALUE / 1_000) {
             throw new IllegalArgumentException("오디오 추출 범위가 올바르지 않습니다.");
@@ -185,8 +195,17 @@ public final class MediaChunks {
             // A separate wall-clock cap also covers a missing callback or an unresponsive main loop.
             long timeoutMs = Math.max(120_000L, (endMs - startMs) * 4L);
             long started = SystemClock.elapsedRealtime();
+            long lastReportedAt = started;
+            int lastPercent = -1;
             while (!session.finished.await(100, TimeUnit.MILLISECONDS)) {
                 checkCancelled(cancelled);
+                long now = SystemClock.elapsedRealtime();
+                int percent = session.percent.get();
+                if (now - lastReportedAt >= 1_000L && percent != lastPercent) {
+                    progress.accept(percent < 0 ? null : percent);
+                    lastPercent = percent;
+                    lastReportedAt = now;
+                }
                 if (pending.length() > MAX_OUTPUT_BYTES) {
                     throw new IOException("추출된 오디오가 허용 크기를 초과했습니다.");
                 }
@@ -209,6 +228,7 @@ public final class MediaChunks {
             checkCancelled(cancelled);
             Files.move(pending.toPath(), output.toPath(),
                     StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            progress.accept(100);
         } catch (IOException | InterruptedException | RuntimeException error) {
             IOException cleanupFailure = session.abort();
             if (cleanupFailure != null) error.addSuppressed(cleanupFailure);
@@ -246,6 +266,17 @@ public final class MediaChunks {
         private final long endMs;
         private final CountDownLatch finished = new CountDownLatch(1);
         private final AtomicBoolean abandoned = new AtomicBoolean();
+        private final AtomicInteger percent = new AtomicInteger(-1);
+        private final Runnable pollProgress = new Runnable() {
+            @Override public void run() {
+                if (abandoned.get() || finished.getCount() == 0 || transformer == null) return;
+                ProgressHolder holder = new ProgressHolder();
+                if (transformer.getProgress(holder) == Transformer.PROGRESS_STATE_AVAILABLE) {
+                    percent.set(Math.max(0, Math.min(100, holder.progress)));
+                }
+                mainHandler.postDelayed(this, 250L);
+            }
+        };
         // Transformer is exclusively accessed on the main looper, including during cancellation.
         private Transformer transformer;
         private ExportResult result;
@@ -293,6 +324,7 @@ public final class MediaChunks {
                             @Override
                             public void onCompleted(Composition composition, ExportResult exportResult) {
                                 result = exportResult;
+                                mainHandler.removeCallbacks(pollProgress);
                                 finished.countDown();
                             }
 
@@ -301,10 +333,12 @@ public final class MediaChunks {
                                     ExportException exportException) {
                                 failure = new IOException("오디오 추출에 실패했습니다. 코덱 또는 원본 파일을 확인해 주세요.",
                                         exportException);
+                                mainHandler.removeCallbacks(pollProgress);
                                 finished.countDown();
                             }
                         }).build();
                 transformer.start(clip, pending.getAbsolutePath());
+                mainHandler.post(pollProgress);
             } catch (RuntimeException error) {
                 failure = new IOException("오디오 변환기를 시작할 수 없습니다.", error);
                 finished.countDown();
@@ -317,6 +351,7 @@ public final class MediaChunks {
             IOException[] cleanupFailure = new IOException[1];
             boolean posted = mainHandler.post(() -> {
                 try {
+                    mainHandler.removeCallbacks(pollProgress);
                     if (transformer != null) transformer.cancel();
                     Files.deleteIfExists(pending.toPath());
                 } catch (IOException | RuntimeException error) {

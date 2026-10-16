@@ -45,6 +45,12 @@ public final class SecretStore {
 
     public boolean hasKey() { try { return !getKey().isEmpty(); } catch (IllegalStateException error) { return false; } }
 
+    public synchronized void clearKey() {
+        if (!preferences.edit().remove("nonce").remove("ciphertext").commit()) {
+            throw new IllegalStateException("저장된 API 키를 삭제하지 못했습니다. 다시 시도해 주세요.");
+        }
+    }
+
     private SecretKey encryptionKey() throws Exception {
         KeyStore store = KeyStore.getInstance("AndroidKeyStore");
         store.load(null);

@@ -20,6 +20,10 @@ p { margin: 8px 0 0; overflow-wrap: anywhere; }
 .app-header p { color: var(--muted); font-size: 14px; }
 main { padding-top: 4px; padding-bottom: calc(108px + env(safe-area-inset-bottom)); }
 .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 20px; }
+.connection-summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 32px; padding: 18px; background: var(--paper); border: 1px solid var(--line); }
+.connection-summary > div { flex: 1 1 230px; min-width: 0; }
+.connection-summary h2 { font-size: 18px; }
+.connection-summary p { margin-top: 6px; }
 .start-actions, .editor-actions, .export-actions, .job-actions, .cue-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .start-actions button { flex: 1 1 160px; }
 .hint { color: var(--muted); font-size: 14px; }
@@ -30,6 +34,16 @@ main { padding-top: 4px; padding-bottom: calc(108px + env(safe-area-inset-bottom
 .job h3 { font-size: 17px; }
 .job-state { display: flex; justify-content: space-between; gap: 12px; margin: 10px 0; color: var(--muted); font-size: 14px; }
 .job-state span { overflow-wrap: anywhere; }
+.job-state { font-variant-numeric: tabular-nums; }
+.job-state > :first-child { color: var(--ink); }
+.job-progress-label { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; margin: 16px 0 8px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.job-progress-label strong { font-size: 18px; font-weight: 700; }
+.job-details { margin: 14px 0 0; display: grid; gap: 6px; font-size: 14px; color: var(--muted); }
+.job-details > div { display: flex; flex-wrap: wrap; gap: 0 10px; }
+.job-details dt { min-width: 66px; }
+.job-details dd { margin: 0; min-width: 0; flex: 1; color: var(--ink); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.job-ready-note { margin-top: 16px; font-size: 14px; }
+.job-model-note { margin-top: 12px; }
 progress { appearance: none; display: block; width: 100%; height: 6px; border: 0; background: #e5e5e5; accent-color: var(--ink); }
 progress::-webkit-progress-bar { background: #e5e5e5; }
 progress::-webkit-progress-value { background: var(--ink); }
@@ -44,6 +58,12 @@ progress::-webkit-progress-value { background: var(--ink); }
 label { display: grid; gap: 8px; color: var(--muted); font-size: 14px; min-width: 0; }
 label input, label select, label textarea { width: 100%; color: var(--ink); font-size: 16px; }
 .search-label { margin-top: 24px; }
+.review-controls { display: grid; gap: 16px; margin-top: 16px; }
+.review-controls form { display: grid; gap: 8px; min-width: 0; }
+.jump-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.jump-controls input { flex: 1 1 150px; min-width: 0; width: 100%; }
+.jump-controls button { flex: 0 1 auto; }
+.cue { scroll-margin-block: 20px 100px; }
 .cue-list { display: grid; gap: 32px; margin: 24px 0; }
 .cue { min-width: 0; display: grid; gap: 12px; }
 .cue h3 { font-size: 16px; }
@@ -55,10 +75,17 @@ summary { min-height: 48px; padding: 12px 0; cursor: pointer; font-size: 14px; c
 .pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .pagination span { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
 .export-section { margin-top: 36px; }
+.export-section { scroll-margin-block: 20px 100px; }
 .export-actions { margin-top: 14px; }
 .export-actions button { flex: 1 1 90px; }
 .settings-section { display: grid; gap: 16px; margin-top: 32px; }
 .settings-section p { margin: 0; }
+.settings-section details { min-width: 0; }
+.settings-section details p { margin-top: 8px; }
+.connection-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.connection-actions button { flex: 1 1 140px; }
+.confirm-key { background: var(--paper); padding: 16px; margin-top: 16px; border: 1px solid var(--line); }
+.confirm-key p { margin: 0; font-size: 14px; }
 .check-label { display: flex; align-items: center; min-height: 48px; color: var(--ink); }
 .check-label input { width: 24px; height: 24px; min-height: 24px; accent-color: var(--ink); }
 @media (min-width: 620px) { .app-header, main { padding-left: 32px; padding-right: 32px; } .cue { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cue h3, .cue-times, .cue details, .cue > .cue-actions, .cue > .hint { grid-column: 1 / -1; } .app-nav { padding-left: max(32px, calc((100vw - 736px) / 2)); padding-right: max(32px, calc((100vw - 736px) / 2)); } }

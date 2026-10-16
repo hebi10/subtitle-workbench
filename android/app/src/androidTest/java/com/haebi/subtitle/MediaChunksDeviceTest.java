@@ -65,7 +65,11 @@ public final class MediaChunksDeviceTest {
     public void exportClipsAndReencodesAacAtBoundedSampleRate() throws Exception {
         File wave = makeWave("source.wav", 2);
         File destination = new File(directory, "chunk.m4a");
-        chunks.export(Uri.fromFile(wave), destination, 500L, 1_500L, () -> false);
+        java.util.List<Integer> measuredProgress = new java.util.ArrayList<>();
+        chunks.export(Uri.fromFile(wave), destination, 500L, 1_500L, () -> false, measuredProgress::add);
+        assertFalse(measuredProgress.isEmpty());
+        assertEquals(Integer.valueOf(100), measuredProgress.get(measuredProgress.size() - 1));
+        for (Integer percent : measuredProgress) assertTrue(percent == null || (percent >= 0 && percent <= 100));
         assertTrue(destination.length() > 0);
         MediaChunks.Info info = chunks.inspect(Uri.fromFile(destination));
         assertTrue(info.durationMs >= 900L && info.durationMs <= 1_150L);

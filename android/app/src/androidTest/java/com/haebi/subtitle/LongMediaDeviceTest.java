@@ -14,6 +14,7 @@ import android.net.Uri;
 import android.os.SystemClock;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
@@ -26,19 +27,19 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Exercises a real 150-minute MP4 timeline with synthetic repeated AVC/AAC samples.
- * This checks duration, seeking and tail extraction, not movie quality or speech/API accuracy.
+ * Exercises every chunk of a real 180-minute MP4 timeline with synthetic AVC/AAC samples.
+ * This checks duration, seeking and bounded extraction, not movie quality or speech/API accuracy.
  */
 @RunWith(AndroidJUnit4.class)
 public final class LongMediaDeviceTest {
     private static final int SAMPLE_RATE = 24_000;
-    private static final long DURATION_US = 150L * 60 * 1_000_000;
+    private static final long DURATION_US = 180L * 60 * 1_000_000;
 
-    @Test(timeout = 120_000L)
-    public void extractsLastChunkFromOneHundredFiftyMinuteVideo() throws Exception {
+    @Test(timeout = 1_800_000L)
+    public void extractsAllTwentySixChunksFromThreeHourVideo() throws Exception {
         Context context = ApplicationProvider.getApplicationContext();
         File directory = Files.createTempDirectory(context.getCacheDir().toPath(), "long-media-test-").toFile();
-        long deadline = SystemClock.elapsedRealtime() + 110_000L;
+        long deadline = SystemClock.elapsedRealtime() + 1_740_000L;
         try {
             MediaChunks media = new MediaChunks(context);
             File wave = makeOneSecondWave(directory);
@@ -46,14 +47,14 @@ public final class LongMediaDeviceTest {
             media.export(Uri.fromFile(wave), seedAudio, 0L, 1_000L, () -> expired(deadline));
             EncodedSample audio = readAudioSample(seedAudio);
             EncodedSample video = encodeVideoKeyFrame(deadline);
-            File source = new File(directory, "synthetic-150-minutes.mp4");
+            File source = new File(directory, "synthetic-180-minutes.mp4");
             repeatSamples(source, audio, video, deadline);
 
             MediaChunks.Info input = media.inspect(Uri.fromFile(source));
             assertTrue(input.hasAudio);
             // AAC-LC carries 1024 samples/frame: one frame may extend past the requested endpoint.
             assertTrue("Source duration: " + input.durationMs,
-                    input.durationMs >= 9_000_000L && input.durationMs <= 9_000_150L);
+                    input.durationMs >= 10_800_000L && input.durationMs <= 10_800_150L);
             MediaExtractor sourceTracks = new MediaExtractor();
             try {
                 sourceTracks.setDataSource(source.getAbsolutePath());
@@ -61,30 +62,33 @@ public final class LongMediaDeviceTest {
             } finally {
                 sourceTracks.release();
             }
-            List<ChunkPlan.Segment> plan = ChunkPlan.create(input.durationMs, 420_000L, 500L);
-            assertEquals(22, plan.size());
-            ChunkPlan.Segment tail = plan.get(21);
-            assertEquals(8_820_000L, tail.startMs);
-            assertEquals(8_819_500L, tail.extractStartMs);
-            File output = new File(directory, "last-chunk.m4a");
-            media.export(Uri.fromFile(source), output, tail.extractStartMs, tail.extractEndMs,
-                    () -> expired(deadline));
-            assertTrue(output.length() > 0L);
-            assertTrue(output.length() < 8L * 1024 * 1024);
-            long expectedDuration = tail.extractEndMs - tail.extractStartMs;
-            MediaChunks.Info extracted = media.inspect(Uri.fromFile(output));
-            assertTrue("Tail duration: " + extracted.durationMs,
-                    Math.abs(extracted.durationMs - expectedDuration) <= 200L);
-            MediaExtractor result = new MediaExtractor();
-            try {
-                result.setDataSource(output.getAbsolutePath());
-                assertEquals(1, result.getTrackCount());
-                MediaFormat format = result.getTrackFormat(0);
-                assertEquals("audio/mp4a-latm", format.getString(MediaFormat.KEY_MIME));
-                assertEquals(SAMPLE_RATE, format.getInteger(MediaFormat.KEY_SAMPLE_RATE));
-                assertEquals(1, format.getInteger(MediaFormat.KEY_CHANNEL_COUNT));
-            } finally {
-                result.release();
+            List<ChunkPlan.Segment> plan = ChunkPlan.create(10_800_000L, 420_000L, 500L);
+            assertEquals(26, plan.size());
+            File output = new File(directory, "bounded-chunk.m4a");
+            for (ChunkPlan.Segment chunk : plan) {
+                media.export(Uri.fromFile(source), output, chunk.extractStartMs, chunk.extractEndMs,
+                        () -> expired(deadline));
+                assertTrue(output.length() > 0L);
+                assertTrue(output.length() < 8L * 1024 * 1024);
+                long expectedDuration = chunk.extractEndMs - chunk.extractStartMs;
+                MediaChunks.Info extracted = media.inspect(Uri.fromFile(output));
+                assertTrue("Chunk " + chunk.index + " duration: " + extracted.durationMs,
+                        Math.abs(extracted.durationMs - expectedDuration) <= 200L);
+                MediaExtractor result = new MediaExtractor();
+                try {
+                    result.setDataSource(output.getAbsolutePath());
+                    assertEquals(1, result.getTrackCount());
+                    MediaFormat format = result.getTrackFormat(0);
+                    assertEquals("audio/mp4a-latm", format.getString(MediaFormat.KEY_MIME));
+                    assertEquals(SAMPLE_RATE, format.getInteger(MediaFormat.KEY_SAMPLE_RATE));
+                    assertEquals(1, format.getInteger(MediaFormat.KEY_CHANNEL_COUNT));
+                } finally {
+                    result.release();
+                }
+                android.os.Bundle progress = new android.os.Bundle();
+                progress.putString("longMediaChunk", (chunk.index + 1) + "/26");
+                progress.putLong("outputBytes", output.length());
+                InstrumentationRegistry.getInstrumentation().sendStatus(2, progress);
             }
             File[] pending = directory.listFiles((dir, name) -> name.endsWith(".pending"));
             assertNotNull(pending);

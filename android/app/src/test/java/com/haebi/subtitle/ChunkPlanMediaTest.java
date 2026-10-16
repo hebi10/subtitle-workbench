@@ -9,6 +9,20 @@ import org.junit.Test;
 
 public final class ChunkPlanMediaTest {
     @Test
+    public void threeHoursHasTwentySixContinuousChunksAndFiveMinuteTail() {
+        List<ChunkPlan.Segment> plan = ChunkPlan.create(10_800_000L, 420_000L, 500L);
+        assertEquals(26, plan.size());
+        assertSegment(plan.get(25), 25, 10_500_000L, 10_800_000L, 10_499_500L, 10_800_000L);
+        long previousEnd = 0;
+        for (ChunkPlan.Segment segment : plan) {
+            assertEquals(previousEnd, segment.startMs);
+            assertTrue(segment.extractEndMs - segment.extractStartMs <= 421_000L);
+            previousEnd = segment.endMs;
+        }
+        assertEquals(10_800_000L, previousEnd);
+    }
+
+    @Test
     public void oneHundredFiftyMinutesHasTwentyTwoContinuousChunks() {
         List<ChunkPlan.Segment> plan = ChunkPlan.create(9_000_000L, 420_000L, 500L);
         assertEquals(22, plan.size());
