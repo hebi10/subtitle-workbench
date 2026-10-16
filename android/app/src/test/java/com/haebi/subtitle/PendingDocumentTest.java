@@ -17,4 +17,16 @@ public class PendingDocumentTest {
         recreated.clear();
         assertEquals(0, new PendingDocument(folder.getRoot()).read().length());
     }
+
+    @Test public void replacementTargetAndSettingsSurvivePickerStoreRecreation() throws Exception {
+        PendingDocument original = new PendingDocument(folder.getRoot());
+        original.save(new JSONObject().put("id", "web-replacement").put("type", 101)
+                .put("replaceJobId", "prepared-original")
+                .put("settings", new JSONObject().put("translate", false).put("sourceLanguage", "en")));
+        JSONObject restored = new PendingDocument(folder.getRoot()).read();
+        assertEquals("web-replacement", restored.getString("id"));
+        assertEquals("prepared-original", restored.getString("replaceJobId"));
+        assertFalse(restored.getJSONObject("settings").getBoolean("translate"));
+        assertEquals("en", restored.getJSONObject("settings").getString("sourceLanguage"));
+    }
 }

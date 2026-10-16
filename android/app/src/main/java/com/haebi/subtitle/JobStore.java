@@ -66,25 +66,95 @@ public final class JobStore extends SQLiteOpenHelper {
     }
 
     public String createPrepared(String uri, String name, long durationMs, JSONObject settings) {
-        return create(uri, name, durationMs, settings, true);
+        synchronized (WORKER_LOCK) { return create(uri, name, durationMs, settings, true); }
+    }
+
+    public JSONObject updatePreparedSettings(String id, JSONObject settings) {
+        synchronized (WORKER_LOCK) {
+            transaction(db -> {
+                requirePrepared(db, id);
+                ContentValues values = new ContentValues();
+                values.put("settings", AppSettings.checked(settings == null ? new JSONObject() : settings).toString());
+                values.put("updated_at", System.currentTimeMillis());
+                db.update("jobs", values, "id=?", new String[]{id});
+            });
+            return get(id);
+        }
+    }
+
+    public JSONObject replacePrepared(String id, String uri, String name, long durationMs, JSONObject settings) {
+        synchronized (WORKER_LOCK) {
+            validateVideo(uri, durationMs);
+            transaction(db -> {
+                requirePrepared(db, id);
+                ContentValues values = new ContentValues();
+                values.put("uri", uri); values.put("name", name == null ? "자막" : name.substring(0, Math.min(name.length(), 512)));
+                values.put("duration_ms", durationMs);
+                values.put("settings", AppSettings.checked(settings == null ? new JSONObject() : settings).toString());
+                values.put("updated_at", System.currentTimeMillis());
+                db.update("jobs", values, "id=?", new String[]{id});
+                db.delete("chunks", "job_id=?", new String[]{id});
+                insertChunks(db, id, durationMs);
+            });
+            return get(id);
+        }
+    }
+
+    public boolean cancelPrepared(String id) {
+        synchronized (WORKER_LOCK) {
+            transaction(db -> {
+                requirePrepared(db, id);
+                // Only unused preparation rows are removed. The selected content URI is never deleted.
+                db.delete("chunks", "job_id=?", new String[]{id});
+                db.delete("jobs", "id=?", new String[]{id});
+            });
+            return true;
+        }
+    }
+
+    void requirePrepared(String id) {
+        synchronized (WORKER_LOCK) { requirePrepared(getReadableDatabase(), id); }
+    }
+
+    private void requirePrepared(SQLiteDatabase db, String id) {
+        String message = "생성을 시작하기 전 준비 상태에서만 설정 변경, 영상 변경, 준비 취소를 할 수 있습니다.";
+        if (JobService.isWorking(id)) throw new IllegalArgumentException(message);
+        try (Cursor row = db.rawQuery("SELECT status,stage,elapsed_ms,last_saved_at,current_chunk,extraction_percent FROM jobs WHERE id=?", new String[]{id})) {
+            if (!row.moveToFirst()) throw new IllegalArgumentException("저장된 작업을 찾을 수 없습니다.");
+            if (!"paused".equals(row.getString(0)) || !"ready".equals(row.getString(1))
+                    || row.getLong(2) != 0 || row.getLong(3) != 0 || row.getLong(4) != 0 || !row.isNull(5))
+                throw new IllegalArgumentException(message);
+        }
+        try (Cursor saved = db.rawQuery("SELECT 1 FROM chunks WHERE job_id=? AND (transcribed<>0 OR batch_count<>0 OR complete<>0) "
+                + "UNION ALL SELECT 1 FROM batches WHERE job_id=? UNION ALL SELECT 1 FROM payloads WHERE job_id=? LIMIT 1", new String[]{id, id, id})) {
+            if (saved.moveToFirst()) throw new IllegalArgumentException(message);
+        }
     }
 
     private String create(String uri, String name, long durationMs, JSONObject settings, boolean prepared) {
-        if (uri == null || !uri.startsWith("content://") || durationMs <= 0) throw new IllegalArgumentException("유효한 영상과 재생 시간이 필요합니다.");
-        if (durationMs > MAX_DURATION_MS) throw new IllegalArgumentException("새 영상은 최대 3시간(180분)까지 처리할 수 있습니다.");
+        validateVideo(uri, durationMs);
         String id = UUID.randomUUID().toString();
         transaction(db -> {
             ContentValues job = jobValues(id, uri, name, durationMs, safeSettings(settings), prepared ? "paused" : "queued");
             if (prepared) { job.put("stage", "ready"); job.put("progress_message", "시작 전 설정과 API 요금 안내를 확인해 주세요."); }
             db.insertOrThrow("jobs", null, job);
-            for (ChunkPlan.Segment segment : ChunkPlan.create(durationMs, CHUNK_MS, PADDING_MS)) {
-                ContentValues row = new ContentValues();
-                row.put("job_id", id); row.put("chunk_index", segment.index); row.put("start_ms", segment.startMs); row.put("end_ms", segment.endMs);
-                row.put("extract_start_ms", segment.extractStartMs); row.put("extract_end_ms", segment.extractEndMs);
-                db.insertOrThrow("chunks", null, row);
-            }
+            insertChunks(db, id, durationMs);
         });
         return id;
+    }
+
+    private static void validateVideo(String uri, long durationMs) {
+        if (uri == null || !uri.startsWith("content://") || durationMs <= 0) throw new IllegalArgumentException("유효한 영상과 재생 시간이 필요합니다.");
+        if (durationMs > MAX_DURATION_MS) throw new IllegalArgumentException("새 영상은 최대 3시간(180분)까지 처리할 수 있습니다.");
+    }
+
+    private static void insertChunks(SQLiteDatabase db, String id, long durationMs) {
+        for (ChunkPlan.Segment segment : ChunkPlan.create(durationMs, CHUNK_MS, PADDING_MS)) {
+            ContentValues row = new ContentValues();
+            row.put("job_id", id); row.put("chunk_index", segment.index); row.put("start_ms", segment.startMs); row.put("end_ms", segment.endMs);
+            row.put("extract_start_ms", segment.extractStartMs); row.put("extract_end_ms", segment.extractEndMs);
+            db.insertOrThrow("chunks", null, row);
+        }
     }
 
     public String importCues(String name, JSONArray cues) {

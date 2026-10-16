@@ -23,12 +23,15 @@
 - `SecretStore(Context)`: `setKey(String)`, `getKey()`, `hasKey()`, `clearKey()`. 화면에는 키 값을 반환하지 않는다.
 - `JobService.start(Context,String id)`, `JobService.pause(Context,String id)`; 자동 이어하기는 작업 상태 queued/running을 대상으로 한다.
 - Web 메시지: `window.Native.postMessage(JSON.stringify({id,method,params}))`; 응답 `window.nativeResult({id,result,error})`. 이벤트 `window.nativeEvent({type,...})`.
-- 메서드: `status` → `{jobs,hasKey,settings,keyCheck,maxDurationMs}`, `setKey({key})`, `clearKey()`, `checkConnection({settings})`, `openApiKeyPage()`, `pickVideo({settings})`, `resume({jobId,translationModel?})`, `pause({jobId})`, `loadJob({jobId})` → `{job,cues}`, `saveCues({jobId,cues})`, `export({name,mime,text})`, `preview({jobId,positionMs})`, `importSubtitles`. `pickVideo`는 선택 완료 후 `createPrepared`로 준비 작업만 만들며, 생성은 명시적인 resume 요청으로 시작한다. 취소 시 null. API 키 조회 메서드는 없다.
+- 메서드: `status` → `{jobs,hasKey,settings,keyCheck,maxDurationMs}`, `setKey({key})`, `clearKey()`, `checkConnection({settings})`, `openApiKeyPage()`, `pickVideo({settings,replaceJobId?})`, `updatePreparedSettings({jobId,settings})` → job, `cancelPrepared({jobId})` → true, `resume({jobId,translationModel?})`, `pause({jobId})`, `loadJob({jobId})` → `{job,cues}`, `saveCues({jobId,cues})`, `export({name,mime,text})`, `preview({jobId,positionMs})`, `importSubtitles`. `pickVideo`는 선택 완료 후 준비 작업의 `{job,cues}`를 반환하며 취소 시 null이다. 생성은 명시적인 resume 요청으로 시작한다. API 키 조회 메서드는 없다.
+- 준비 변경·취소는 worker lock과 트랜잭션 안에서 paused/ready 상태와 저장 결과가 없는지 검사한다. 영상 교체는 유효한 파일 선택이 끝난 후 기존 ID에서 원자적으로 교체한다. 선택 중 취소·오류는 이전 준비 작업을 보존한다. 준비 취소는 앱의 미시작 작업 기록만 제거하며 원본 파일은 삭제하지 않는다. 대기열에 들어간 작업과 시작된 작업은 이 경로로 변경·취소할 수 없다.
 - 설정은 `getSettings()`와 `setSettings({settings})`로 조회·저장한다. 자막 파일 가져오기는 `importSubtitles()` → `{name,text}`를 화면에서 파싱한 뒤 `importCues({name,cues})` → `{job,cues}`로 저장한다.
 - 연결 확인은 별도 네트워크 실행기에서 모델 조회 GET만 수행한다. 키·설정 변경과 Activity 종료 시 오래된 결과를 버린다. 유료 생성이나 결제 상태 검증은 수행하지 않는다.
 - 설정: `sourceLanguage` auto, `targetLanguage` ko, `translationModel` gpt-6-luna, `translate` true. STT는 타임스탬프 지원 whisper-1(2027-02-26 종료 예정).
 - 전역 설정에서 이전 기본 모델만 한 번 이전한다. 작업별 모델은 보존하며, `updateTranslationModel`은 멈춘 작업에서만 완료 결과를 그대로 두고 변경한다. SQLite v1→v2는 열 추가 방식으로 기존 데이터를 보존한다.
 - 앱 화면은 `android/web/index.html`, `app.js`, `styles.css`; 공유 JS는 빌드에서 `/shared/`로 복사한다.
+- 편집 목록은 번호·시간·내용 요약을 기본으로 보여 주고 선택한 행만 펼친다. 페이지 전환·위치 이동은 해당 첫 행으로 포커스와 스크롤을 옮긴다. 저장 상태와 재시도는 스크롤 위치와 관계없이 접근할 수 있고, 미리보기도 저장 완료 후 시작한다.
+- 전역 설정의 저장본과 화면 초안을 분리한다. 새 작업은 저장본을 사용하며 준비 작업의 설정은 작업별로 수정한다. 목록 새로고침은 입력 중인 초안을 덮어쓰지 않는다.
 
 ## 구현 및 검증 순서
 

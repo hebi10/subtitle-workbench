@@ -169,7 +169,14 @@ public final class MainActivity extends Activity {
                     result = true; break;
                 case "pickVideo":
                     if (!secrets.hasKey()) throw new IllegalArgumentException("먼저 API 키를 저장해 주세요.");
-                    startPicker(id, PICK_VIDEO, params.optJSONObject("settings"), null, null, null); return;
+                    String replacementId = params.optString("replaceJobId", "");
+                    if (!replacementId.isEmpty()) store.requirePrepared(replacementId);
+                    JSONObject videoSettings = checkedSettings(params.has("settings") ? params.getJSONObject("settings") : readSettings());
+                    startPicker(id, PICK_VIDEO, videoSettings, null, null, null, replacementId); return;
+                case "updatePreparedSettings":
+                    result = store.updatePreparedSettings(params.getString("jobId"), params.getJSONObject("settings")); break;
+                case "cancelPrepared":
+                    result = store.cancelPrepared(params.getString("jobId")); break;
                 case "resume":
                     if (!secrets.hasKey()) throw new IllegalArgumentException("API 키를 다시 저장해 주세요.");
                     String resumeId = params.getString("jobId");
@@ -198,14 +205,14 @@ public final class MainActivity extends Activity {
                 case "saveCues":
                     store.saveEdited(params.getString("jobId"), checkedCues(params.getJSONArray("cues")));
                     result = true; break;
-                case "importSubtitles": startPicker(id, IMPORT, null, null, null, null); return;
+                case "importSubtitles": startPicker(id, IMPORT, null, null, null, null, null); return;
                 case "importCues":
                     String importedId = store.importCues(params.optString("name", "자막"), checkedCues(params.getJSONArray("cues")));
                     result = jobPayload(importedId); break;
                 case "export":
                     String body = params.getString("text");
                     if (body.getBytes(StandardCharsets.UTF_8).length > MAX_TEXT_BYTES) throw new IllegalArgumentException("내보내기 용량을 초과했습니다.");
-                    startPicker(id, EXPORT, null, body, params.optString("name", "subtitles.srt"), params.optString("mime", "text/plain")); return;
+                    startPicker(id, EXPORT, null, body, params.optString("name", "subtitles.srt"), params.optString("mime", "text/plain"), null); return;
                 case "preview":
                     JSONObject job = store.get(params.getString("jobId"));
                     if (job.optString("uri").isEmpty()) throw new IllegalArgumentException("가져온 자막에는 연결된 영상이 없습니다.");
@@ -344,7 +351,7 @@ public final class MainActivity extends Activity {
         return checked;
     }
 
-    private void startPicker(String id, int type, JSONObject settings, String exportText, String name, String mime) {
+    private void startPicker(String id, int type, JSONObject settings, String exportText, String name, String mime, String replaceJobId) {
         runOnUiThread(() -> {
             if (pendingId != null) { reply(id, null, "열려 있는 파일 선택을 먼저 완료해 주세요."); return; }
             pendingId = id;
@@ -361,6 +368,7 @@ public final class MainActivity extends Activity {
                 try {
                     documents.save(new JSONObject().put("id", id).put("type", type)
                             .put("settings", checkedSettings(settings == null ? new JSONObject() : settings))
+                            .put("replaceJobId", replaceJobId == null ? JSONObject.NULL : replaceJobId)
                             .put("text", exportText == null ? JSONObject.NULL : exportText));
                     runOnUiThread(() -> {
                         if (destroyed) return;
@@ -400,7 +408,9 @@ public final class MainActivity extends Activity {
                     if (info.durationMs > JobStore.MAX_DURATION_MS) throw new IllegalArgumentException("최대 3시간(180분) 영상까지 지원합니다. 더 짧은 영상을 선택해 주세요.");
                     if (getCacheDir().getUsableSpace() < 64L * 1024 * 1024)
                         throw new IllegalArgumentException("오디오 추출과 작업 저장을 위해 기기 저장 공간을 64MB 이상 확보해 주세요.");
-                    String jobId = store.createPrepared(uri.toString(), info.displayName, info.durationMs, settings);
+                    String replaceJobId = pending.optString("replaceJobId", "");
+                    String jobId = replaceJobId.isEmpty() ? store.createPrepared(uri.toString(), info.displayName, info.durationMs, settings)
+                            : store.replacePrepared(replaceJobId, uri.toString(), info.displayName, info.durationMs, settings).getString("id");
                     reply(id, jobPayload(jobId), null);
                     emitNotice("영상이 준비되었습니다. 작업 정보를 확인한 뒤 생성 시작을 눌러 주세요.");
                 } else if (requestCode == IMPORT) {
