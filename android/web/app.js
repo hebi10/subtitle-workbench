@@ -9,6 +9,7 @@ const pageSession = typeof crypto.randomUUID === 'function'
   ? crypto.randomUUID()
   : Array.from(crypto.getRandomValues(new Uint8Array(16)), (value) => value.toString(16).padStart(2, '0')).join('');
 const PAGE_SIZE = 12;
+const JOBS_PAGE_SIZE = 4;
 const DEFAULT_TRANSLATION_MODEL = 'gpt-6-luna';
 const statusNames = { queued: '대기 중', running: '생성 중', paused: '일시정지', error: '처리 오류', completed: '완료' };
 const languageNames = { auto: '자동 감지', ko: '한국어', en: '영어', ja: '일본어', zh: '중국어', es: '스페인어', fr: '프랑스어', de: '독일어' };
@@ -24,8 +25,15 @@ let saveTimer;
 let saveFlight;
 let refreshing = false;
 let view = 'jobs';
+let initialViewSet = false;
+let navigationRevision = 0;
+let selectionRevision = 0;
+let jobsPage = 0;
+let preparedJobId = '';
+const jobCards = new Map();
 let jobFingerprint = '';
 let changingJob = false;
+let refreshingResultId = null;
 let settingsHydrated = false;
 let settingsTouched = false;
 let savedSettings = { sourceLanguage: 'auto', targetLanguage: 'ko', translate: true, translationModel: DEFAULT_TRANSLATION_MODEL };
@@ -63,7 +71,7 @@ window.nativeEvent = (event) => {
 };
 window.handleNativeBack = () => {
   if (view === 'jobs') return false;
-  void show('jobs').catch((error) => message(error.message || String(error), true));
+  void show(view === 'editor' ? 'results' : 'jobs').catch((error) => message(error.message || String(error), true));
   return true;
 };
 
@@ -90,21 +98,37 @@ async function run(node, action) {
   const wasDisabled = node.disabled;
   busyNodes.add(node);
   node.disabled = true;
-  try { message(''); await action(); }
+  try { await action(); }
   catch (error) { message(error.message || String(error), true); }
-  finally { busyNodes.delete(node); if (node.isConnected) node.disabled = wasDisabled; syncEditorButtons(); syncConnection(); }
+  finally { busyNodes.delete(node); if (node.isConnected) node.disabled = wasDisabled; syncEditorButtons(); syncJobsPagination(); syncConnection(); }
 }
 const editable = () => current?.status === 'completed';
 const dirty = () => revision !== savedRevision;
 
 async function show(next) {
+  const navigation = ++navigationRevision;
+  initialViewSet = true;
   if (view === 'editor' && next !== 'editor') await flushSave();
+  if (navigation !== navigationRevision) return;
+  if (next === 'results') await ensureResult();
+  if (navigation !== navigationRevision) return;
   view = next;
   document.body.classList.toggle('is-editor', next === 'editor');
-  for (const name of ['jobs', 'editor', 'settings']) $(`${name}View`).hidden = name !== next;
-  $('navJobs').toggleAttribute('aria-current', next !== 'settings');
-  $('navSettings').toggleAttribute('aria-current', next === 'settings');
+  for (const name of ['video', 'jobs', 'results', 'editor', 'settings']) $(`${name}View`).hidden = name !== next;
+  for (const name of ['Video', 'Jobs', 'Results', 'Settings']) {
+    const selected = name.toLowerCase() === (next === 'editor' ? 'results' : next);
+    if (selected) $(`nav${name}`).setAttribute('aria-current', 'page'); else $(`nav${name}`).removeAttribute('aria-current');
+  }
+  renderResults();
+  updateFeedbackSpace();
   window.scrollTo(0, 0);
+}
+async function openSettings(section = 'apiSettings') {
+  await show('settings');
+  if (view !== 'settings') return;
+  $(section).open = true;
+  $(section).querySelector('summary').focus({ preventScroll: true });
+  $(section).scrollIntoView({ block: 'start' });
 }
 
 async function refresh() {
@@ -113,12 +137,14 @@ async function refresh() {
   try {
     const state = await nativeCall('status');
     if (state.settings) savedSettings = { ...savedSettings, ...state.settings };
-    if (!settingsHydrated) {
+    const firstStatus = !settingsHydrated;
+    if (firstStatus) {
       settingsHydrated = true;
       if (!settingsTouched && state.settings) hydrateSettings(state.settings);
     }
     jobs = Array.isArray(state.jobs) ? state.jobs : [];
     connection = { hasKey: Boolean(state.hasKey), keyCheck: state.keyCheck || null };
+    if (firstStatus) $('apiSettings').open = !connection.hasKey;
     syncConnection();
     const fingerprint = JSON.stringify([jobs, connection.hasKey, savedSettings.translationModel]);
     if (fingerprint !== jobFingerprint) { renderJobs(); jobFingerprint = fingerprint; }
@@ -127,27 +153,34 @@ async function refresh() {
       if (latest) {
         const changed = current.status !== latest.status || current.completedChunks !== latest.completedChunks || current.stage !== latest.stage || current.progress?.lastSavedAt !== latest.progress?.lastSavedAt;
         const wasReadOnly = !editable();
-        current = latest;
-        if (changed && wasReadOnly && !dirty() && view === 'editor') {
-          const loaded = await nativeCall('loadJob', { jobId: latest.id });
-          if (current?.id === latest.id && !changingJob && !dirty()) {
-            current = loaded.job; history = createEditHistory(sortSubtitles(loaded.cues || [])); renderCues();
-          }
-        }
+        if (changed && wasReadOnly && !dirty()) {
+          const selection = selectionRevision;
+          refreshingResultId = latest.id; renderResults();
+          try {
+            const loaded = await nativeCall('loadJob', { jobId: latest.id });
+            if (current?.id === latest.id && selection === selectionRevision && !changingJob && !dirty()) {
+              // Completion and its final cues become editable together; a failed load stays read-only and retries next poll.
+              current = loaded.job; history = createEditHistory(sortSubtitles(loaded.cues || [])); renderCues();
+            }
+          } finally { refreshingResultId = null; renderResults(); }
+        } else current = latest;
         syncEditorButtons();
       }
     }
+    if (!initialViewSet) await show(jobs.length ? 'jobs' : 'video');
+    else if (view === 'results' && !current && !changingJob) await ensureResult();
+    renderResults();
   } catch (error) { message(error.message, true); }
   finally { refreshing = false; }
 }
 
 function renderJobs() {
   const focused = document.activeElement;
-  const focusedJobId = focused?.closest('#jobList .job')?.dataset.jobId;
+  const focusedJobId = focused?.closest('.job')?.dataset.jobId;
   const focusedButtonLabel = focused?.tagName === 'BUTTON' ? focused.textContent : null;
   const focusedSummary = focused?.matches('.job-inspection > summary');
   const list = $('jobList');
-  const existing = new Map(Array.from(list.querySelectorAll('.job')).map((node) => [node.dataset.jobId, node]));
+  const existing = jobCards;
   const ordered = [...jobs].sort((a, b) => jobPriority(a) - jobPriority(b));
   const nextNodes = [];
   if (!jobs.length) nextNodes.push(el('p', '아직 작업이 없습니다. 영상을 선택하거나 자막 파일을 불러오세요.', 'empty'));
@@ -189,7 +222,7 @@ function renderJobs() {
     const percent = job.status === 'completed' ? 100 : Math.min(100, Math.max(0, measured ? detail.percent : total ? done / total * 100 : 0));
     const progress = el('progress'); progress.max = 100; progress.value = percent;
     progress.setAttribute('aria-label', `${job.name} 처리 진행률`);
-    if (!ready) {
+    if (!ready && job.status !== 'completed') {
       const label = el('div', undefined, 'job-progress-label');
       label.append(el('span', measured ? '저장된 결과 기준' : '저장 완료 구간 기준'), el('strong', `${Number(percent.toFixed(1))}%`));
       article.append(label, progress);
@@ -221,7 +254,8 @@ function renderJobs() {
     if (!ready && ['paused', 'error'].includes(job.status)) inspection.append(el('p', '저장된 결과를 유지하고 남은 구간부터 이어갑니다.', 'hint'));
     if (job.error) article.append(el('p', job.error, 'job-error'));
     const actions = el('div', undefined, 'job-actions');
-    if (!ready) actions.append(button(job.status === 'completed' ? '자막 편집' : '현재 자막 보기', () => openJob(job.id)));
+    if (!ready) actions.append(button(job.status === 'completed' ? '자막 편집' : '자막 보기', () => openJob(job.id)));
+    if (!ready) actions.append(button('결과 보기', () => openJob(job.id, 'results')));
     if (job.status === 'completed') actions.append(button('SRT 저장', () => exportJob(job.id), jobActionsInFlight.has(job.id)));
     if (['running', 'queued'].includes(job.status)) actions.append(button('일시정지', () => runJobAction(job.id, async () => { await nativeCall('pause', { jobId: job.id }); await refresh(); }), jobActionsInFlight.has(job.id)));
     if (['paused', 'error'].includes(job.status)) {
@@ -234,25 +268,63 @@ function renderJobs() {
         inspection.append(el('p', `저장된 모델: ${selectedModel}. 이 모델로 이어하면 남은 번역에만 적용됩니다.`, 'hint job-model-note'));
         inspection.append(button('현재 모델로 이어하기', () => resumeJob(job.id, selectedModel), !connection.hasKey || jobActionsInFlight.has(job.id)));
       }
-      if (!connection.hasKey || job.status === 'error') actions.append(button('API 설정 확인', () => show('settings')));
+      if (!connection.hasKey || job.status === 'error') actions.append(button('API 설정 확인', () => openSettings()));
     }
     article.append(actions);
     if (ready) article.append(preparationEditor(job));
     article.append(inspection); nextNodes.push(article);
   }
-  // Keep unchanged cards in place so status polling cannot replace an active IME/form draft.
+  for (const node of nextNodes) if (node.dataset.jobId) jobCards.set(node.dataset.jobId, node);
+  for (const id of jobCards.keys()) if (!jobs.some((job) => job.id === id)) jobCards.delete(id);
+  const prepared = ordered.filter(isPrepared);
+  if (!prepared.some((job) => job.id === preparedJobId)) preparedJobId = prepared[0]?.id || '';
+  updateSelector($('preparedJobSelector'), prepared, preparedJobId);
+  $('preparedJobLabel').hidden = prepared.length < 2;
+  reconcileChildren($('preparedJobs'), preparedJobId ? [jobCards.get(preparedJobId)] : [el('p', '영상을 선택하면 여기에서 생성을 준비합니다.', 'empty')]);
+  const pages = Math.max(1, Math.ceil(ordered.length / JOBS_PAGE_SIZE));
+  jobsPage = Math.max(0, Math.min(jobsPage, pages - 1));
+  const visibleJobs = ordered.slice(jobsPage * JOBS_PAGE_SIZE, (jobsPage + 1) * JOBS_PAGE_SIZE);
+  const visibleNodes = visibleJobs.map((job) => {
+    if (!isPrepared(job)) return jobCards.get(job.id);
+    const summary = el('article', undefined, 'job prepared-link'); summary.dataset.jobId = job.id; summary.tabIndex = -1;
+    summary.append(el('h3', job.name), el('p', `준비됨 · ${formatDuration(job.durationMs)}`, 'hint'));
+    const actions = el('div', undefined, 'job-actions'); actions.append(button('준비 확인', () => openPrepared(job.id))); summary.append(actions);
+    return summary;
+  });
+  if (!visibleNodes.length) {
+    const empty = el('div', undefined, 'empty'); empty.append(el('p', '아직 작업이 없습니다.'), button('영상 추가', () => show('video'))); visibleNodes.push(empty);
+  }
+  reconcileChildren(list, visibleNodes);
+  syncJobsPagination();
+  for (const id of preparedEditors.keys()) if (!prepared.some((job) => job.id === id)) preparedEditors.delete(id);
+  if (focusedJobId && document.activeElement !== focused) {
+    const restoredJob = Array.from(document.querySelectorAll('.job')).find((node) => node.dataset.jobId === focusedJobId && !node.closest('[hidden]'));
+    const restored = focused.isConnected ? focused : focusedSummary ? restoredJob?.querySelector('.job-inspection > summary') : Array.from(restoredJob?.querySelectorAll('button') || []).find((node) => node.textContent === focusedButtonLabel && !node.disabled);
+    restored?.focus({ preventScroll: true });
+  }
+}
+function syncJobsPagination() {
+  const pages = Math.max(1, Math.ceil(jobs.length / JOBS_PAGE_SIZE));
+  $('jobsPageInfo').textContent = `${jobsPage + 1} / ${pages} · ${jobs.length}개`;
+  $('prevJobs').disabled = jobsPage === 0;
+  $('nextJobs').disabled = jobsPage >= pages - 1;
+}
+function reconcileChildren(list, nextNodes) {
+  // Move existing cards without replacing an active IME draft or expanded controls.
   let cursor = list.firstChild;
   for (const node of nextNodes) {
     if (node !== cursor) list.insertBefore(node, cursor);
     cursor = node.nextSibling;
   }
   while (cursor) { const next = cursor.nextSibling; cursor.remove(); cursor = next; }
-  for (const id of preparedEditors.keys()) if (!jobs.some((job) => job.id === id && isPrepared(job))) preparedEditors.delete(id);
-  if (focusedJobId && document.activeElement !== focused) {
-    const restoredJob = Array.from($('jobList').children).find((node) => node.dataset.jobId === focusedJobId);
-    const restored = focused.isConnected ? focused : focusedSummary ? restoredJob?.querySelector('.job-inspection > summary') : Array.from(restoredJob?.querySelectorAll('button') || []).find((node) => node.textContent === focusedButtonLabel && !node.disabled);
-    restored?.focus({ preventScroll: true });
+}
+function updateSelector(select, items, selected) {
+  const signature = JSON.stringify(items.map((job) => [job.id, job.name, job.status, job.stage]));
+  if (select.dataset.options !== signature) {
+    select.replaceChildren(...items.map((job) => { const option = el('option', `${job.name} · ${isPrepared(job) ? '준비됨' : statusNames[job.status] || job.status}`); option.value = job.id; return option; }));
+    select.dataset.options = signature;
   }
+  select.value = selected || '';
 }
 function isPrepared(job) { return job?.status === 'paused' && job.stage === 'ready'; }
 function jobPriority(job) { return ['running', 'queued'].includes(job.status) ? 0 : isPrepared(job) ? 1 : job.status === 'completed' ? 3 : 2; }
@@ -260,8 +332,12 @@ function settingsSummary(settings) {
   return `${languageNames[settings.sourceLanguage] || settings.sourceLanguage || '자동 감지'} → ${settings.translate === false ? '번역 안 함' : languageNames[settings.targetLanguage] || settings.targetLanguage || '한국어'}`;
 }
 function focusJob(jobId) {
-  const node = Array.from($('jobList').children).find((row) => row.dataset.jobId === jobId);
+  const node = Array.from(document.querySelectorAll('.job')).find((row) => row.dataset.jobId === jobId && !row.closest('[hidden]'));
   node?.focus({ preventScroll: true }); node?.scrollIntoView({ block: 'start' });
+}
+async function openPrepared(jobId) {
+  preparedJobId = jobId; renderJobs(); await show('video');
+  if (view === 'video') focusJob(jobId);
 }
 function preparationEditor(job) {
   if (preparedEditors.has(job.id)) return preparedEditors.get(job.id).node;
@@ -332,6 +408,7 @@ async function runJobAction(jobId, action) {
   finally { jobActionsInFlight.delete(jobId); renderJobs(); }
 }
 async function resumeJob(jobId, translationModel) {
+  const startingPrepared = isPrepared(jobs.find((job) => job.id === jobId));
   const preparation = preparedEditors.get(jobId);
   if (preparation?.dirty) {
     preparation.node.open = true;
@@ -342,6 +419,7 @@ async function resumeJob(jobId, translationModel) {
     if (current?.id === jobId) await flushSave();
     await nativeCall('resume', { jobId, ...(translationModel ? { translationModel } : {}) });
     await refresh();
+    if (startingPrepared) { jobsPage = 0; renderJobs(); await show('jobs'); focusJob(jobId); }
   });
 }
 function nonnegative(value) { return Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0; }
@@ -358,15 +436,53 @@ function stageLabel(stage) {
   return ({ extracting: '오디오 구간 추출 중', transcribing: '음성 인식 중', translating: '자막 번역 중', extract: '오디오 구간 추출 중', transcribe: '음성 인식 중', translate: '자막 번역 중' })[stage] || `진행 단계: ${stage}`;
 }
 
-async function openJob(jobId) {
-  if (changingJob) return;
+async function loadCurrentJob(jobId) {
+  const selection = ++selectionRevision;
   changingJob = true;
+  $('resultJobSelector').disabled = true;
+  renderResults();
   try {
     await flushSave();
+    if (selection !== selectionRevision) return false;
+    if (current?.id === jobId) return true;
     const loaded = await nativeCall('loadJob', { jobId });
+    if (selection !== selectionRevision) return false;
+    // Edits entered while another job loaded must also reach storage before switching.
+    await flushSave();
+    if (selection !== selectionRevision) return false;
+    if (!loaded?.job) throw new Error('작업을 불러오지 못했습니다. 목록을 새로고침해 주세요.');
     setLoadedJob(loaded);
-    await show('editor');
-  } finally { changingJob = false; }
+    return true;
+  } finally {
+    if (selection === selectionRevision) { changingJob = false; $('resultJobSelector').disabled = false; renderResults(); }
+  }
+}
+async function openJob(jobId, destination = 'editor') {
+  const navigation = ++navigationRevision;
+  const loaded = await loadCurrentJob(jobId);
+  if (loaded && navigation === navigationRevision) await show(destination);
+}
+async function ensureResult() {
+  if (current && !isPrepared(current)) return;
+  const candidates = jobs.filter((job) => !isPrepared(job));
+  const job = candidates.find((candidate) => candidate.status === 'completed') || candidates.find((candidate) => candidate.completedChunks > 0) || candidates[0];
+  if (job) await loadCurrentJob(job.id);
+}
+function renderResults() {
+  const candidates = jobs.filter((job) => !isPrepared(job));
+  updateSelector($('resultJobSelector'), candidates, current?.id);
+  $('resultJobLabel').hidden = !candidates.length;
+  $('resultEmpty').hidden = Boolean(current);
+  $('resultContent').hidden = !current;
+  if (!current) return;
+  const loading = changingJob || refreshingResultId === current.id;
+  $('resultName').textContent = current.name;
+  $('resultMeta').textContent = `${statusNames[current.status] || current.status} · 자막 ${history.present.length}개 · ${formatDuration(current.durationMs)}`;
+  $('resultStatus').textContent = loading ? '자막을 불러오는 중입니다…' : !history.present.length ? '아직 저장된 자막이 없습니다. 작업 화면에서 진행 상태를 확인해 주세요.' : !editable() ? '현재까지 저장된 부분 결과입니다. 생성이 완료되면 편집할 수 있습니다.' : !current.uri ? '불러온 자막입니다. 연결된 영상이 없어 미리보기는 사용할 수 없습니다.' : '자막을 확인하고 파일로 저장하세요.';
+  $('resultPreview').disabled = !current.uri || loading;
+  $('editResult').textContent = editable() ? '자막 편집' : '자막 보기';
+  $('editResult').disabled = !history.present.length || loading;
+  syncEditorButtons();
 }
 function setLoadedJob({ job, cues }) {
   clearTimeout(saveTimer);
@@ -381,6 +497,7 @@ function setLoadedJob({ job, cues }) {
   $('saveStatus').classList.remove('error-text');
   $('retrySave').hidden = true;
   renderCues();
+  renderResults();
 }
 
 function changed(cues, render = true) {
@@ -459,7 +576,7 @@ function syncEditorButtons() {
   $('readOnlyNote').hidden = !current || editable();
   $('preview').disabled = !current?.uri;
   $('exportNote').textContent = editable() ? '번역이 없는 자막은 원문으로 내보냅니다.' : '현재까지 저장된 부분 자막을 내보냅니다. 번역이 없으면 원문을 사용합니다.';
-  document.querySelectorAll('[data-export]').forEach((node) => { node.disabled = !history.present.length; });
+  document.querySelectorAll('[data-export]').forEach((node) => { node.disabled = changingJob || refreshingResultId === current?.id || !history.present.length; });
   document.querySelectorAll('#cueList input, #cueList textarea, #cueList [data-edit]').forEach((node) => { node.disabled = !editable(); });
   document.querySelectorAll('[data-last]').forEach((node) => { node.disabled = true; });
   const pages = Math.max(1, Math.ceil(filteredIndices().length / PAGE_SIZE));
@@ -563,6 +680,9 @@ function syncConnection() {
   $('activeModel').hidden = connection.hasKey;
   $('activeModel').textContent = savedSettings.translate ? `저장된 번역 모델: ${savedSettings.translationModel}` : '번역 안 함 · 음성 인식: whisper-1';
   $('settingsModel').textContent = selected.translate ? `번역 모델: ${selected.translationModel}` : '번역 안 함 · 음성 인식: whisper-1';
+  $('apiSettingsSummary').textContent = connection.hasKey ? (matches ? '연결 확인됨' : '키 저장됨') : '키 연결 필요';
+  $('defaultSettingsSummary').textContent = settingsSummary(savedSettings);
+  $('videoSettingsSummary').textContent = `다음 영상: ${settingsSummary(savedSettings)}`;
   if (!checkingConnection) $('connectionStatus').textContent = connectionError || (matches ? `키 인증 · 모델 접근 확인 (${formatSavedAt(checked.checkedAt)}). 결제 상태나 잔액을 확인한 것은 아닙니다.` : '연결 확인은 키 인증과 선택 모델 접근만 검사합니다. 결제 상태나 잔액은 확인하지 않습니다.');
   $('connectionStatus').classList.toggle('error-text', Boolean(connectionError));
   for (const [node, disabled] of [[$('pickVideo'), !connection.hasKey], [$('checkConnection'), !connection.hasKey || checkingConnection], [$('requestClearKey'), !connection.hasKey || running], [$('clearKey'), !connection.hasKey || running], [$('keyForm').querySelector('[type="submit"]'), running]]) {
@@ -618,37 +738,49 @@ $('jumpForm').addEventListener('submit', (event) => {
     const at = hours * 3600 + minutes * 60 + seconds;
     index = history.present.findIndex((cue) => cue.end > at);
   } else {
+    $('editorTools').open = true;
     $('jumpHint').textContent = '시간은 01:20:00, 자막 번호는 #245 형식으로 입력해 주세요.';
     return;
   }
-  if (index < 0 || index >= history.present.length) { $('jumpHint').textContent = '해당 위치에 저장된 자막이 없습니다. 시간이나 번호를 확인해 주세요.'; return; }
+  if (index < 0 || index >= history.present.length) { $('editorTools').open = true; $('jumpHint').textContent = '해당 위치에 저장된 자막이 없습니다. 시간이나 번호를 확인해 주세요.'; return; }
   $('cueSearch').value = ''; $('cueFilter').value = 'all'; page = Math.floor(index / PAGE_SIZE); selectedIndex = index; renderCues();
   focusCue(index);
   $('jumpHint').textContent = `자막 ${index + 1}로 이동했습니다. 검색과 필터를 전체로 변경했습니다.`;
 });
 for (const [id, action] of Object.entries({
-  navJobs: () => show('jobs'), navSettings: () => show('settings'), openConnection: () => show('settings'), backToJobs: () => show('jobs'), refreshJobs: refresh,
-  pickVideo: async () => { await flushSave(); const selected = await nativeCall('pickVideo', { settings: savedSettings }); await refresh(); if (selected) { focusJob(selected.job?.id || selected.id); message('영상이 준비되었습니다. 길이와 설정을 확인하고 생성 시작을 눌러 주세요.'); } else message('영상 선택을 취소했습니다.'); },
+  navVideo: () => show('video'), navJobs: () => show('jobs'), navResults: () => show('results'), navSettings: () => show('settings'),
+  openConnection: () => openSettings(), openDefaultSettings: () => openSettings('defaultSettings'), backToJobs: () => show('results'), refreshJobs: refresh,
+  openResultJobs: () => show('jobs'), openResultVideo: () => show('video'),
+  resultPreview: () => previewAt(0), editResult: () => show('editor'),
+  prevJobs: () => { jobsPage -= 1; renderJobs(); $('jobsHeading').scrollIntoView({ block: 'start' }); },
+  nextJobs: () => { jobsPage += 1; renderJobs(); $('jobsHeading').scrollIntoView({ block: 'start' }); },
+  pickVideo: async () => { await flushSave(); const selected = await nativeCall('pickVideo', { settings: savedSettings }); await refresh(); if (selected) { await openPrepared(selected.job?.id || selected.id); message('영상이 준비되었습니다. 설정을 확인하고 생성 시작을 눌러 주세요.'); } else message('영상 선택을 취소했습니다.'); },
   dismissMessage: () => message(''),
   discardSettings: () => { hydrateSettings(savedSettings); settingsTouched = false; $('discardSettings').disabled = true; $('settingsStatus').textContent = '변경을 취소하고 저장된 설정을 불러왔습니다.'; },
   openApiKeyPage: () => nativeCall('openApiKeyPage'),
   checkConnection: async () => {
     checkingConnection = true; connectionError = '';
     $('connectionStatus').textContent = '키 인증과 선택 모델 접근을 확인하고 있습니다…';
-    try { await nativeCall('checkConnection', { settings: readSettings() }); await refresh(); }
+    try { await nativeCall('checkConnection', { settings: readSettings() }); await refresh(); message('API 키 인증과 모델 접근을 확인했습니다.'); }
     catch (error) { connectionError = `연결을 확인하지 못했습니다: ${error.message}`; throw error; }
     finally { checkingConnection = false; syncConnection(); }
   },
   requestClearKey: () => { $('confirmClearKey').hidden = false; $('cancelClearKey').focus(); },
   cancelClearKey: () => { $('confirmClearKey').hidden = true; $('requestClearKey').focus(); },
   clearKey: async () => { await nativeCall('clearKey'); $('apiKey').value = ''; connectionError = ''; $('confirmClearKey').hidden = true; await refresh(); message('이 기기에 저장된 API 키를 삭제했습니다.'); },
-  jumpToExport: () => { $('exportSection').focus(); $('exportSection').scrollIntoView({ block: 'start' }); },
+  jumpToExport: async () => { await show('results'); if (view === 'results') $('exportSection').focus({ preventScroll: true }); },
   importSubtitles: async () => { await flushSave(); const file = await nativeCall('importSubtitles'); if (!file) return; const cues = parseSubtitleFileText(file.text, file.name); if (!cues.length) throw new Error('읽을 수 있는 자막이 없습니다. SRT, VTT 또는 JSON 형식을 확인해 주세요.'); setLoadedJob(await nativeCall('importCues', { name: file.name, cues })); await show('editor'); await refresh(); },
-  preview: () => previewAt(0), retrySave: flushSave,
+  preview: () => previewAt(0), retrySave: async () => { await flushSave(); message('변경 내용을 기기에 저장했습니다.'); },
   prevPage: () => changePage(-1), nextPage: () => changePage(1),
   undo: () => { if (!editable()) return; history = undoEdit(history); revision += 1; scheduleSave(); renderCues(); },
   redo: () => { if (!editable()) return; history = redoEdit(history); revision += 1; scheduleSave(); renderCues(); },
 })) $(id).addEventListener('click', (event) => { void run(event.currentTarget, action); });
+$('preparedJobSelector').addEventListener('change', () => { preparedJobId = $('preparedJobSelector').value; renderJobs(); focusJob(preparedJobId); });
+$('resultJobSelector').addEventListener('change', () => {
+  const jobId = $('resultJobSelector').value;
+  $('resultJobSelector').value = current?.id || '';
+  void loadCurrentJob(jobId).catch((error) => { renderResults(); message(error.message || String(error), true); });
+});
 $('cueSearch').addEventListener('input', () => { page = 0; selectedIndex = -1; renderCues(); });
 $('cueFilter').addEventListener('change', () => { page = 0; selectedIndex = -1; renderCues(); });
 async function exportCues(job, cues, format) {
@@ -668,6 +800,7 @@ async function exportJob(jobId) {
 }
 document.querySelectorAll('[data-export]').forEach((node) => node.addEventListener('click', () => run(node, async () => {
   await flushSave();
+  if (changingJob || refreshingResultId === current?.id || !current || !history.present.length) return;
   await exportCues(current, history.present, node.dataset.export);
 })));
 document.addEventListener('visibilitychange', () => { if (!document.hidden) void refresh(); else void flushSave().catch(() => {}); });

@@ -9,46 +9,66 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="app-header"><h1>자막 작업실</h1><p>최대 3시간 영상 · 구간별 자동 저장</p></header>
+  <header class="app-header"><h1>자막 작업실</h1></header>
   <main>
     <div id="messageBar" class="message-bar" hidden><p id="appMessage" class="message" role="status" hidden></p><button id="dismissMessage" type="button" aria-label="알림 닫기">닫기</button></div>
-    <section id="jobsView" aria-labelledby="jobsHeading">
-      <div class="section-heading"><h2 id="jobsHeading">내 작업</h2><button id="refreshJobs" type="button">새로고침</button></div>
+    <section id="videoView" aria-labelledby="videoHeading" hidden>
+      <div class="section-heading"><h2 id="videoHeading">영상 추가</h2><span class="hint">최대 3시간</span></div>
       <div class="start-actions"><button id="pickVideo" class="primary" type="button" disabled>영상 선택</button><button id="importSubtitles" type="button">자막 불러오기</button></div>
       <p id="keyHint" class="hint">본인의 OpenAI API 키를 저장하면 영상을 선택할 수 있습니다.</p>
+      <section id="connectionCard" class="connection-summary" aria-labelledby="connectionHeading"><div><h3 id="connectionHeading">내 API로 자막 생성</h3><p id="connectionSummary" class="hint">API 연결 상태를 확인하고 있습니다.</p><p id="activeModel" class="hint">번역 모델: gpt-6-luna</p></div><button id="openConnection" type="button">API 연결 설정</button></section>
+      <div class="default-summary"><p id="videoSettingsSummary" class="hint"></p><button id="openDefaultSettings" type="button">기본 설정</button></div>
+      <label id="preparedJobLabel" class="job-selector" hidden>준비할 영상<select id="preparedJobSelector"></select></label>
+      <div id="preparedJobs" class="job-list"><p class="empty">영상을 선택하면 여기에서 생성을 준비합니다.</p></div>
+    </section>
+
+    <section id="jobsView" aria-labelledby="jobsHeading">
+      <div class="section-heading"><h2 id="jobsHeading">작업</h2><button id="refreshJobs" type="button">새로고침</button></div>
       <div id="jobList" class="job-list"><p class="empty">작업 목록을 불러오는 중입니다.</p></div>
-      <section id="connectionCard" class="connection-summary" aria-labelledby="connectionHeading"><div><h2 id="connectionHeading">내 API로 자막 생성</h2><p id="connectionSummary" class="hint">API 연결 상태를 확인하고 있습니다.</p><p id="activeModel" class="hint">번역 모델: gpt-6-luna</p></div><button id="openConnection" type="button">API 연결 설정</button></section>
-      <details class="home-help"><summary>생성 방법 · 비용 · 이어하기 안내</summary><p class="hint">영상 선택 후 길이와 설정을 확인하고 생성을 시작합니다. API 요금은 본인의 OpenAI 계정에 별도로 청구됩니다.</p><p class="hint">생성 중 앱을 닫아도 저장된 구간에서 이어할 수 있습니다. 강제 중지나 재부팅 후에는 앱을 열고 이어하기를 눌러 주세요.</p></details>
+      <nav class="pagination jobs-pagination" aria-label="작업 페이지"><button id="prevJobs" type="button">이전</button><span id="jobsPageInfo"></span><button id="nextJobs" type="button">다음</button></nav>
+    </section>
+
+    <section id="resultsView" aria-labelledby="resultsHeading" hidden>
+      <div class="section-heading"><h2 id="resultsHeading">결과</h2></div>
+      <label id="resultJobLabel" class="job-selector">작업 선택<select id="resultJobSelector"></select></label>
+      <div id="resultEmpty" hidden><p class="empty">아직 확인할 결과가 없습니다.</p><div class="start-actions"><button id="openResultJobs" type="button">작업 확인</button><button id="openResultVideo" type="button">영상 추가</button></div></div>
+      <div id="resultContent" hidden>
+        <h3 id="resultName" class="result-name"></h3><p id="resultMeta" class="hint"></p><p id="resultStatus" class="hint"></p>
+        <div class="result-actions"><button id="resultPreview" type="button">영상 미리보기</button><button id="editResult" type="button">자막 편집</button></div>
+        <section id="exportSection" class="export-section" aria-labelledby="exportHeading" tabindex="-1"><h3 id="exportHeading">자막 내보내기</h3><p id="exportNote" class="hint">번역이 없는 자막은 원문으로 내보냅니다.</p><div class="export-actions"><button type="button" class="primary" data-export="srt">SRT 저장</button><button type="button" data-export="vtt">VTT 저장</button><button type="button" data-export="json">JSON 저장</button></div><details><summary>파일 형식 안내</summary><p class="hint">SRT는 일반 영상 플레이어, VTT는 웹 영상에 사용합니다. JSON은 원문·번역·시간 정보를 보관하고 다시 편집할 때 사용합니다.</p></details></section>
+      </div>
     </section>
 
     <section id="editorView" aria-labelledby="editorHeading" hidden>
-      <button id="backToJobs" type="button">작업 목록으로</button>
+      <button id="backToJobs" type="button">결과로</button>
       <div class="section-heading"><h2 id="editorHeading">자막 편집</h2><span id="cueCount"></span></div>
       <p id="editorName" class="file-name"></p>
       <p id="readOnlyNote" class="hint" hidden>완료 전 작업은 조회와 부분 내보내기만 가능합니다. 생성이 완료되면 편집할 수 있습니다.</p>
       <div class="editor-actions"><button id="preview" type="button">영상 미리보기</button><button id="jumpToExport" type="button">내보내기로 이동</button><button id="undo" type="button" disabled>실행 취소</button><button id="redo" type="button" disabled>다시 실행</button></div>
-      <label class="search-label">자막 검색<input id="cueSearch" type="search" placeholder="원문 또는 번역 검색" /></label>
+      <details id="editorTools" class="editor-tools"><summary>검색 · 필터 · 위치 이동</summary><label class="search-label">자막 검색<input id="cueSearch" type="search" placeholder="원문 또는 번역 검색" /></label>
       <div class="review-controls"><label>검수 필터<select id="cueFilter"><option value="all">전체 자막</option><option value="untranslated">미번역 자막</option><option value="issues">확인이 필요한 자막</option></select></label><form id="jumpForm"><label for="cueJump">시간 또는 자막 번호로 이동</label><div class="jump-controls"><input id="cueJump" type="text" placeholder="01:20:00 또는 #245" aria-describedby="jumpHint" autocomplete="off" /><button type="submit">자막으로 이동</button></div></form></div><p id="jumpHint" class="hint" role="status">시:분:초 또는 #자막번호를 입력하세요.</p>
-      <div id="cueList" class="cue-list"></div>
+      </details><div id="cueList" class="cue-list"></div>
       <div id="editorFeedback" class="editor-feedback"><div class="save-feedback"><p id="saveStatus" role="status">저장된 자막</p><button id="retrySave" type="button" hidden>저장 다시 시도</button></div><nav class="pagination" aria-label="자막 페이지"><button id="prevPage" type="button">이전</button><span id="pageInfo"></span><button id="nextPage" type="button">다음</button></nav></div>
-      <section id="exportSection" class="export-section" aria-labelledby="exportHeading" tabindex="-1"><h3 id="exportHeading">자막 내보내기</h3><p id="exportNote" class="hint">번역이 없는 자막은 원문으로 내보냅니다.</p><p class="hint">SRT는 일반 영상 플레이어, VTT는 웹 영상에 사용합니다. JSON은 원문·번역·시간 정보를 보관하고 다시 편집할 때 사용합니다.</p><div class="export-actions"><button type="button" data-export="srt">SRT 저장</button><button type="button" data-export="vtt">VTT 저장</button><button type="button" data-export="json">JSON 저장</button></div></section>
     </section>
 
     <section id="settingsView" aria-labelledby="settingsHeading" hidden>
-      <h2 id="settingsHeading">생성 설정</h2>
-      <form id="keyForm" class="settings-section"><h3>OpenAI 연결</h3><p id="keyStatus" role="status">API 키 상태 확인 중</p><label>본인의 OpenAI API 키<input id="apiKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="새 API 키 입력" required /></label><button class="primary" type="submit">API 키 암호화 저장</button><p class="hint">키는 이 기기의 Android Keystore로 암호화해 보관합니다. 저장된 키는 화면에 다시 표시하지 않습니다.</p></form>
+      <h2 id="settingsHeading">설정</h2>
+      <details id="apiSettings" class="settings-group"><summary>OpenAI API 연결<span id="apiSettingsSummary"></span></summary>
+      <form id="keyForm" class="settings-section"><p id="keyStatus" role="status">API 키 상태 확인 중</p><label>본인의 OpenAI API 키<input id="apiKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="새 API 키 입력" required /></label><button class="primary" type="submit">API 키 암호화 저장</button><p class="hint">키는 이 기기의 Android Keystore로 암호화해 보관합니다. 저장된 키는 화면에 다시 표시하지 않습니다.</p></form>
       <div class="connection-actions"><button id="checkConnection" type="button" disabled>연결 확인</button><button id="openApiKeyPage" type="button">API 키 발급 페이지</button><button id="requestClearKey" type="button" disabled>저장된 키 삭제</button></div><p id="connectionStatus" class="hint" role="status">연결 확인은 키 인증과 선택 모델 접근만 검사합니다. 결제 상태나 잔액은 확인하지 않습니다.</p>
       <section id="confirmClearKey" class="confirm-key" aria-label="API 키 삭제 확인" hidden><p>이 기기에 저장한 API 키를 삭제할까요? 새 생성과 이어하기에는 키를 다시 저장해야 합니다. 저장된 자막은 유지됩니다.</p><div class="connection-actions"><button id="cancelClearKey" type="button">삭제 취소</button><button id="clearKey" type="button">이 기기에서 키 삭제</button></div></section>
-      <form id="settingsForm" class="settings-section"><h3>다음 작업에 적용</h3>
+      </details>
+      <details id="defaultSettings" class="settings-group"><summary>다음 영상의 기본 설정<span id="defaultSettingsSummary"></span></summary>
+      <form id="settingsForm" class="settings-section">
         <label>원본 언어<select id="sourceLanguage"><option value="auto">자동 감지</option><option value="ko">한국어</option><option value="en">영어</option><option value="ja">일본어</option><option value="zh">중국어</option><option value="es">스페인어</option><option value="fr">프랑스어</option><option value="de">독일어</option></select></label>
         <label class="check-label"><input id="translate" type="checkbox" checked />자막 번역하기</label>
         <label>번역 언어<select id="targetLanguage"><option value="ko">한국어</option><option value="en">영어</option><option value="ja">일본어</option><option value="zh">중국어</option><option value="es">스페인어</option><option value="fr">프랑스어</option><option value="de">독일어</option></select></label>
         <details id="advancedSettings"><summary>모델 설정 · 고급</summary><label>번역 모델<input id="translationModel" type="text" value="gpt-6-luna" spellcheck="false" autocapitalize="off" maxlength="100" required /></label><p class="hint">기본 번역 모델은 gpt-6-luna입니다. 계정에서 사용할 수 있는 모델 이름을 입력하세요.</p></details><p id="settingsModel" class="hint">번역 모델: gpt-6-luna</p><p class="hint">음성 인식은 자막 시간 정보를 지원하는 whisper-1을 사용합니다. OpenAI의 whisper-1 API는 2027년 2월 26일 종료 예정입니다.</p><div class="settings-actions"><button type="submit">설정 저장</button><button id="discardSettings" type="button" disabled>변경 취소</button></div><p id="settingsStatus" role="status">저장한 설정은 새로 선택하는 영상에 적용됩니다.</p>
-      </form>
-      <section class="settings-section"><h3>전송 데이터와 비용</h3><p class="hint">음성 인식에는 추출된 오디오 구간이, 번역에는 자막 텍스트가 OpenAI로 전송됩니다. API 사용 요금은 OpenAI 계정에 별도로 청구됩니다. 긴 영상은 처리 시간과 비용이 늘어납니다.</p><p class="hint">원본 파일을 이동하거나 삭제하면 이어하기와 미리보기가 불가능할 수 있습니다.</p></section>
+      </form></details>
+      <details id="dataSettings" class="settings-group"><summary>전송 데이터 · 비용 · 이어하기</summary><div class="settings-section"><p class="hint">음성 인식에는 추출된 오디오 구간이, 번역에는 자막 텍스트가 OpenAI로 전송됩니다. API 사용 요금은 OpenAI 계정에 별도로 청구됩니다. 긴 영상은 처리 시간과 비용이 늘어납니다.</p><p class="hint">생성 중 앱을 닫아도 저장된 구간에서 이어할 수 있습니다. 강제 중지나 재부팅 후에는 앱을 열고 이어하기를 눌러 주세요.</p><p class="hint">원본 파일을 이동하거나 삭제하면 이어하기와 미리보기가 불가능할 수 있습니다.</p></div></details>
     </section>
   </main>
-  <nav class="app-nav" aria-label="주 메뉴"><button id="navJobs" type="button" aria-current="page">내 작업</button><button id="navSettings" type="button">설정</button></nav>
+  <nav class="app-nav" aria-label="주 메뉴"><button id="navVideo" type="button">영상 추가</button><button id="navJobs" type="button" aria-current="page">작업</button><button id="navResults" type="button">결과</button><button id="navSettings" type="button">설정</button></nav>
   <script type="module" src="app.js"></script>
 </body>
 </html>

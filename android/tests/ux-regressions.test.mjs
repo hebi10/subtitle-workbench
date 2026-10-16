@@ -57,12 +57,16 @@ async function withApp(action) {
 }
 
 const regression = (name, action) => test(name, { skip: !enabled }, () => withApp(action));
-const jobCard = (page, jobId) => page.locator(`.job[data-job-id="${jobId}"]`);
+const jobCard = (page, jobId) => page.locator(`.job[data-job-id="${jobId}"]:visible`);
 const selectedCue = (page) => page.locator('.cue').filter({ has: page.locator('.cue-summary[aria-expanded="true"]') });
 
 async function openEditor(page) {
   await jobCard(page, 'complete-1').getByRole('button', { name: '자막 편집', exact: true }).click();
   await page.locator('.cue').first().waitFor();
+}
+
+async function openEditorTools(page) {
+  if (!(await page.locator('#editorTools').evaluate((node) => node.open))) await page.locator('#editorTools > summary').click();
 }
 
 async function holdNextSave(page) {
@@ -138,6 +142,7 @@ regression('preview waits for the edited subtitle to finish saving', async (page
 
 regression('play from selected cue waits for persistence and uses the cue timestamp', async (page) => {
   await openEditor(page);
+  await openEditorTools(page);
   await page.locator('#cueJump').fill('#11');
   await page.locator('#jumpForm button').click();
   await holdNextSave(page);
@@ -183,12 +188,14 @@ regression('save failure and retry remain visible while editing a deep cue', asy
   assert.equal(await page.locator('#editorView').isVisible(), true, 'failed save blocks leaving the editor');
   await assertInViewport(page.locator('#appMessage'), 'blocked navigation reason must remain visible');
   await page.locator('#preview').click();
+  await page.waitForFunction(() => !document.getElementById('preview').disabled);
   await page.waitForFunction(() => document.getElementById('appMessage').textContent.includes('테스트 저장 실패'));
   assert.equal(await page.evaluate(() => window.mockNative.calls.some((call) => call.method === 'preview')), false, 'header preview must also stop on save failure');
   await draft.focus();
   await page.evaluate(() => { window.mockNative.failSave = false; });
   await page.locator('#retrySave').click();
   await page.locator('#retrySave').waitFor({ state: 'hidden' });
+  assert.equal((await page.locator('#appMessage').getAttribute('class')).includes('error'), false, 'successful retry clears the obsolete global save error');
   assert.equal(await page.evaluate(() => window.mockNative.cues['complete-1'][10].original), '실패 후에도 보존할 초안');
   await page.evaluate(() => window.nativeEvent({ type: 'notice', message: '현재 위치의 완료 알림' }));
   await assertInViewport(page.locator('#appMessage'), 'general feedback must remain visible at deep scroll');
@@ -206,6 +213,7 @@ regression('jump, search and issue filters select relevant cues and explain ever
     cues[5].translated = '';
   });
   await openEditor(page);
+  await openEditorTools(page);
   await page.locator('#cueJump').fill('#27');
   await page.locator('#jumpForm button').click();
   assert.equal(await selectedCue(page).getAttribute('data-index'), '26');
@@ -232,6 +240,7 @@ regression('jump, search and issue filters select relevant cues and explain ever
 
 regression('unsaved global settings survive polling but only saved settings create new jobs', async (page) => {
   await page.locator('#navSettings').click();
+  await page.locator('#defaultSettings > summary').click();
   await page.locator('#sourceLanguage').selectOption('en');
   await page.locator('#targetLanguage').selectOption('ja');
   await page.locator('#advancedSettings summary').click();
@@ -245,7 +254,7 @@ regression('unsaved global settings survive polling but only saved settings crea
   assert.equal(await page.locator('#translationModel').inputValue(), 'unsaved-model');
   assert.equal(await page.locator('#translationModel').evaluate((node) => document.activeElement === node), true);
   assert.equal(await page.locator('#advancedSettings').getAttribute('open'), '');
-  await page.locator('#navJobs').click();
+  await page.locator('#navVideo').click();
   await page.locator('#pickVideo').click();
   await jobCard(page, 'ready-1').waitFor();
   assert.deepEqual(await page.evaluate(() => window.mockNative.calls.find((call) => call.method === 'pickVideo').params.settings), {
@@ -258,6 +267,7 @@ regression('unsaved global settings survive polling but only saved settings crea
 });
 
 regression('prepared settings retain typed drafts, apply only to that job and can be discarded', async (page) => {
+  await page.locator('#navVideo').click();
   await page.locator('#pickVideo').click();
   const ready = jobCard(page, 'ready-1');
   await ready.waitFor();
@@ -291,17 +301,18 @@ regression('prepared settings retain typed drafts, apply only to that job and ca
 });
 
 regression('prepared source replacement preserves the old job on cancel or failure and cancel requires confirmation', async (page) => {
+  await page.locator('#navVideo').click();
   await page.locator('#pickVideo').click();
   const ready = jobCard(page, 'ready-1');
   await ready.waitFor();
   await ready.getByText('준비 설정 변경', { exact: true }).click();
   const beforeJob = await page.evaluate(() => JSON.stringify(window.mockNative.jobs.find((job) => job.id === 'ready-1')));
-  const beforeCount = await page.locator('.job').count();
+  const beforeCount = await page.evaluate(() => window.mockNative.jobs.length);
   await page.evaluate(() => { window.mockNative.cancelNextPick = true; });
   await ready.getByRole('button', { name: '다른 영상 선택', exact: true }).click();
   await page.waitForFunction(() => !window.mockNative.cancelNextPick);
   assert.equal(await page.evaluate(() => JSON.stringify(window.mockNative.jobs.find((job) => job.id === 'ready-1'))), beforeJob);
-  assert.equal(await page.locator('.job').count(), beforeCount);
+  assert.equal(await page.evaluate(() => window.mockNative.jobs.length), beforeCount);
   await page.evaluate(() => { window.mockNative.failNextPick = true; });
   await ready.getByRole('button', { name: '다른 영상 선택', exact: true }).click();
   await page.waitForFunction(() => document.getElementById('appMessage').textContent.includes('테스트 영상 선택 실패'));
@@ -309,13 +320,14 @@ regression('prepared source replacement preserves the old job on cancel or failu
   await ready.getByRole('button', { name: '다른 영상 선택', exact: true }).click();
   await page.waitForFunction(() => window.mockNative.calls.filter((call) => call.method === 'pickVideo' && call.params.replaceJobId === 'ready-1').length === 3);
   await page.waitForFunction(() => document.querySelector('.job[data-job-id="ready-1"] button')?.disabled === false);
-  assert.equal(await page.locator('.job').count(), beforeCount, 'successful replacement must retain one prepared job');
+  assert.equal(await page.evaluate(() => window.mockNative.jobs.length), beforeCount, 'successful replacement must retain one prepared job');
   await ready.getByRole('button', { name: '준비 취소', exact: true }).click();
   assert.equal(await page.evaluate(() => window.mockNative.calls.some((call) => call.method === 'cancelPrepared')), false);
   await page.screenshot({ path: join(artifacts, 'prepared-cancel-390.png'), fullPage: true });
   await ready.getByRole('button', { name: '준비 취소 확인', exact: true }).click();
-  await ready.waitFor({ state: 'detached' });
-  assert.equal(await page.locator('.job').count(), beforeCount - 1);
+  await ready.waitFor({ state: 'hidden' });
+  assert.equal(await page.evaluate(() => window.mockNative.jobs.length), beforeCount - 1);
+  await page.locator('#navJobs').click();
   assert.equal(await jobCard(page, 'partial-1').getByRole('button', { name: '준비 취소', exact: true }).count(), 0);
 });
 
@@ -325,12 +337,14 @@ regression('active jobs lead the home view, details stay collapsed and refresh p
   const inspection = active.locator('details.job-inspection');
   assert.equal(await inspection.getAttribute('open'), null);
   assert.equal(await active.locator('.job-details').isVisible(), false);
+  await page.locator('#navVideo').click();
   assert.ok(await page.locator('.connection-summary').evaluate((node) => node.getBoundingClientRect().height) < 160, 'connected API summary should leave space for work');
+  await page.locator('#navJobs').click();
   await inspection.locator('summary').click();
-  await active.getByRole('button', { name: '현재 자막 보기', exact: true }).focus();
+  await active.getByRole('button', { name: '자막 보기', exact: true }).focus();
   await refreshWithChangedProgress(page);
   assert.equal(await inspection.getAttribute('open'), '');
-  assert.equal(await active.getByRole('button', { name: '현재 자막 보기', exact: true }).evaluate((node) => document.activeElement === node), true);
+  assert.equal(await active.getByRole('button', { name: '자막 보기', exact: true }).evaluate((node) => document.activeElement === node), true);
   await page.evaluate(() => { window.mockNative.jobs.find((job) => job.id === 'partial-1').status = 'running'; });
   await refreshWithChangedProgress(page);
   await inspection.locator('summary').focus();
@@ -346,13 +360,15 @@ regression('new video selection stays visible above a long completed job history
     })));
     window.nativeEvent({ type: 'status' });
   });
-  await page.waitForFunction(() => document.querySelectorAll('.job').length === 22);
+  await page.waitForFunction(() => document.querySelectorAll('#jobsView .job').length === 4);
+  assert.match(await page.locator('#jobsPageInfo').textContent(), /1\s*\/\s*6/);
+  await page.locator('#navVideo').click();
   await page.evaluate(() => window.scrollTo(0, 0));
   await assertInViewport(page.locator('#pickVideo'), 'new video selection must be reachable without scrolling through completed history');
 });
 
 regression('completed card exports the correct SRT without replacing the currently loaded editor', async (page) => {
-  await jobCard(page, 'partial-1').getByRole('button', { name: '현재 자막 보기', exact: true }).click();
+  await jobCard(page, 'partial-1').getByRole('button', { name: '자막 보기', exact: true }).click();
   await page.locator('#editorView').waitFor({ state: 'visible' });
   const editorName = await page.locator('#editorName').textContent();
   await page.locator('#navJobs').click();
@@ -381,6 +397,7 @@ regression('a thousand cue job keeps jump and filtering bounded to the selected 
   });
   await openEditor(page);
   assert.equal(await page.locator('#cueCount').textContent(), '1000개');
+  await openEditorTools(page);
   await page.locator('#cueJump').fill('#999');
   await page.locator('#jumpForm button').click();
   assert.equal(await selectedCue(page).getAttribute('data-index'), '998');
@@ -401,6 +418,7 @@ regression('editing a filtered cue time keeps that cue selected after it moves t
     }));
   });
   await openEditor(page);
+  await openEditorTools(page);
   await page.locator('#cueFilter').selectOption('issues');
   assert.equal(await selectedCue(page).getAttribute('data-index'), '0');
   const start = selectedCue(page).getByLabel('시작 (초)', { exact: true });
