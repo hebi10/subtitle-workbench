@@ -8,6 +8,10 @@
 
 ## Android 앱
 
+**[Android 0.4.0 APK 다운로드](https://github.com/hebi10/subtitle-workbench/releases/download/v0.4.0/haebi-subtitles-0.4.0.apk)** · [릴리스 안내](https://github.com/hebi10/subtitle-workbench/releases/tag/v0.4.0)
+
+Android 8.0 이상에서 다운로드한 APK를 열어 설치할 수 있습니다. 현재는 개발용 서명으로 제공하는 공개 테스트 버전입니다. 자막 생성에는 각 사용자의 OpenAI API 키가 필요하며 API 요금은 해당 계정에 별도로 청구됩니다. GitHub의 `Source code (zip)`은 소스 코드이므로, 앱 설치에는 `.apk` 파일을 선택하세요.
+
 `android/`에 Android 8.0 이상용 앱을 제공합니다. 최대 3시간 영상, 7분 단위 네이티브 오디오 추출, 상세 진행 표시와 기기 내 체크포인트 저장을 지원합니다. 180분 영상은 26구간으로 처리하며, 강제 중지 후에는 앱을 다시 열어 저장된 진행에서 이어합니다. 사용자 API 키를 암호화해 저장하고 `gpt-6-luna`를 번역 기본 모델로 사용합니다. [설치·빌드·검증 안내](android/README.md)를 참고하세요.
 
 ## 로컬 실행

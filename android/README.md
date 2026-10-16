@@ -2,6 +2,14 @@
 
 Android 8.0(API 26) 이상용 앱입니다. 새 작업은 최대 3시간(180분) 영상·오디오를 지원합니다. 기존 브라우저 앱과 별도로 빌드하며 자막 편집·SRT/VTT/JSON 처리 모듈을 공유합니다.
 
+## APK 설치
+
+1. **[0.4.0 APK 다운로드](https://github.com/hebi10/subtitle-workbench/releases/download/v0.4.0/haebi-subtitles-0.4.0.apk)**를 누르거나 [GitHub Releases](https://github.com/hebi10/subtitle-workbench/releases/tag/v0.4.0)의 **Assets → haebi-subtitles-0.4.0.apk**를 선택합니다.
+2. 휴대폰에서 다운로드한 APK를 열고 Android의 설치 안내를 따릅니다. `Source code (zip)`은 설치 파일이 아닙니다.
+3. 앱을 실행한 뒤 **설정 → OpenAI API 연결**에서 본인의 키를 저장합니다. API 사용 요금은 본인 계정에 별도로 청구됩니다.
+
+0.4.0은 개발용 서명으로 제공하는 공개 테스트 버전입니다. 현재 API 35 에뮬레이터에서 설치와 주요 화면 동작을 확인했으며, 실물 휴대폰과 실제 유료 API로 3시간 전체 생성하는 흐름은 별도 검증이 필요합니다. 배포 APK의 SHA-256은 릴리스에 첨부된 `.sha256` 파일과 [검증 기록](../docs/android-verification.md)에서 확인할 수 있습니다.
+
 ## 사용 흐름
 
 하단 메뉴는 네 화면으로 나뉩니다. 자막 편집은 결과에서 열며, 편집 화면 끝까지 스크롤하지 않아도 결과 화면에서 미리보기와 저장을 할 수 있습니다.
