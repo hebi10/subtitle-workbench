@@ -50,6 +50,10 @@ final class LiveTranscriptionClient {
         Request request = new Request.Builder().url(RealtimeTranscriptionProtocol.URL)
                 .header("Authorization", "Bearer " + apiKey.trim())
                 .build();
+        ui.postDelayed(() -> {
+            if (!cancelled && !completed && recorderThread == null)
+                fail("실시간 인식 서버의 연결 준비 시간이 초과되었습니다.");
+        }, 30_000L);
         socket = http.newWebSocket(request, new WebSocketListener() {
             @Override public void onOpen(WebSocket ws, Response response) {
                 if (cancelled) { ws.cancel(); return; }
@@ -90,9 +94,11 @@ final class LiveTranscriptionClient {
     }
 
     private void beginCapture() {
+        if (cancelled || stopping) return;
         recorderThread = new Thread(() -> {
             AudioRecord active = null;
             try {
+                if (cancelled || stopping) return;
                 int min = AudioRecord.getMinBufferSize(RealtimeTranscriptionProtocol.SAMPLE_RATE,
                         AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
                 if (min <= 0) { fail("이 기기는 24kHz PCM16 마이크 녹음을 지원하지 않습니다."); return; }
@@ -118,6 +124,7 @@ final class LiveTranscriptionClient {
                         stopping = true;
                         capturing = false;
                         postStatus("5분 인식 제한에 도달했습니다. 최종 자막을 기다리는 중…");
+                        scheduleFinalDeadline();
                         break;
                     }
                     int n = active.read(pcm, 0, pcm.length);
@@ -157,6 +164,7 @@ final class LiveTranscriptionClient {
         if (cancelled || completed || stopping) return;
         stopping = true;
         capturing = false;
+        scheduleFinalDeadline();
         AudioRecord audio = recorder;
         if (audio != null) {
             try { audio.stop(); } catch (RuntimeException ignored) {}
@@ -165,6 +173,13 @@ final class LiveTranscriptionClient {
             abort();
             ui.post(() -> listener.onError("실시간 연결 준비 중 중단했습니다. 다시 시작해 주세요."));
         }
+    }
+
+    private void scheduleFinalDeadline() {
+        ui.postDelayed(() -> {
+            if (stopping && !completed && !cancelled)
+                fail("최종 자막 응답 시간이 초과되었습니다. 이전에 확정된 결과는 유지됩니다.");
+        }, 60_000L);
     }
 
     void abort() {
