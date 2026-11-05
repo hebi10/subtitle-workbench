@@ -507,3 +507,70 @@ regression('GPT realtime microphone action opens a native paid session and resto
   await page.locator('#editResult').click();
   assert.match(await page.locator('.cue-issues').first().textContent(), /시간 추정/);
 });
+
+
+regression('redesign v0.8 screens stay readable at 320, 390 and 800 pixels', async (page) => {
+  await mkdir(join(root, 'output/redesign-android'), { recursive: true });
+  for (const width of [320, 390, 800]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const [nav, view, name] of [
+      ['navVideo', 'videoView', 'video'],
+      ['navJobs', 'jobsView', 'jobs'],
+      ['navResults', 'resultsView', 'results'],
+      ['navSettings', 'settingsView', 'settings'],
+    ]) {
+      await page.locator('#' + nav).click();
+      await page.locator('#' + view).waitFor({ state: 'visible' });
+      const metrics = await page.evaluate(() => ({
+        pageWidth: document.documentElement.scrollWidth,
+        viewportWidth: innerWidth,
+        navHeight: document.querySelector('.app-nav').getBoundingClientRect().height,
+        headerHeight: document.querySelector('.app-header').getBoundingClientRect().height,
+      }));
+      assert.ok(metrics.pageWidth <= metrics.viewportWidth + 1,
+        width + 'px ' + name + ' overflow: ' + metrics.pageWidth + '/' + metrics.viewportWidth);
+      assert.ok(metrics.navHeight >= 48 && metrics.navHeight < 130, width + 'px ' + name + ' navigation height');
+      assert.ok(metrics.headerHeight >= 55 && metrics.headerHeight < 140, width + 'px ' + name + ' header height');
+      assert.equal(await page.locator('.app-nav [aria-current="page"]').count(), 1);
+      if (width !== 320) {
+        await page.screenshot({
+          path: join(root, 'output/redesign-android', 'android-' + width + '-' + name + '.png'),
+          fullPage: true,
+        });
+      }
+    }
+  }
+});
+
+regression('redesign v0.8 covers editor, API key confirmation and destructive job confirmation', async (page) => {
+  await mkdir(join(root, 'output/redesign-android'), { recursive: true });
+  await page.locator('#navJobs').click();
+  await jobCard(page, 'complete-1').getByRole('button', { name: '기록 삭제' }).click();
+  const confirmJob = jobCard(page, 'complete-1').locator('.delete-warning');
+  assert.equal(await confirmJob.isVisible(), true);
+  await page.screenshot({ path: join(root, 'output/redesign-android/android-390-delete-confirmation.png'), fullPage: true });
+  await jobCard(page, 'complete-1').getByRole('button', { name: '취소', exact: true }).click();
+
+  await openEditor(page);
+  assert.equal(await page.locator('#editorView').isVisible(), true);
+  await page.screenshot({ path: join(root, 'output/redesign-android/android-390-editor.png'), fullPage: true });
+  await page.locator('#navSettings').click();
+  if (!await page.locator('#apiSettings').evaluate(node => node.open))
+    await page.locator('#apiSettings > summary').click();
+  await page.getByRole('button', { name: '저장된 키 삭제', exact: true }).click();
+  assert.equal(await page.locator('#confirmClearKey').isVisible(), true);
+  await page.screenshot({ path: join(root, 'output/redesign-android/android-390-key-confirmation.png'), fullPage: true });
+  await page.getByRole('button', { name: '삭제 취소', exact: true }).click();
+  assert.equal(await page.locator('#confirmClearKey').isVisible(), false);
+
+  const controls = await page.evaluate(() => ({
+    navCorner: getComputedStyle(document.querySelector('.app-nav button')).borderRadius,
+    inputCorner: getComputedStyle(document.getElementById('apiKey')).borderRadius,
+    shadow: getComputedStyle(document.querySelector('.settings-group')).boxShadow,
+    buttonHeight: document.getElementById('navJobs').getBoundingClientRect().height,
+  }));
+  assert.equal(controls.navCorner, '0px');
+  assert.equal(controls.inputCorner, '0px');
+  assert.equal(controls.shadow, 'none');
+  assert.ok(controls.buttonHeight >= 48);
+});

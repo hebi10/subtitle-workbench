@@ -9,12 +9,21 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="app-header"><h1>해비 자막</h1></header>
+  <header class="app-header">
+    <div class="brand-symbol" aria-hidden="true">HB</div>
+    <div class="brand-copy">
+      <p class="brand-kicker">SUBTITLE WORKBENCH</p>
+      <h1>해비 자막</h1>
+      <p class="brand-tagline">음성 인식 · 번역 · 자막 편집</p>
+    </div>
+  </header>
   <main>
     <div id="messageBar" class="message-bar" hidden><p id="appMessage" class="message" role="status" hidden></p><button id="dismissMessage" type="button" aria-label="알림 닫기">닫기</button></div>
     <section id="videoView" aria-labelledby="videoHeading" hidden>
-      <div class="section-heading"><h2 id="videoHeading">영상 추가</h2><span class="hint">최대 3시간</span></div>
+      <div class="section-heading"><div><p class="page-kicker">01 / INPUT</p><h2 id="videoHeading">영상 추가</h2></div><span class="hint">최대 3시간</span></div>
+      <p class="page-description">영상에서 자막을 생성하거나 음성을 바로 텍스트로 변환할 수 있습니다.</p>
       <div class="start-actions"><button id="pickVideo" class="primary" type="button" disabled>영상 선택</button><button id="importSubtitles" type="button">자막 불러오기</button></div>
+      <p class="subsection-label">마이크 자막</p>
       <div class="local-caption-entry"><button id="openOnDevice" type="button">온디바이스 마이크 자막</button><p class="hint">Android 12 이상에서 지원되는 기기 음성 인식 엔진을 사용하며, OpenAI API 키가 필요하지 않습니다.</p></div>
       <div class="local-caption-entry"><button id="openCloudLive" type="button">GPT 실시간 마이크 자막</button><p class="hint">마이크 음성을 OpenAI로 전송합니다. 본인의 API 키와 별도 이용 요금이 필요하며 인식 시작 전 안내를 제공합니다.</p></div>
       <p id="keyHint" class="hint">본인의 OpenAI API 키를 저장하면 영상을 선택할 수 있습니다.</p>
@@ -25,13 +34,15 @@
     </section>
 
     <section id="jobsView" aria-labelledby="jobsHeading">
-      <div class="section-heading"><h2 id="jobsHeading">작업</h2><button id="refreshJobs" type="button">새로고침</button></div>
+      <div class="section-heading"><div><p class="page-kicker">02 / HISTORY</p><h2 id="jobsHeading">작업</h2></div><button id="refreshJobs" type="button">새로고침</button></div>
+      <p class="page-description">진행 중인 작업과 저장된 자막을 확인합니다.</p>
       <div id="jobList" class="job-list"><p class="empty">작업 목록을 불러오는 중입니다.</p></div>
       <nav class="pagination jobs-pagination" aria-label="작업 페이지"><button id="prevJobs" type="button">이전</button><span id="jobsPageInfo"></span><button id="nextJobs" type="button">다음</button></nav>
     </section>
 
     <section id="resultsView" aria-labelledby="resultsHeading" hidden>
-      <div class="section-heading"><h2 id="resultsHeading">결과</h2></div>
+      <div class="section-heading"><div><p class="page-kicker">03 / RESULTS</p><h2 id="resultsHeading">결과</h2></div></div>
+      <p class="page-description">완료된 자막을 미리 보고 파일로 저장할 수 있습니다.</p>
       <label id="resultJobLabel" class="job-selector">작업 선택<select id="resultJobSelector"></select></label>
       <div id="resultEmpty" hidden><p class="empty">아직 확인할 결과가 없습니다.</p><div class="start-actions"><button id="openResultJobs" type="button">작업 확인</button><button id="openResultVideo" type="button">영상 추가</button></div></div>
       <div id="resultContent" hidden>
@@ -43,7 +54,7 @@
 
     <section id="editorView" aria-labelledby="editorHeading" hidden>
       <button id="backToJobs" type="button">결과로</button>
-      <div class="section-heading"><h2 id="editorHeading">자막 편집</h2><span id="cueCount"></span></div>
+      <div class="section-heading"><div><p class="page-kicker">03 / REVIEW</p><h2 id="editorHeading">자막 편집</h2></div><span id="cueCount"></span></div>
       <p id="editorName" class="file-name"></p>
       <p id="readOnlyNote" class="hint" hidden>완료 전 작업은 조회와 부분 내보내기만 가능합니다. 생성이 완료되면 편집할 수 있습니다.</p>
       <div class="editor-actions"><button id="preview" type="button">영상 미리보기</button><button id="jumpToExport" type="button">내보내기로 이동</button><button id="undo" type="button" disabled>실행 취소</button><button id="redo" type="button" disabled>다시 실행</button></div>
@@ -54,7 +65,8 @@
     </section>
 
     <section id="settingsView" aria-labelledby="settingsHeading" hidden>
-      <h2 id="settingsHeading">설정</h2>
+      <div class="section-heading"><div><p class="page-kicker">04 / PREFERENCES</p><h2 id="settingsHeading">설정</h2></div></div>
+      <p class="page-description">API 키와 다음 작업에 적용할 기본값을 관리합니다.</p>
       <details id="apiSettings" class="settings-group"><summary>OpenAI API 연결<span id="apiSettingsSummary"></span></summary>
       <form id="keyForm" class="settings-section"><p id="keyStatus" role="status">API 키 상태 확인 중</p><label>본인의 OpenAI API 키<input id="apiKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="새 API 키 입력" required /></label><button class="primary" type="submit">API 키 암호화 저장</button><p class="hint">키는 이 기기의 Android Keystore로 암호화해 보관합니다. 저장된 키는 화면에 다시 표시하지 않습니다.</p></form>
       <div class="connection-actions"><button id="checkConnection" type="button" disabled>연결 확인</button><button id="openApiKeyPage" type="button">API 키 발급 페이지</button><button id="requestClearKey" type="button" disabled>저장된 키 삭제</button></div><p id="connectionStatus" class="hint" role="status">연결 확인은 키 인증과 선택 모델 접근만 검사합니다. 결제 상태나 잔액은 확인하지 않습니다.</p>

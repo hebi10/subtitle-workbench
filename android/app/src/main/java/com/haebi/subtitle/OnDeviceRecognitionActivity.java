@@ -74,7 +74,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
     private void buildView() {
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
-        scroll.setBackgroundColor(Color.rgb(243, 243, 243));
+        scroll.setBackgroundColor(NativeDesignSystem.CANVAS);
         scroll.setClipToPadding(false);
         scroll.setOnApplyWindowInsetsListener((view, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {
@@ -88,14 +88,16 @@ public final class OnDeviceRecognitionActivity extends Activity {
         });
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(18), dp(18), dp(18), dp(30));
+        root.setPadding(dp(20), dp(20), dp(20), dp(36));
         scroll.addView(root);
         setContentView(scroll);
+        addText(root, "ON-DEVICE / MICROPHONE", 11, true);
         addText(root, "온디바이스 마이크 자막", 22, true);
         addText(root, "기기의 음성 인식 서비스로 말하는 동안 자막을 만듭니다. OpenAI API 키나 API 이용 요금은 필요하지 않습니다. 인식 품질과 지원 언어는 기기마다 다릅니다.", 14, false);
         addText(root, "인식 언어", 15, true);
         language = new Spinner(this);
         language.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, new String[]{"한국어", "English", "日本語", "中文"}));
+        NativeDesignSystem.language(language, getResources().getDisplayMetrics().density);
         root.addView(language);
         checkButton = addButton(root, "언어 지원 확인", false, this::checkSupport);
         downloadButton = addButton(root, "온디바이스 언어 모델 다운로드 요청", false, this::downloadModel);
@@ -104,10 +106,13 @@ public final class OnDeviceRecognitionActivity extends Activity {
         stopButton = addButton(root, "인식 종료", false, this::stopListening);
         stopButton.setEnabled(false);
         status = addText(root, "서비스 지원 상태를 확인 중입니다.", 14, false);
+        NativeDesignSystem.surfaceText(status, getResources().getDisplayMetrics().density);
         addText(root, "인식 중인 문장", 16, true);
         partial = addText(root, "마이크 입력 대기", 16, false);
+        NativeDesignSystem.surfaceText(partial, getResources().getDisplayMetrics().density);
         addText(root, "저장 예정 자막", 16, true);
         completed = addText(root, "확정된 문장이 없습니다.", 14, false);
+        NativeDesignSystem.surfaceText(completed, getResources().getDisplayMetrics().density);
         saveButton = addButton(root, "완료 자막 저장 및 편집", true, this::save);
         saveButton.setEnabled(false);
         addButton(root, "닫기", false, this::closeRequested);
@@ -117,10 +122,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
     private TextView addText(LinearLayout root, String text, int sp, boolean strong) {
         TextView node = new TextView(this);
         node.setText(text);
-        node.setTextSize(sp);
-        node.setTextColor(strong ? INK : Color.rgb(83, 83, 83));
-        if (strong) node.setTypeface(null, android.graphics.Typeface.BOLD);
-        node.setPadding(0, dp(8), 0, dp(10));
+        NativeDesignSystem.text(node, sp, strong, getResources().getDisplayMetrics().density);
         root.addView(node, new LinearLayout.LayoutParams(-1, -2));
         return node;
     }
@@ -128,16 +130,9 @@ public final class OnDeviceRecognitionActivity extends Activity {
     private Button addButton(LinearLayout root, String label, boolean primary, Runnable action) {
         Button node = new Button(this);
         node.setText(label);
-        node.setTextSize(15);
-        node.setAllCaps(false);
-        node.setTextColor(primary ? Color.WHITE : INK);
-        GradientDrawable shape = new GradientDrawable();
-        shape.setShape(GradientDrawable.RECTANGLE);
-        shape.setColor(primary ? INK : Color.WHITE);
-        shape.setStroke(dp(1), LINE);
-        node.setBackground(shape);
+        NativeDesignSystem.button(node, primary, getResources().getDisplayMetrics().density);
         node.setOnClickListener(view -> action.run());
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(49));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(52));
         params.topMargin = dp(7);
         root.addView(node, params);
         return node;

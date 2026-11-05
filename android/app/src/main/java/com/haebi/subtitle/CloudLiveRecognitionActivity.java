@@ -60,10 +60,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
     private TextView label(LinearLayout root, String text, int size, boolean strong) {
         TextView view = new TextView(this);
         view.setText(text);
-        view.setTextSize(size);
-        view.setTextColor(strong ? INK : Color.rgb(89, 89, 89));
-        if (strong) view.setTypeface(null, android.graphics.Typeface.BOLD);
-        view.setPadding(0, dp(8), 0, dp(10));
+        NativeDesignSystem.text(view, size, strong, getResources().getDisplayMetrics().density);
         root.addView(view, new LinearLayout.LayoutParams(-1, -2));
         return view;
     }
@@ -71,15 +68,9 @@ public final class CloudLiveRecognitionActivity extends Activity {
     private Button button(LinearLayout root, String text, boolean primary, Runnable action) {
         Button view = new Button(this);
         view.setText(text);
-        view.setTextSize(15);
-        view.setAllCaps(false);
-        view.setTextColor(primary ? Color.WHITE : INK);
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(primary ? INK : Color.WHITE);
-        bg.setStroke(dp(1), Color.rgb(195, 195, 195));
-        view.setBackground(bg);
+        NativeDesignSystem.button(view, primary, getResources().getDisplayMetrics().density);
         view.setOnClickListener(v -> action.run());
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(49));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(52));
         lp.topMargin = dp(8);
         root.addView(view, lp);
         return view;
@@ -87,7 +78,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
 
     private void buildView() {
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(Color.rgb(243, 243, 243));
+        scroll.setBackgroundColor(NativeDesignSystem.CANVAS);
         scroll.setFillViewport(true);
         scroll.setClipToPadding(false);
         scroll.setOnApplyWindowInsetsListener((view, insets) -> {
@@ -102,26 +93,31 @@ public final class CloudLiveRecognitionActivity extends Activity {
         });
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(18), dp(18), dp(18), dp(30));
+        root.setPadding(dp(20), dp(20), dp(20), dp(36));
         scroll.addView(root);
         setContentView(scroll);
 
+        label(root, "CLOUD / REALTIME", 11, true);
         label(root, "GPT 실시간 마이크 자막", 22, true);
         label(root, "본인의 OpenAI API 키로 gpt-live-transcribe를 사용합니다. 마이크 음성을 OpenAI로 전송하며 API 이용 요금이 별도로 청구됩니다. 인식을 시작한 경우에만 전송합니다.", 14, false);
         label(root, "인식 언어", 15, true);
         language = new Spinner(this);
         language.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item,
                 new String[]{"자동 감지", "한국어", "English", "日本語", "中文"}));
+        NativeDesignSystem.language(language, getResources().getDisplayMetrics().density);
         root.addView(language);
 
         start = button(root, "유료 GPT 실시간 인식 시작", true, this::requestStart);
         stop = button(root, "인식 종료 및 결과 확정", false, this::stopRecognition);
         stop.setEnabled(false);
         status = label(root, "마이크를 시작하지 않았습니다.", 14, false);
+        NativeDesignSystem.surfaceText(status, getResources().getDisplayMetrics().density);
         label(root, "실시간 인식 중", 16, true);
         partial = label(root, "대기 중", 16, false);
+        NativeDesignSystem.surfaceText(partial, getResources().getDisplayMetrics().density);
         label(root, "확정된 자막", 16, true);
         completed = label(root, "저장할 자막이 없습니다.", 14, false);
+        NativeDesignSystem.surfaceText(completed, getResources().getDisplayMetrics().density);
         save = button(root, "자막 작업 기록 저장 및 편집", true, this::saveCues);
         save.setEnabled(false);
         button(root, "닫기", false, this::closeRequested);

@@ -220,7 +220,7 @@ function renderJobs() {
       continue;
     }
     const article = el('article', undefined, 'job');
-    article.dataset.jobId = job.id; article.dataset.renderKey = renderKey; article.dataset.prepared = String(ready); article.tabIndex = -1;
+    article.dataset.jobId = job.id; article.dataset.status = job.status; article.dataset.renderKey = renderKey; article.dataset.prepared = String(ready); article.tabIndex = -1;
     article.append(el('h3', job.name));
     const state = el('div', undefined, 'job-state');
     const total = Number(job.totalChunks) || 0;

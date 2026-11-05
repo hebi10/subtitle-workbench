@@ -12,11 +12,15 @@
   <body>
     <div class="app-shell">
       <header class="topbar">
-        <div>
-          <p class="eyebrow">영상 원본 로컬 처리</p>
-          <h1>해비 자막</h1>
+        <div class="brand-lockup">
+          <span class="brand-symbol" aria-hidden="true">HB</span>
+          <div class="brand-copy">
+            <p class="eyebrow">SUBTITLE WORKBENCH · 영상 원본 로컬 처리</p>
+            <h1>해비 자막</h1>
+            <p class="brand-description">자막 생성부터 검수·내보내기까지</p>
+          </div>
         </div>
-        <p class="topbar-note">영상은 업로드하지 않고 브라우저 안에서 오디오를 추출합니다.</p>
+        <p class="topbar-note">영상은 브라우저에서 처리하고, 인식에 필요한 오디오와 텍스트만 선택한 API로 전송합니다.</p>
       </header>
 
       <main class="workspace is-idle">
@@ -25,6 +29,7 @@
           <button id="tab-edit" class="workspace-tab" type="button" role="tab" aria-controls="panel-edit" aria-selected="false" tabindex="-1" data-tab-target="edit">편집</button>
           <button id="tab-export" class="workspace-tab" type="button" role="tab" aria-controls="panel-export" aria-selected="false" tabindex="-1" data-tab-target="export">내보내기</button>
         </nav>
+        <p class="workflow-hint">01. 영상 준비와 자막 생성 → 02. 문장 검수와 시간 수정 → 03. 형식별 다운로드</p>
 
         <section id="jobResults" class="job-results" aria-label="파일별 작업 결과" hidden>
           <label for="jobResultSelect">작업 결과</label>
@@ -352,6 +357,16 @@
               </table>
             </div>
             </section>
+            <aside id="idleGuide" class="idle-guide panel-card" aria-labelledby="idleGuideTitle">
+              <p class="eyebrow">QUICK START</p>
+              <h2 id="idleGuideTitle">자막 생성 순서</h2>
+              <ol class="quick-steps">
+                <li><strong>01 · 파일 선택</strong><span>영상 또는 오디오를 선택하면 길이와 미리보기를 확인할 수 있습니다.</span></li>
+                <li><strong>02 · AI 연결·언어 설정</strong><span>본인의 API 연결 정보와 원본·번역 언어를 지정합니다.</span></li>
+                <li><strong>03 · 생성 및 검수</strong><span>음성 인식 결과를 편집에서 확인하고 자막 파일로 내보냅니다.</span></li>
+              </ol>
+              <p class="form-help">입력한 영상 원본은 브라우저 안에서 처리합니다. 음성 인식과 번역에는 별도 API 이용 요금이 발생할 수 있습니다.</p>
+            </aside>
           </div>
         </section>
 
