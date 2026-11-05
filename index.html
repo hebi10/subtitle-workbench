@@ -210,7 +210,12 @@
                   <div class="settings-grid">
                     <label>
                       음성인식 모델 (STT)
-                      <input id="sttModel" type="text" value="whisper-1" />
+                      <select id="sttModel">
+                      <option value="whisper-1">Whisper · 단어별 시간 정확도 (2027-02-26 종료 예정)</option>
+                      <option value="gpt-transcribe">GPT Transcribe · 새 모델 (시간 추정)</option>
+                      <option value="gpt-4o-transcribe-diarize">화자 자동 식별 (2027-02-26 종료 예정)</option>
+                    </select>
+                    <span class="form-help">새 GPT Transcribe는 단어별 시각을 제공하지 않아 약 30초 단위로 자막 시간을 추정합니다. 화자 자동 식별 모델도 종료 예정이므로 장기 사용 전 대체가 필요합니다.</span>
                     </label>
                     <label>
                       번역 모델

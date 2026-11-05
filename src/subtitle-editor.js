@@ -50,6 +50,8 @@ export function mergeShortSubtitles(subtitles, options = {}) {
     const run = [subtitle];
     while (isShortSubtitle(sorted[index + 1], maxDuration, maxLength)) {
       const next = sorted[index + 1];
+      if ((run[run.length - 1].speaker || '') !== (next.speaker || '') ||
+          (run[run.length - 1].speakerScope ?? null) !== (next.speakerScope ?? null)) break;
       const candidate = mergeSubtitleRun([...run, next]);
       const previousEnd = Math.max(...run.map((cue) => toNumber(cue.end, 0)));
       if (
@@ -87,6 +89,19 @@ export function updateSubtitleTextAt(subtitles, index, field, value) {
       delete next.translationError;
     }
 
+    return next;
+  });
+}
+
+export function updateSpeakerAt(subtitles, index, speaker) {
+  const normalized = String(speaker ?? '').trim().slice(0, 32);
+  return sortSubtitles(subtitles).map((subtitle, i) => {
+    if (i !== index) return subtitle;
+    const next = { ...subtitle };
+    if (normalized) next.speaker = normalized;
+    else delete next.speaker;
+    // A user-assigned speaker ID is global, unlike model-generated chunk-local IDs.
+    delete next.speakerScope;
     return next;
   });
 }
@@ -163,6 +178,10 @@ export function mergeSubtitleWithNext(subtitles, index) {
     return sorted;
   }
 
+  if ((current.speaker || '') !== (next.speaker || '') ||
+      (current.speakerScope ?? null) !== (next.speakerScope ?? null)) {
+    return sorted;
+  }
   const merged = {
     ...current,
     end: roundSeconds(Math.max(toNumber(current.end, 0), toNumber(next.end, 0))),
