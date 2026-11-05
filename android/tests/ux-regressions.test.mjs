@@ -258,7 +258,7 @@ regression('unsaved global settings survive polling but only saved settings crea
   await page.locator('#pickVideo').click();
   await jobCard(page, 'ready-1').waitFor();
   assert.deepEqual(await page.evaluate(() => window.mockNative.calls.find((call) => call.method === 'pickVideo').params.settings), {
-    sourceLanguage: 'en', targetLanguage: 'ja', translate: true, translationModel: 'saved-model',
+    sourceLanguage: 'en', sttModel: 'whisper-1', targetLanguage: 'ja', translate: true, translationModel: 'saved-model',
   });
   await page.locator('#navSettings').click();
   assert.equal(await page.locator('#translationModel').inputValue(), 'unsaved-model');

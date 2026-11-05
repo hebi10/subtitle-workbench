@@ -50,11 +50,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-        if: steps.credentials.outputs.enabled == 'true'
       - name: Install SDK 36
         if: steps.credentials.outputs.enabled == 'true'
-        run: sdkmanager --install 'platforms;android-36' 'build-tools;35.0.0'
+        shell: bash
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | sort -V | tail -n 1)"
+          test -n "$SDKMANAGER"
+          "$SDKMANAGER" --install 'platforms;android-36' 'build-tools;35.0.0'
       - name: Configure signing key securely
         if: steps.credentials.outputs.enabled == 'true'
         shell: bash
