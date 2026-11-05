@@ -488,3 +488,22 @@ regression('on-device microphone entry is independent of the API key and returns
   await page.locator('#editResult').click();
   assert.match(await page.locator('.cue-issues').first().textContent(), /시간 추정/);
 });
+
+regression('GPT realtime microphone action opens a native paid session and restores its exported result', async (page) => {
+  await page.locator('#navVideo').click();
+  await page.locator('#openCloudLive').click();
+  await page.waitForFunction(() => window.mockNative.calls.some(call => call.method === 'openCloudLive'));
+  await page.evaluate(() => {
+    const original = window.mockNative.jobs.find(job => job.id === 'complete-1');
+    window.mockNative.jobs.push({ ...original, id: 'cloud-live-1', name: 'GPT 실시간 마이크 테스트', uri: '' });
+    window.mockNative.cues['cloud-live-1'] = [
+      { start: 0, end: 2.5, original: '실시간 GPT 음성 인식', translated: '', timingAccuracy: 'estimated' },
+    ];
+    window.onDeviceCaptionSaved('cloud-live-1', 'GPT 실시간');
+  });
+  await page.waitForFunction(() => document.getElementById('resultName').textContent === 'GPT 실시간 마이크 테스트');
+  assert.equal(await page.locator('#resultsView').isVisible(), true);
+  assert.match(await page.locator('#appMessage').textContent(), /GPT 실시간 마이크 자막/);
+  await page.locator('#editResult').click();
+  assert.match(await page.locator('.cue-issues').first().textContent(), /시간 추정/);
+});
