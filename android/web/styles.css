@@ -365,3 +365,22 @@ progress::-webkit-progress-value { background: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
 }
+
+
+/* Result export actions remain in the first viewport at narrow 320px widths. */
+#resultsView .page-description { margin-bottom: 12px; }
+#resultsView .job-selector { gap: 4px; margin: 8px 0 10px; }
+#resultsView #resultContent { margin-top: 8px; padding: 13px; }
+#resultsView .result-name { font-size: 17px; margin: 0 0 4px; }
+#resultsView #resultMeta { margin-top: 3px; }
+#resultsView #resultStatus { margin-top: 7px; padding: 7px 9px; }
+#resultsView .result-actions { margin-top: 10px; }
+#resultsView .export-section { margin-top: 12px; padding: 12px; }
+#resultsView .export-section h3 { font-size: 16px; }
+#resultsView .export-section .hint { margin-top: 4px; }
+#resultsView .export-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 9px; }
+#resultsView .export-actions button { font-size: 13px; line-height: 1.2; min-height: 46px; min-width: 0; padding: 7px 3px; width: 100%; }
+@media (max-width: 340px) {
+  #resultsView .section-heading { margin-top: 6px; min-height: 49px; }
+  #resultsView .page-description { font-size: 13px; margin-bottom: 8px; }
+}
