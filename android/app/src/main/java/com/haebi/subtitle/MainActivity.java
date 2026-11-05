@@ -33,7 +33,7 @@ import java.util.concurrent.Executors;
 /** Only packaged, trusted HTML can send bridge messages. Keys never return to JavaScript. */
 public final class MainActivity extends Activity {
     private static final String ORIGIN = "https://appassets.androidplatform.net";
-    private static final int PICK_VIDEO = 101, EXPORT = 102, IMPORT = 103;
+    private static final int PICK_VIDEO = 101, EXPORT = 102, IMPORT = 103, ON_DEVICE_STT = 105;
     private static final int MAX_TEXT_BYTES = 8 * 1024 * 1024;
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final ExecutorService connectionIo = Executors.newSingleThreadExecutor();
@@ -209,6 +209,17 @@ public final class MainActivity extends Activity {
                     store.deleteCompleted(params.getString("jobId"));
                     result = true; break;
                 case "importSubtitles": startPicker(id, IMPORT, null, null, null, null, null); return;
+                case "openOnDevice":
+                    String onDeviceRequestId = id;
+                    runOnUiThread(() -> {
+                        try {
+                            startActivityForResult(new Intent(this, OnDeviceRecognitionActivity.class), ON_DEVICE_STT);
+                            reply(onDeviceRequestId, true, null);
+                        } catch (RuntimeException error) {
+                            reply(onDeviceRequestId, null, "기기의 온디바이스 자막 화면을 열 수 없습니다.");
+                        }
+                    });
+                    return;
                 case "importCues":
                     String importedId = store.importCues(params.optString("name", "자막"), checkedCues(params.getJSONArray("cues")));
                     result = jobPayload(importedId); break;
@@ -394,6 +405,16 @@ public final class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == ON_DEVICE_STT) {
+            String storedJobId = data == null ? null : data.getStringExtra("jobId");
+            if (resultCode == RESULT_OK && storedJobId != null) {
+                runOnUiThread(() -> {
+                    if (!destroyed) web.evaluateJavascript(
+                            "window.onDeviceCaptionSaved && window.onDeviceCaptionSaved(" + JSONObject.quote(storedJobId) + ")", null);
+                });
+            }
+            return;
+        }
         if (requestCode != PICK_VIDEO && requestCode != IMPORT && requestCode != EXPORT) return;
         pendingId = null;
         Uri uri = data == null ? null : data.getData();

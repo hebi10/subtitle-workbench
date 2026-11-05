@@ -15,6 +15,7 @@
     <section id="videoView" aria-labelledby="videoHeading" hidden>
       <div class="section-heading"><h2 id="videoHeading">영상 추가</h2><span class="hint">최대 3시간</span></div>
       <div class="start-actions"><button id="pickVideo" class="primary" type="button" disabled>영상 선택</button><button id="importSubtitles" type="button">자막 불러오기</button></div>
+      <div class="local-caption-entry"><button id="openOnDevice" type="button">온디바이스 마이크 자막</button><p class="hint">Android 12 이상에서 지원되는 기기 음성 인식 엔진을 사용하며, OpenAI API 키가 필요하지 않습니다.</p></div>
       <p id="keyHint" class="hint">본인의 OpenAI API 키를 저장하면 영상을 선택할 수 있습니다.</p>
       <section id="connectionCard" class="connection-summary" aria-labelledby="connectionHeading"><div><h3 id="connectionHeading">내 API로 자막 생성</h3><p id="connectionSummary" class="hint">API 연결 상태를 확인하고 있습니다.</p><p id="activeModel" class="hint">번역 모델: gpt-6-luna</p></div><button id="openConnection" type="button">API 연결 설정</button></section>
       <div class="default-summary"><p id="videoSettingsSummary" class="hint"></p><button id="openDefaultSettings" type="button">기본 설정</button></div>
