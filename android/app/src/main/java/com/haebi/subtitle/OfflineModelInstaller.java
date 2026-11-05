@@ -42,11 +42,25 @@ final class OfflineModelInstaller {
                     && new File(folder, "conf").isDirectory()
                     && new File(folder, "graph").isDirectory()
                     && proof.isFile()
-                    && spec.sha256.equals(Files.readString(proof.toPath(), StandardCharsets.US_ASCII).trim())) {
+                    && isProofValid(proof, spec.sha256)) {
                 return folder;
             }
         } catch (IOException ignored) { }
         return null;
+    }
+
+    static boolean isProofValid(File proof, String sha) throws IOException {
+        byte[] value = new byte[64];
+        try (FileInputStream input = new FileInputStream(proof)) {
+            int read = 0;
+            while (read < value.length) {
+                int current = input.read(value, read, value.length - read);
+                if (current < 0) return false;
+                read += current;
+            }
+            if (input.read() != -1) return false;
+        }
+        return sha.equals(new String(value, StandardCharsets.US_ASCII));
     }
 
     long installedSize(OfflineModelCatalog.Spec spec) {
@@ -75,7 +89,10 @@ final class OfflineModelInstaller {
                     || !new File(unpacked, "conf").isDirectory()
                     || !new File(unpacked, "graph").isDirectory())
                 throw new IOException("모델 압축 파일 내부 구성이 올바르지 않습니다.");
-            Files.writeString(new File(unpacked, PROOF).toPath(), spec.sha256, StandardCharsets.US_ASCII);
+            try (FileOutputStream stamp = new FileOutputStream(new File(unpacked, PROOF))) {
+                stamp.write(spec.sha256.getBytes(StandardCharsets.US_ASCII));
+                stamp.getFD().sync();
+            }
             requireNotCancelled(cancelled);
             if (installedModel(spec) != null) return installedModel(spec);
             File target = new File(base, spec.id);
@@ -106,7 +123,7 @@ final class OfflineModelInstaller {
                 if (status == 301 || status == 302 || status == 303 || status == 307 || status == 308) {
                     if (++redirects > 6) throw new IOException("모델 다운로드 리디렉션이 너무 많습니다.");
                     String location = connection.getHeaderField("Location");
-                    if (location == null || location.isBlank()) throw new IOException("모델 다운로드 주소가 올바르지 않습니다.");
+                    if (location == null || location.trim().isEmpty()) throw new IOException("모델 다운로드 주소가 올바르지 않습니다.");
                     current = new URL(current, location);
                     continue;
                 }
