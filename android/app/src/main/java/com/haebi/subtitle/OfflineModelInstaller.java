@@ -63,6 +63,10 @@ final class OfflineModelInstaller {
         return sha.equals(new String(value, StandardCharsets.US_ASCII));
     }
 
+    boolean hasLocalData(OfflineModelCatalog.Spec spec) {
+        return new File(base, spec.id).exists();
+    }
+
     long installedSize(OfflineModelCatalog.Spec spec) {
         File dir = installedModel(spec);
         return dir == null ? 0L : recursiveSize(dir);
