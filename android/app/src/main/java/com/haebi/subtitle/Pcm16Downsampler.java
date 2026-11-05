@@ -26,7 +26,7 @@ final class Pcm16Downsampler {
             int value = (int) Math.round(previous * (1d - phase) + mono * phase);
             buffer[filled++] = (short) Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, value));
             outputFrames++;
-            if (filled == buffer.length) flush();
+            if (filled == buffer.length) drain();
         }
         previous = mono;
     }
@@ -38,15 +38,15 @@ final class Pcm16Downsampler {
         while (outputFrames < expected) {
             buffer[filled++] = previous;
             outputFrames++;
-            if (filled == buffer.length) {
-                sink.write(buffer, filled);
-                filled = 0;
-            }
+            if (filled == buffer.length) drain();
         }
-        if (filled > 0) {
-            sink.write(buffer, filled);
-            filled = 0;
-        }
+        drain();
+    }
+
+    private void drain() throws Exception {
+        if (filled == 0) return;
+        sink.write(buffer, filled);
+        filled = 0;
     }
 
     double elapsedSeconds() { return outputFrames / (double) OUTPUT_RATE; }
