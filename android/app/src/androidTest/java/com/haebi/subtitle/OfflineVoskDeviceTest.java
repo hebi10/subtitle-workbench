@@ -28,6 +28,31 @@ public class OfflineVoskDeviceTest {
         }
     }
 
+    @Test public void importedOfflineCaptionsCanKeepTheirOriginalMediaUri() throws Exception {
+        try (JobStore store = new JobStore(androidx.test.core.app.ApplicationProvider.getApplicationContext())) {
+            org.json.JSONArray cues = new org.json.JSONArray()
+                    .put(new org.json.JSONObject().put("start", 0.5).put("end", 1.7)
+                            .put("original", "오프라인 영상 자막").put("translated", "")
+                            .put("timingAccuracy", "word"));
+            String id = store.importCues("선택한 영상", cues, "content://fixture/offline-file");
+            try {
+                assertEquals("completed", store.get(id).getString("status"));
+                assertEquals("content://fixture/offline-file", store.get(id).getString("uri"));
+                assertEquals("오프라인 영상 자막", store.cues(id).getJSONObject(0).getString("original"));
+            } finally { store.deleteCompleted(id); }
+        }
+    }
+
+    @Test public void importedCaptionsRejectNonDocumentFileSchemes() throws Exception {
+        try (JobStore store = new JobStore(androidx.test.core.app.ApplicationProvider.getApplicationContext())) {
+            org.json.JSONArray cues = new org.json.JSONArray()
+                    .put(new org.json.JSONObject().put("start", 0).put("end", 1)
+                            .put("original", "sample").put("translated", ""));
+            assertThrows(IllegalArgumentException.class,
+                    () -> store.importCues("not allowed", cues, "file:///sdcard/private.mp4"));
+        }
+    }
+
     private static boolean hasText(View view, String needle) {
         if (view instanceof TextView && String.valueOf(((TextView) view).getText()).contains(needle)) return true;
         if (view instanceof ViewGroup) {
