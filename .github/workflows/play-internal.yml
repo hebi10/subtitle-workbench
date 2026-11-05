@@ -1,7 +1,9 @@
 name: Publish signed Android AAB to Google Play
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Verify web and Android"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
     inputs:
@@ -23,6 +25,7 @@ concurrency:
 
 jobs:
   publish:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     env:
       ANDROID_UPLOAD_KEYSTORE_B64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_B64 }}
@@ -32,6 +35,8 @@ jobs:
       PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
       - name: Check deployment credentials
         id: credentials
         shell: bash

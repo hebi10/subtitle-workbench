@@ -1,7 +1,7 @@
 # Subtitle Workbench · Android CI / Google Play
 
-- PR 및 main push: `verify.yml`에서 웹  테스트와 Android 단위 테스트, lint, debug APK를 검사합니다.
-- main push: `play-internal.yml`에서 **비밀값 5개가 모두 설정된 경우에만** 서명된 AAB를 Google Play 내부 테스트 트랙으로 업로드합니다.
+- PR 및 main push: `verify.yml`에서 웹 테스트와 Android 단위 테스트, lint, debug APK 및 Android 기기 테스트 APK 컴파일를 검사합니다.
+- main push: `verify.yml`이 모두 성공한 뒤에만 `play-internal.yml`을 시작합니다. **비밀값 5개가 모두 설정된 경우에만** 검증된 커밋의 서명된 AAB를 Google Play 내부 테스트 트랙으로 업로드합니다.
 - 선택적 비공개 테스트: Actions → Publish signed Android AAB to Google Play → Run workflow → `alpha` 선택.
 - 출시용 코드는 현재 `android/app/build.gradle`의 versionCode를 **매 업로드마다 증가**시켜야 합니다.
 - 새 패키지 `com.haebi.subtitle`는 Play Console에서 최초 등록, 사용자·권한 및 API 액세스 연결이 필요합니다.
