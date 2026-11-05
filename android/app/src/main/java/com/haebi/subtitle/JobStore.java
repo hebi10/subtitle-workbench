@@ -167,13 +167,19 @@ public final class JobStore extends SQLiteOpenHelper {
     }
 
     public String importCues(String name, JSONArray cues) {
+        return importCues(name, cues, "");
+    }
+
+    public String importCues(String name, JSONArray cues, String sourceUri) {
         validateCues(cues);
+        if (sourceUri != null && !sourceUri.isEmpty() && !sourceUri.startsWith("content://"))
+            throw new IllegalArgumentException("기기에서 선택한 영상·오디오만 연결할 수 있습니다.");
         String id = UUID.randomUUID().toString();
         long durationMs = 0;
         for (int i = 0; i < cues.length(); i++) durationMs = Math.max(durationMs, Math.round(cues.optJSONObject(i).optDouble("end") * 1000));
         final long duration = durationMs;
         transaction(db -> {
-            db.insertOrThrow("jobs", null, jobValues(id, "", name, duration, safeSettings(new JSONObject().put("translate", false)), "completed"));
+            db.insertOrThrow("jobs", null, jobValues(id, sourceUri == null ? "" : sourceUri, name, duration, safeSettings(new JSONObject().put("translate", false)), "completed"));
             writePayload(db, id, -1, "edited", -1, cues.toString());
             checkpoint(db, id, 0);
         });
