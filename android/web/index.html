@@ -23,6 +23,10 @@
       <div class="section-heading"><div><p class="page-kicker">01 / INPUT</p><h2 id="videoHeading">영상 추가</h2></div><span class="hint">최대 3시간</span></div>
       <p class="page-description">영상에서 자막을 생성하거나 음성을 바로 텍스트로 변환할 수 있습니다.</p>
       <div class="start-actions"><button id="pickVideo" class="primary" type="button" disabled>영상 선택</button><button id="importSubtitles" type="button">자막 불러오기</button></div>
+      <details class="local-offline-entry">
+        <summary>독립 로컬 AI · 영상/음성 파일</summary>
+        <div><p class="hint">Vosk 언어 모델을 앱에서 직접 다운로드합니다. 설치 후에는 API 키나 인터넷 없이 최대 60분 파일을 자막으로 만들 수 있습니다. 모델 크기는 약 42~87MB입니다.</p><button id="openOfflineModel" type="button">로컬 AI 모델 관리 및 파일 전사</button></div>
+      </details>
       <p class="subsection-label">마이크 자막</p>
       <div class="local-caption-entry"><button id="openOnDevice" type="button">온디바이스 마이크 자막</button><p class="hint">Android 12 이상에서 지원되는 기기 음성 인식 엔진을 사용하며, OpenAI API 키가 필요하지 않습니다.</p></div>
       <div class="local-caption-entry"><button id="openCloudLive" type="button">GPT 실시간 마이크 자막</button><p class="hint">마이크 음성을 OpenAI로 전송합니다. 본인의 API 키와 별도 이용 요금이 필요하며 인식 시작 전 안내를 제공합니다.</p></div>

@@ -574,3 +574,30 @@ regression('redesign v0.8 covers editor, API key confirmation and destructive jo
   assert.equal(controls.shadow, 'none');
   assert.ok(controls.buttonHeight >= 48);
 });
+
+regression('offline AI model manager is accessible with no API key and returns stored subtitle cues', async (page) => {
+  await page.evaluate(() => {
+    window.mockNative.hasKey = false;
+    window.nativeEvent({ type: 'status' });
+  });
+  await page.locator('#navVideo').click();
+  await page.locator('.local-offline-entry > summary').click();
+  await page.locator('#openOfflineModel').click();
+  await page.waitForFunction(() => window.mockNative.calls.some(call => call.method === 'openOfflineModel'));
+  await page.evaluate(() => {
+    const template = window.mockNative.jobs.find(job => job.id === 'complete-1');
+    window.mockNative.jobs.push({
+      ...template, id: 'offline-vosk-fixture', uri: 'content://fixture/offline-audio', name: '로컬 AI 테스트.wav', durationMs: 2000
+    });
+    window.mockNative.cues['offline-vosk-fixture'] = [
+      { start: 0.5, end: 2, original: '외부 API 없는 로컬 결과', translated: '', timingAccuracy: 'word' }
+    ];
+    window.onDeviceCaptionSaved('offline-vosk-fixture', '독립 로컬 AI');
+  });
+  await page.waitForFunction(() => document.querySelector('#resultName')?.textContent === '로컬 AI 테스트.wav');
+  assert.equal(await page.locator('#resultsView').isVisible(), true);
+  assert.match(await page.locator('#appMessage').textContent(), /독립 로컬 AI/);
+  assert.equal(await page.locator('#resultPreview').isEnabled(), true);
+  await page.locator('#editResult').click();
+  assert.equal(await page.locator('.cue').count(), 1);
+});

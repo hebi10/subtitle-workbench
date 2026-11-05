@@ -7,8 +7,8 @@ android {
         applicationId 'com.haebi.subtitle'
         minSdk 26
         targetSdk 36
-        versionCode 8
-        versionName '0.8.0'
+        versionCode 9
+        versionName '0.9.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     compileOptions {
@@ -49,6 +49,7 @@ tasks.register('syncWebAssets', Sync) {
 tasks.named('preBuild').configure { dependsOn 'syncWebAssets' }
 
 dependencies {
+    implementation 'com.alphacephei:vosk-android:0.3.75'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'androidx.webkit:webkit:1.12.1'
     implementation 'androidx.media3:media3-transformer:1.6.1'

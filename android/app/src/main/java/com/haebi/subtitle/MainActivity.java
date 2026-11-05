@@ -33,7 +33,7 @@ import java.util.concurrent.Executors;
 /** Only packaged, trusted HTML can send bridge messages. Keys never return to JavaScript. */
 public final class MainActivity extends Activity {
     private static final String ORIGIN = "https://appassets.androidplatform.net";
-    private static final int PICK_VIDEO = 101, EXPORT = 102, IMPORT = 103, ON_DEVICE_STT = 105, CLOUD_LIVE = 106;
+    private static final int PICK_VIDEO = 101, EXPORT = 102, IMPORT = 103, ON_DEVICE_STT = 105, CLOUD_LIVE = 106, OFFLINE_VOSK = 107;
     private static final int MAX_TEXT_BYTES = 8 * 1024 * 1024;
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final ExecutorService connectionIo = Executors.newSingleThreadExecutor();
@@ -218,6 +218,17 @@ public final class MainActivity extends Activity {
                     store.deleteCompleted(params.getString("jobId"));
                     result = true; break;
                 case "importSubtitles": startPicker(id, IMPORT, null, null, null, null, null); return;
+                case "openOfflineModel":
+                    String offlineRequestId = id;
+                    runOnUiThread(() -> {
+                        try {
+                            startActivityForResult(new Intent(this, OfflineVoskActivity.class), OFFLINE_VOSK);
+                            reply(offlineRequestId, true, null);
+                        } catch (RuntimeException error) {
+                            reply(offlineRequestId, null, "독립 로컬 AI 모델 화면을 열 수 없습니다.");
+                        }
+                    });
+                    return;
                 case "openCloudLive":
                     String cloudRequestId = id;
                     runOnUiThread(() -> {
@@ -425,11 +436,12 @@ public final class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == ON_DEVICE_STT || requestCode == CLOUD_LIVE) {
+        if (requestCode == ON_DEVICE_STT || requestCode == CLOUD_LIVE || requestCode == OFFLINE_VOSK) {
             String storedJobId = data == null ? null : data.getStringExtra("jobId");
             if (resultCode == RESULT_OK && storedJobId != null) {
                 pendingOnDeviceJobId = storedJobId;
-                pendingCaptionMode = requestCode == CLOUD_LIVE ? "GPT 실시간" : "온디바이스";
+                pendingCaptionMode = requestCode == CLOUD_LIVE ? "GPT 실시간" :
+                        requestCode == OFFLINE_VOSK ? "독립 로컬 AI" : "온디바이스";
             }
             return;
         }

@@ -802,6 +802,7 @@ for (const [id, action] of Object.entries({
   jumpToExport: async () => { await show('results'); if (view === 'results') $('exportSection').focus({ preventScroll: true }); },
   openOnDevice: async () => { await flushSave(); await nativeCall('openOnDevice'); },
   openCloudLive: async () => { await flushSave(); await nativeCall('openCloudLive'); },
+  openOfflineModel: async () => { await flushSave(); await nativeCall('openOfflineModel'); },
   importSubtitles: async () => { await flushSave(); const file = await nativeCall('importSubtitles'); if (!file) return; const cues = parseSubtitleFileText(file.text, file.name); if (!cues.length) throw new Error('읽을 수 있는 자막이 없습니다. SRT, VTT 또는 JSON 형식을 확인해 주세요.'); setLoadedJob(await nativeCall('importCues', { name: file.name, cues })); await show('editor'); await refresh(); },
   preview: () => previewAt(0), retrySave: async () => { await flushSave(); message('변경 내용을 기기에 저장했습니다.'); },
   prevPage: () => changePage(-1), nextPage: () => changePage(1),
