@@ -28,6 +28,16 @@ jobs:
         env:
           PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
         run: node --test android/tests/*.test.mjs
+      - name: Upload redesigned web and Android screen captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: subtitle-workbench-v08-design-screens
+          path: |
+            output/redesign-web/*.png
+            output/redesign-android/*.png
+          retention-days: 14
+          if-no-files-found: warn
 
   android:
     name: Android unit, lint and debug APK
