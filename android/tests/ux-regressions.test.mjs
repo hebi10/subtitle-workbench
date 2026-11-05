@@ -463,3 +463,28 @@ regression('completed work deletion requires explicit confirmation and preserves
   await page.waitForFunction(() => !document.querySelector('.job[data-job-id="complete-1"]'));
   assert.equal(await page.evaluate(() => window.mockNative.jobs.some((job) => job.id === 'partial-1')), true);
 });
+
+regression('on-device microphone entry is independent of the API key and returns a saved job', async (page) => {
+  await page.evaluate(() => {
+    window.mockNative.hasKey = false;
+    window.nativeEvent({ type: 'status' });
+  });
+  await page.locator('#navVideo').click();
+  assert.equal(await page.locator('#pickVideo').isDisabled(), true);
+  assert.equal(await page.locator('#openOnDevice').isEnabled(), true);
+  await page.locator('#openOnDevice').click();
+  await page.waitForFunction(() => window.mockNative.calls.some(call => call.method === 'openOnDevice'));
+  await page.evaluate(() => {
+    const template = window.mockNative.jobs.find(job => job.id === 'complete-1');
+    window.mockNative.jobs.push({ ...template, id: 'ondevice-1', name: '온디바이스 마이크 테스트', uri: '' });
+    window.mockNative.cues['ondevice-1'] = [
+      { start: 0, end: 1.2, original: '오프라인 테스트', translated: '', timingAccuracy: 'estimated' },
+    ];
+    window.onDeviceCaptionSaved('ondevice-1');
+  });
+  await page.waitForFunction(() => document.getElementById('resultName').textContent === '온디바이스 마이크 테스트');
+  assert.equal(await page.locator('#resultsView').isVisible(), true);
+  assert.equal(await page.locator('#resultPreview').isDisabled(), true);
+  await page.locator('#editResult').click();
+  assert.match(await page.locator('.cue-issues').first().textContent(), /시간 추정/);
+});

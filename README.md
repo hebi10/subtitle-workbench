@@ -147,3 +147,7 @@ Cross-Origin-Resource-Policy: same-origin
 - Android에 완료 작업 기록 삭제 기능을 추가했습니다. 원본 미디어 파일은 변경하지 않습니다.
 - Android 0.5.0 **소스**: `targetSdk=36`, `versionCode=5`; GitHub Actions CI 빌드와 실제 APK 게시·Play 배포는 별도 상태입니다. 자동 배포에는 5가지 Repository Secrets가 필요합니다. 자세한 내용은 [배포 자동화](docs/release-automation.md).
 - 로컬 AI 모델 설치·다운로드 및 실시간 마이크 인식은 이 릴리스에 포함되지 않습니다. Whisper/GPT 출력 호환성과 실제 기기에서 비용·성능을 검증한 뒤 독립 기능으로 개발해야 합니다.
+
+## 0.6.0 온디바이스 자막 기능
+
+Android 12 이상에서 기기 자체 음성 인식 엔진이 제공되는 경우 **영상 추가 → 온디바이스 마이크 자막**을 사용할 수 있습니다. 모델 다운로드 요청은 Android 13 이상에서 지원하며 OS 서비스가 모델을 관리합니다. 이 경로는 API 키가 필요 없지만 기기마다 지원 여부가 다릅니다. 음성 인식 결과는 문장 단위로 저장하고 시간 정보는 추정값으로 표시합니다. [Android 상세 사용법](android/README.md)
