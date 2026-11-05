@@ -131,3 +131,6 @@ summary { min-height: 48px; padding: 12px 0; cursor: pointer; font-size: 14px; c
 
 .delete-warning { margin: 12px 0 0; }
 .cue-detail > label { min-width: 0; }
+
+.local-caption-entry { display: grid; gap: 4px; margin-top: 12px; padding: 12px; background: var(--paper); border: 1px solid var(--line); }
+.local-caption-entry p { margin: 0; }
