@@ -1,0 +1,85 @@
+name: Publish signed Android AAB to Google Play
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Target test track (internal default, closed = alpha)'
+        required: true
+        type: choice
+        default: internal
+        options:
+          - internal
+          - alpha
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-subtitle-workbench
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_UPLOAD_KEYSTORE_B64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_B64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check deployment credentials
+        id: credentials
+        shell: bash
+        run: |
+          if [[ -n "$ANDROID_UPLOAD_KEYSTORE_B64" && -n "$ANDROID_KEYSTORE_PASSWORD" && -n "$ANDROID_KEY_ALIAS" && -n "$ANDROID_KEY_PASSWORD" && -n "$PLAY_SERVICE_ACCOUNT_JSON" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "::error::Configure all five Android and Google Play secrets before manual deployment."
+            exit 1
+          else
+            echo "::notice::Play credentials missing; automatic upload skipped."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-java@v4
+        if: steps.credentials.outputs.enabled == 'true'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        if: steps.credentials.outputs.enabled == 'true'
+      - name: Install SDK 36
+        if: steps.credentials.outputs.enabled == 'true'
+        run: sdkmanager --install 'platforms;android-36' 'build-tools;35.0.0'
+      - name: Configure signing key securely
+        if: steps.credentials.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          echo "$ANDROID_UPLOAD_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/upload-keystore.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload-keystore.jks" >> "$GITHUB_ENV"
+      - name: Verify and build signed release bundle
+        if: steps.credentials.outputs.enabled == 'true'
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon testDebugUnitTest lintDebug bundleRelease
+      - name: Preserve signed bundle as workflow artifact
+        if: steps.credentials.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: subtitle-workbench-signed-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 14
+      - name: Upload to Google Play test track
+        if: steps.credentials.outputs.enabled == 'true'
+        uses: r0adkll/upload-google-play@v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.haebi.subtitle
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          tracks: ${{ github.event_name == 'workflow_dispatch' && inputs.track || 'internal' }}
+          status: completed

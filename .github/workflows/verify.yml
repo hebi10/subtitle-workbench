@@ -1,0 +1,54 @@
+name: Verify web and Android
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Web unit and UI tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Web unit tests
+        run: npm test
+      - name: Install Playwright for WebView UI regressions
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: WebView UI regression tests
+        env:
+          PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
+        run: node --test android/tests/*.test.mjs
+
+  android:
+    name: Android unit, lint and debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK 36
+        run: sdkmanager --install 'platforms;android-36' 'build-tools;35.0.0'
+      - name: Gradle verification and debug APK
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: subtitle-workbench-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

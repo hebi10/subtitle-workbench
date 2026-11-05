@@ -54,7 +54,7 @@ Android 8.0(API 26) 이상용 앱입니다. 새 작업은 최대 3시간(180분)
 
 ## 빌드
 
-JDK 17 또는 21, Android SDK Platform 35 / Build Tools 35.0.0이 필요합니다. `android/`를 Android Studio에서 열거나 다음 명령을 실행합니다.
+JDK 17 또는 21, Android SDK Platform 36 / Build Tools 35.0.0이 필요합니다. `android/`를 Android Studio에서 열거나 다음 명령을 실행합니다.
 
 ```powershell
 $env:JAVA_HOME = '설치한 JDK 경로'
