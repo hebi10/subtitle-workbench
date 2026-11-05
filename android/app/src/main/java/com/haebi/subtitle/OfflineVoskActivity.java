@@ -97,7 +97,7 @@ public final class OfflineVoskActivity extends Activity {
         sourceStatus = label(root, "선택한 영상·오디오가 없습니다.", 14, false);
         NativeDesignSystem.surfaceText(sourceStatus, getResources().getDisplayMetrics().density);
         pick = button(root, "영상·오디오 파일 선택", false, this::pickFile);
-        label(root, "오프라인 인식은 최대 60분 파일을 지원합니다. 기기 성능에 따라 처리 시간이 길어질 수 있으며 원본은 앱에 복사하지 않습니다.", 13, false);
+        label(root, "오프라인 인식은 최대 60분 파일을 지원합니다. 기기 성능에 따라 처리 시간이 길어질 수 있습니다. 원본은 복사하지 않고 파일 선택기의 읽기 권한으로 미리보기와 연결합니다.", 13, false);
 
         label(root, "03 · 인식 결과", 16, true);
         run = button(root, "오프라인 음성 인식 시작", true, this::runTranscription);
@@ -218,7 +218,7 @@ public final class OfflineVoskActivity extends Activity {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("*/*");
         intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/*", "video/*"});
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         try { startActivityForResult(intent, PICK_MEDIA); }
         catch (RuntimeException error) { status.setText("기기의 파일 선택기를 열 수 없습니다."); }
     }
@@ -228,6 +228,11 @@ public final class OfflineVoskActivity extends Activity {
         if (requestCode != PICK_MEDIA) return;
         if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
         sourceUri = data.getData();
+        if ((data.getFlags() & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
+            try {
+                getContentResolver().takePersistableUriPermission(sourceUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } catch (SecurityException ignored) { /* The provider may grant only temporary access. */ }
+        }
         sourceName = displayName(sourceUri);
         cues = null;
         sourceStatus.setText(sourceName);
@@ -292,7 +297,7 @@ public final class OfflineVoskActivity extends Activity {
         status.setText("인식된 자막을 작업 기록에 저장 중…");
         worker.execute(() -> {
             try (JobStore store = new JobStore(getApplicationContext())) {
-                String id = store.importCues(name, snapshot);
+                String id = store.importCues(name, snapshot, sourceUri.toString());
                 runOnUiThread(() -> {
                     if (destroyed) return;
                     setResult(RESULT_OK, new Intent().putExtra("jobId", id));
