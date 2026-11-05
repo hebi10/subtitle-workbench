@@ -30,6 +30,14 @@ public class TranscriptTest {
         assertEquals(421.4, cues.getJSONObject(1).getDouble("end"), 0.001);
     }
 
+    @Test public void diarizedSegmentsKeepSpeakerLabelsInEverySplitCue() throws Exception {
+        JSONObject raw = new JSONObject("{\"segments\":[{\"start\":0,\"end\":1,\"text\":\"Hello\",\"speaker\":\"A\"},{\"start\":1,\"end\":2,\"text\":\"Yes\",\"speaker\":\"B\"}]}");
+        JSONArray cues = Transcript.normalize(raw, 0, 0, 3000);
+        assertEquals(2, cues.length());
+        assertEquals("A", cues.getJSONObject(0).getString("speaker"));
+        assertEquals("B", cues.getJSONObject(1).getString("speaker"));
+    }
+
     @Test public void translationsMapByIdAndNeverSilentlyCompleteMissingText() throws Exception {
         JSONArray source = new JSONArray("[{\"start\":1,\"end\":2,\"original\":\"one\"},{\"start\":2,\"end\":3,\"original\":\"two\"}]");
         JSONArray result = Transcript.translations(source, "{\"translations\":[{\"id\":1,\"translated\":\"둘\"},{\"id\":0,\"translated\":\"하나\"}]}");

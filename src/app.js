@@ -39,6 +39,7 @@ import {
   splitSubtitleAt,
   updateSubtitleTimingAt,
   updateSubtitleTextAt,
+  updateSpeakerAt,
 } from './subtitle-editor.js';
 
 const STEPS = [
@@ -364,6 +365,8 @@ function bindEvents() {
       state.subtitles = updateSubtitleTimingAt(state.subtitles, index, {
         [timeField]: event.target.value,
       });
+    } else if (event.target.dataset.speakerEdit === 'true') {
+      state.subtitles = updateSpeakerAt(state.subtitles, index, event.target.value);
     } else {
       return;
     }
@@ -675,13 +678,14 @@ async function runPipelineForCurrentFile(batchInfo, settings, signal) {
   completeStep('silence');
   signal.throwIfAborted();
 
+  const textOnlyModel = settings.sttModel === 'gpt-transcribe';
   const chunks = buildChunkPlan({
     duration: state.duration,
     silences,
-    targetSeconds: settings.targetSeconds,
-    minSeconds: settings.minSeconds,
-    maxSeconds: settings.maxSeconds,
-    searchRadiusSeconds: settings.searchRadiusSeconds,
+    targetSeconds: textOnlyModel ? 30 : settings.targetSeconds,
+    minSeconds: textOnlyModel ? 20 : settings.minSeconds,
+    maxSeconds: textOnlyModel ? 40 : settings.maxSeconds,
+    searchRadiusSeconds: textOnlyModel ? 10 : settings.searchRadiusSeconds,
     paddingSeconds: settings.paddingSeconds,
   });
 
@@ -751,6 +755,8 @@ async function runPipelineForCurrentFile(batchInfo, settings, signal) {
         end: segment.end,
         original: segment.original ?? segment.text ?? '',
         translated: '',
+        ...(segment.speaker ? { speaker: segment.speaker, speakerScope: chunkAudio.index } : {}),
+        ...(textOnlyModel && !transcription?.words?.length && !transcription?.segments?.length ? { timingAccuracy: 'estimated' } : {}),
       })),
     };
     chunkSubtitleGroups.push(chunkSubtitleGroup);
@@ -1154,7 +1160,7 @@ function renderPreview(subtitles) {
       const translated = document.createElement('td');
 
       time.textContent = `${formatTimestamp(subtitle.start, ',')} - ${formatTimestamp(subtitle.end, ',')}`;
-      original.textContent = subtitle.original;
+      original.textContent = `${subtitle.speaker ? `[${subtitle.speaker}] ` : ''}${subtitle.original}`;
       translated.textContent = subtitle.translated || '';
 
       row.append(time, original, translated);
@@ -1218,6 +1224,24 @@ function renderEditor() {
         createTimeInput(index, 'end', subtitle.end),
         createCueWarnings(metrics),
       );
+      const speakerLabel = document.createElement('label');
+      speakerLabel.className = 'time-edit-group';
+      speakerLabel.textContent = '화자';
+      const speakerInput = document.createElement('input');
+      speakerInput.type = 'text';
+      speakerInput.maxLength = 32;
+      speakerInput.placeholder = '미지정';
+      speakerInput.value = subtitle.speaker || '';
+      speakerInput.dataset.editIndex = String(index);
+      speakerInput.dataset.speakerEdit = 'true';
+      speakerInput.setAttribute('aria-label', `${index + 1}번 자막 화자`);
+      speakerLabel.append(speakerInput);
+      time.append(speakerLabel);
+      if (subtitle.timingAccuracy === 'estimated') {
+        const note = document.createElement('small');
+        note.textContent = '시간 추정 · 실제 영상과 확인 필요';
+        time.append(note);
+      }
 
       const originalInput = createSubtitleTextarea(index, 'original', subtitle.original);
       const translatedInput = createSubtitleTextarea(index, 'translated', subtitle.translated);

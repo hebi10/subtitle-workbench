@@ -32,7 +32,7 @@ Android 8.0(API 26) 이상용 앱입니다. 새 작업은 최대 3시간(180분)
 ## 모델과 API 키
 
 - 번역 기본값은 `gpt-6-luna`입니다. 0.1 버전의 전역 기본값 `gpt-5.5`는 한 번 갱신하며, 다른 사용자 지정 모델과 기존 작업에 저장된 모델은 보존합니다. 기존 작업의 모델 변경은 사용자가 명시적으로 선택해야 합니다.
-- 음성 인식은 단어·구간 타임스탬프를 제공하는 `whisper-1`을 사용합니다. 공식 종료 예정일은 **2027년 2월 26일**입니다. `gpt-6-luna`는 음성 입력을 지원하지 않습니다. 음성 모델 전환은 자막 시간 정렬 호환성을 검증한 후 별도로 진행해야 합니다. [OpenAI 지원 종료 안내](https://developers.openai.com/api/docs/deprecations), [타임스탬프 안내](https://developers.openai.com/api/docs/guides/speech-to-text).
+- 기본 음성 인식은 단어·구간 타임스탬프를 제공하는 `whisper-1`이며, 설정에서 `gpt-transcribe` 또는 `gpt-4o-transcribe-diarize`를 선택할 수 있습니다. `gpt-transcribe`는 단어별 시간을 제공하지 않아서 30초 단위 추출 후 자막 시각을 추정하며 수동 싱크 확인이 필요합니다. 화자 자동 구분은 현재 지원 종료 예정인 모델의 구간별 `speaker` 값을 보존합니다. 후속 구간의 동일한 화자 ID가 같은 인물이라는 보장은 없습니다. 공식 종료 예정일은 **2027년 2월 26일**입니다. `gpt-6-luna`는 음성 입력을 지원하지 않습니다. 음성 모델 전환은 자막 시간 정렬 호환성을 검증한 후 별도로 진행해야 합니다. [OpenAI 지원 종료 안내](https://developers.openai.com/api/docs/deprecations), [타임스탬프 안내](https://developers.openai.com/api/docs/guides/speech-to-text).
 - 키 저장과 연결 확인은 별도 상태입니다. 키·모델 설정을 바꾸면 이전 연결 확인 결과는 더 이상 표시하지 않습니다.
 - 키 교체·삭제는 진행 중인 작업을 일시정지하고 요청이 정리된 뒤 가능합니다. 키를 삭제해도 자막과 작업 기록은 보존됩니다.
 
@@ -119,3 +119,11 @@ Set-Location android
 - `PreviewActivity`: Media3 네이티브 영상 및 자막 재생.
 
 참고: [Android foreground service 변경 사항](https://developer.android.com/develop/background-work/services/fgs/changes), [Media3 Transformer](https://developer.android.com/media/media3/transformer/getting-started), [OpenAI 음성 인식](https://developers.openai.com/api/docs/guides/speech-to-text).
+
+## 작업 기록 삭제
+
+완료된 작업의 카드에서 **기록 삭제 → 삭제 확인**을 선택하면 SQLite에 저장된 해당 자막·번역·체크포인트를 제거합니다. 선택한 원본 영상/오디오 파일은 삭제하지 않습니다. 삭제한 작업은 앱에서 복원할 수 없으므로 필요한 SRT/VTT/JSON을 먼저 내보내세요.
+
+## Google Play 자동화
+
+[CI 및 Play 내부 테스트 구성](../docs/release-automation.md)을 참고하세요. 현재 v0.5.0 소스는 API 36을 대상으로 하며, 키스토어와 Play 서비스 계정이 등록되어 있어야 서명된 AAB 업로드가 실행됩니다. GitHub의 v0.4.0 공개 APK는 이 소스 변경이 반영된 신규 빌드가 아닙니다.

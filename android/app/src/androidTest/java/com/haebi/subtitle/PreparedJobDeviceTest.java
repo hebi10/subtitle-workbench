@@ -40,6 +40,41 @@ public class PreparedJobDeviceTest {
         }
     }
 
+    @Test public void changingTranscriptionModelRebuildsOnlyItsOwnPreparedChunkPlan() throws Exception {
+        try (JobStore store = new JobStore(isolatedContext())) {
+            String id = prepared(store);
+            String another = prepared(store);
+            assertEquals(3, store.get(id).getInt("totalChunks"));
+            JSONObject updated = store.updatePreparedSettings(id, new JSONObject().put("sttModel", "gpt-transcribe"));
+            assertEquals(30, updated.getInt("totalChunks"));
+            assertEquals("gpt-transcribe", updated.getJSONObject("settings").getString("sttModel"));
+            assertEquals(3, store.get(another).getInt("totalChunks"));
+            try (Cursor first = store.getReadableDatabase().rawQuery(
+                    "SELECT start_ms,end_ms FROM chunks WHERE job_id=? AND chunk_index=1", new String[]{id})) {
+                assertTrue(first.moveToFirst());
+                assertEquals(30000L, first.getLong(0));
+                assertEquals(60000L, first.getLong(1));
+            }
+            JSONObject back = store.updatePreparedSettings(id, new JSONObject().put("sttModel", "whisper-1"));
+            assertEquals(3, back.getInt("totalChunks"));
+            assertEquals(0L, back.getJSONObject("progress").getLong("lastSavedAt"));
+        }
+    }
+
+    @Test public void modelSwitchWriteFailureRollsBackSettingsAndChunkPlan() throws Exception {
+        try (JobStore store = new JobStore(isolatedContext())) {
+            String id = prepared(store);
+            JSONObject previous = store.get(id);
+            store.getWritableDatabase().execSQL(
+                    "CREATE TRIGGER reject_model_plan BEFORE INSERT ON chunks BEGIN SELECT RAISE(ABORT, 'fixture write failure'); END");
+            assertThrows(android.database.sqlite.SQLiteException.class,
+                    () -> store.updatePreparedSettings(id, new JSONObject().put("sttModel", "gpt-transcribe")));
+            assertEquals(previous.getJSONObject("settings").toString(),
+                    store.get(id).getJSONObject("settings").toString());
+            assertEquals(3, store.get(id).getInt("totalChunks"));
+        }
+    }
+
     @Test public void replacingVideoRetainsIdentityAndRebuildsOnlyTheUnstartedPlan() throws Exception {
         Context context = isolatedContext();
         String id;

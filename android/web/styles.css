@@ -128,3 +128,6 @@ summary { min-height: 48px; padding: 12px 0; cursor: pointer; font-size: 14px; c
 .check-label { display: flex; align-items: center; min-height: 48px; color: var(--ink); }
 .check-label input { width: 24px; height: 24px; min-height: 24px; accent-color: var(--ink); }
 @media (min-width: 620px) { .app-header, main { padding-left: 32px; padding-right: 32px; } .cue-detail { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cue-times, .cue-detail > details, .cue-detail > .cue-actions { grid-column: 1 / -1; } .app-nav { padding-left: max(32px, calc((100vw - 736px) / 2)); padding-right: max(32px, calc((100vw - 736px) / 2)); } }
+
+.delete-warning { margin: 12px 0 0; }
+.cue-detail > label { min-width: 0; }

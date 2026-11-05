@@ -45,6 +45,22 @@ public class JobStoreTest {
         }
     }
 
+    @Test public void deletingCompletedJobPreservesOtherJobsAndRejectsUnfinishedWork() throws Exception {
+        try (JobStore store = new JobStore(ApplicationProvider.getApplicationContext())) {
+            String complete = store.importCues("delete-me",
+                    new JSONArray("[{\"start\":0,\"end\":1,\"original\":\"one\",\"speaker\":\"A\"}]"));
+            String another = store.importCues("keep-me",
+                    new JSONArray("[{\"start\":0,\"end\":2,\"original\":\"two\"}]"));
+            String pending = store.createPrepared("content://test/other", "pending", 60_000L, new JSONObject());
+            assertThrows(IllegalArgumentException.class, () -> store.deleteCompleted(pending));
+            store.deleteCompleted(complete);
+            assertThrows(IllegalArgumentException.class, () -> store.get(complete));
+            assertEquals("two", store.cues(another).getJSONObject(0).getString("original"));
+            assertEquals("ready", store.get(pending).getString("stage"));
+            assertThrows(IllegalArgumentException.class, () -> store.deleteCompleted(complete));
+        }
+    }
+
     @Test public void elapsedTimeExcludesPausesAndStatusPollingIsNotACheckpoint() throws Exception {
         try (JobStore store = new JobStore(ApplicationProvider.getApplicationContext())) {
             String id = store.create("content://test/elapsed", "elapsed", 1000, new JSONObject());

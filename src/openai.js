@@ -1,23 +1,28 @@
 export const OPENAI_DEFAULTS = {
   apiBaseUrl: 'https://api.openai.com/v1',
   sttModel: 'whisper-1',
-  translationModel: 'gpt-5.5',
+  translationModel: 'gpt-6-luna',
   translationBatchSize: 30,
 };
 
 export async function requestTranscription({ audioBlob, fileName, settings, signal }) {
   const form = new FormData();
   form.append('file', audioBlob, fileName);
-  form.append('model', settings.sttModel || OPENAI_DEFAULTS.sttModel);
-  form.append('response_format', 'verbose_json');
+  const model = settings.sttModel || OPENAI_DEFAULTS.sttModel;
+  if (!['whisper-1', 'gpt-transcribe', 'gpt-4o-transcribe-diarize'].includes(model)) {
+    throw new Error('지원하지 않는 음성 인식 모델입니다.');
+  }
+  form.append('model', model);
+  form.append('response_format', model === 'whisper-1' ? 'verbose_json' :
+    model === 'gpt-4o-transcribe-diarize' ? 'diarized_json' : 'json');
 
-  if ((settings.sttModel || OPENAI_DEFAULTS.sttModel) === 'whisper-1') {
+  if (model === 'whisper-1') {
     form.append('timestamp_granularities[]', 'segment');
     form.append('timestamp_granularities[]', 'word');
   }
-
+  if (model === 'gpt-4o-transcribe-diarize') form.append('chunking_strategy', 'auto');
   if (settings.sourceLanguage && settings.sourceLanguage !== 'auto') {
-    form.append('language', settings.sourceLanguage);
+    form.append(model === 'gpt-transcribe' ? 'languages[]' : 'language', settings.sourceLanguage);
   }
 
   const response = await apiFetch('/audio/transcriptions', {

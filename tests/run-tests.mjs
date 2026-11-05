@@ -15,3 +15,4 @@ import './credential-ui-state.test.mjs';
 import './credential-controller.test.mjs';
 import './edit-history.test.mjs';
 import './job-runner.test.mjs';
+import './speaker-export.test.mjs';

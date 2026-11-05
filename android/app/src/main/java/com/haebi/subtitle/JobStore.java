@@ -73,10 +73,18 @@ public final class JobStore extends SQLiteOpenHelper {
         synchronized (WORKER_LOCK) {
             transaction(db -> {
                 requirePrepared(db, id);
+                JSONObject previous = get(id);
+                JSONObject checked = AppSettings.checked(settings == null ? new JSONObject() : settings);
+                String oldModel = AppSettings.transcriptionModel(previous.getJSONObject("settings"));
+                String nextModel = AppSettings.transcriptionModel(checked);
                 ContentValues values = new ContentValues();
-                values.put("settings", AppSettings.checked(settings == null ? new JSONObject() : settings).toString());
+                values.put("settings", checked.toString());
                 values.put("updated_at", System.currentTimeMillis());
                 db.update("jobs", values, "id=?", new String[]{id});
+                if (!oldModel.equals(nextModel)) {
+                    db.delete("chunks", "job_id=?", new String[]{id});
+                    insertChunks(db, id, previous.getLong("durationMs"), nextModel);
+                }
             });
             return get(id);
         }
@@ -94,7 +102,7 @@ public final class JobStore extends SQLiteOpenHelper {
                 values.put("updated_at", System.currentTimeMillis());
                 db.update("jobs", values, "id=?", new String[]{id});
                 db.delete("chunks", "job_id=?", new String[]{id});
-                insertChunks(db, id, durationMs);
+                insertChunks(db, id, durationMs, AppSettings.transcriptionModel(settings == null ? new JSONObject() : settings));
             });
             return get(id);
         }
@@ -135,10 +143,11 @@ public final class JobStore extends SQLiteOpenHelper {
         validateVideo(uri, durationMs);
         String id = UUID.randomUUID().toString();
         transaction(db -> {
-            ContentValues job = jobValues(id, uri, name, durationMs, safeSettings(settings), prepared ? "paused" : "queued");
+            JSONObject safe = safeSettings(settings);
+            ContentValues job = jobValues(id, uri, name, durationMs, safe, prepared ? "paused" : "queued");
             if (prepared) { job.put("stage", "ready"); job.put("progress_message", "시작 전 설정과 API 요금 안내를 확인해 주세요."); }
             db.insertOrThrow("jobs", null, job);
-            insertChunks(db, id, durationMs);
+            insertChunks(db, id, durationMs, AppSettings.transcriptionModel(safe));
         });
         return id;
     }
@@ -148,8 +157,8 @@ public final class JobStore extends SQLiteOpenHelper {
         if (durationMs > MAX_DURATION_MS) throw new IllegalArgumentException("새 영상은 최대 3시간(180분)까지 처리할 수 있습니다.");
     }
 
-    private static void insertChunks(SQLiteDatabase db, String id, long durationMs) {
-        for (ChunkPlan.Segment segment : ChunkPlan.create(durationMs, CHUNK_MS, PADDING_MS)) {
+    private static void insertChunks(SQLiteDatabase db, String id, long durationMs, String sttModel) {
+        for (ChunkPlan.Segment segment : ChunkPlan.create(durationMs, AppSettings.chunkMs(sttModel), PADDING_MS)) {
             ContentValues row = new ContentValues();
             row.put("job_id", id); row.put("chunk_index", segment.index); row.put("start_ms", segment.startMs); row.put("end_ms", segment.endMs);
             row.put("extract_start_ms", segment.extractStartMs); row.put("extract_end_ms", segment.extractEndMs);
@@ -169,6 +178,22 @@ public final class JobStore extends SQLiteOpenHelper {
             checkpoint(db, id, 0);
         });
         return id;
+    }
+
+    public void deleteCompleted(String id) {
+        synchronized (WORKER_LOCK) {
+            transaction(db -> {
+                JSONObject job = get(id);
+                if (!"completed".equals(job.getString("status")) || JobService.isWorking(id))
+                    throw new IllegalArgumentException("완료된 작업만 삭제할 수 있습니다.");
+                String[] args = new String[]{id};
+                db.delete("batches", "job_id=?", args);
+                db.delete("payloads", "job_id=?", args);
+                db.delete("chunks", "job_id=?", args);
+                if (db.delete("jobs", "id=?", args) != 1) throw new IllegalStateException("작업을 삭제하지 못했습니다.");
+            });
+            RUN_CLOCKS.remove(id);
+        }
     }
 
     public JSONArray list() { return jobsWhere(null); }
@@ -407,6 +432,7 @@ public final class JobStore extends SQLiteOpenHelper {
         // Explicit whitelist: API keys, proxy credentials and arbitrary UI values never reach SQLite.
         return new JSONObject().put("sourceLanguage", limited(input.optString("sourceLanguage", "auto"), 16))
             .put("targetLanguage", limited(input.optString("targetLanguage", "ko"), 32))
+            .put("sttModel", AppSettings.transcriptionModel(input))
             .put("translationModel", limited(input.optString("translationModel", "gpt-6-luna"), 100)).put("translate", input.optBoolean("translate", true));
     }
 

@@ -1,5 +1,5 @@
-import { sortSubtitles, formatTimestamp, formatSrt, formatVtt, toSubtitleJson, sanitizeFileBase } from '../shared/core.js';
-import { updateSubtitleTextAt, updateSubtitleTimingAt, splitSubtitleAt, mergeSubtitleWithNext } from '../shared/subtitle-editor.js';
+import { sortSubtitles, formatTimestamp, formatSrt, formatVtt, toSubtitleJson, sanitizeFileBase, speakerMarkedText } from '../shared/core.js';
+import { updateSubtitleTextAt, updateSubtitleTimingAt, updateSpeakerAt, splitSubtitleAt, mergeSubtitleWithNext } from '../shared/subtitle-editor.js';
 import { createEditHistory, commitEdit, undoEdit, redoEdit } from '../shared/edit-history.js';
 import { parseSubtitleFileText } from '../shared/subtitle-player.js';
 
@@ -11,6 +11,7 @@ const pageSession = typeof crypto.randomUUID === 'function'
 const PAGE_SIZE = 12;
 const JOBS_PAGE_SIZE = 4;
 const DEFAULT_TRANSLATION_MODEL = 'gpt-6-luna';
+const DEFAULT_STT_MODEL = 'whisper-1';
 const statusNames = { queued: '대기 중', running: '생성 중', paused: '일시정지', error: '처리 오류', completed: '완료' };
 const languageNames = { auto: '자동 감지', ko: '한국어', en: '영어', ja: '일본어', zh: '중국어', es: '스페인어', fr: '프랑스어', de: '독일어' };
 let serial = 0;
@@ -36,7 +37,8 @@ let changingJob = false;
 let refreshingResultId = null;
 let settingsHydrated = false;
 let settingsTouched = false;
-let savedSettings = { sourceLanguage: 'auto', targetLanguage: 'ko', translate: true, translationModel: DEFAULT_TRANSLATION_MODEL };
+let pendingDeletionId = '';
+let savedSettings = { sourceLanguage: 'auto', targetLanguage: 'ko', sttModel: DEFAULT_STT_MODEL, translate: true, translationModel: DEFAULT_TRANSLATION_MODEL };
 const preparedEditors = new Map();
 let connection = { hasKey: false, keyCheck: null };
 let checkingConnection = false;
@@ -146,7 +148,7 @@ async function refresh() {
     connection = { hasKey: Boolean(state.hasKey), keyCheck: state.keyCheck || null };
     if (firstStatus) $('apiSettings').open = !connection.hasKey;
     syncConnection();
-    const fingerprint = JSON.stringify([jobs, connection.hasKey, savedSettings.translationModel]);
+    const fingerprint = JSON.stringify([jobs, connection.hasKey, savedSettings.translationModel, savedSettings.sttModel, pendingDeletionId]);
     if (fingerprint !== jobFingerprint) { renderJobs(); jobFingerprint = fingerprint; }
     if (current && !changingJob) {
       const latest = jobs.find((job) => job.id === current.id);
@@ -187,7 +189,7 @@ function renderJobs() {
   for (const job of ordered) {
     const old = existing.get(job.id);
     const ready = isPrepared(job);
-    const renderKey = JSON.stringify([job, connection.hasKey, savedSettings.translationModel, jobActionsInFlight.has(job.id)]);
+    const renderKey = JSON.stringify([job, connection.hasKey, savedSettings.translationModel, savedSettings.sttModel, jobActionsInFlight.has(job.id), pendingDeletionId === job.id]);
     if (old && (old.dataset.renderKey === renderKey || (ready && old.dataset.prepared === 'true'))) {
       if (ready) {
         old.querySelector('h3').textContent = job.name;
@@ -198,6 +200,7 @@ function renderJobs() {
           '원본 언어': languageNames[settings.sourceLanguage] || settings.sourceLanguage || '자동 감지',
           '번역 언어': settings.translate === false ? '번역 안 함' : languageNames[settings.targetLanguage] || settings.targetLanguage || '한국어',
           '번역 모델': settings.translate === false ? '번역 안 함' : settings.translationModel || '기존 작업 설정',
+          '음성 인식': settings.sttModel || DEFAULT_STT_MODEL,
         };
         for (const line of old.querySelectorAll('.job-details > div')) line.querySelector('dd').textContent = settingDetails[line.querySelector('dt').textContent];
         old.querySelectorAll('button').forEach((node) => {
@@ -242,6 +245,7 @@ function renderJobs() {
       if (typeof detail.elapsedMs === 'number') row('경과 시간', formatDuration(detail.elapsedMs));
       row('마지막 저장', detail.lastSavedAt ? formatSavedAt(detail.lastSavedAt) : done ? '저장 시각 기록 없음' : '아직 저장된 결과 없음');
     }
+    row('음성 인식', settings.sttModel || DEFAULT_STT_MODEL);
     row('번역 모델', settings.translate === false ? '번역 안 함' : settings.translationModel || '기존 작업 설정');
     const inspection = el('details', undefined, 'job-inspection');
     inspection.append(el('summary', ready ? '처리 설정 · 비용 안내' : '처리 상세'), details);
@@ -256,7 +260,17 @@ function renderJobs() {
     const actions = el('div', undefined, 'job-actions');
     if (!ready) actions.append(button(job.status === 'completed' ? '자막 편집' : '자막 보기', () => openJob(job.id)));
     if (!ready) actions.append(button('결과 보기', () => openJob(job.id, 'results')));
-    if (job.status === 'completed') actions.append(button('SRT 저장', () => exportJob(job.id), jobActionsInFlight.has(job.id)));
+    if (job.status === 'completed') {
+      actions.append(button('SRT 저장', () => exportJob(job.id), jobActionsInFlight.has(job.id)));
+      if (pendingDeletionId === job.id) {
+        const confirmation = el('p', '저장된 자막과 작업 기록을 삭제합니다. 원본 영상은 삭제하지 않습니다.', 'hint delete-warning');
+        article.append(confirmation);
+        actions.append(button('삭제 확인', () => deleteCompletedJob(job.id), jobActionsInFlight.has(job.id)));
+        actions.append(button('취소', () => { pendingDeletionId = ''; renderJobs(); }));
+      } else {
+        actions.append(button('기록 삭제', () => { pendingDeletionId = job.id; renderJobs(); }));
+      }
+    }
     if (['running', 'queued'].includes(job.status)) actions.append(button('일시정지', () => runJobAction(job.id, async () => { await nativeCall('pause', { jobId: job.id }); await refresh(); }), jobActionsInFlight.has(job.id)));
     if (['paused', 'error'].includes(job.status)) {
       const start = button(ready ? '생성 시작' : '이어하기', () => resumeJob(job.id), !connection.hasKey || jobActionsInFlight.has(job.id));
@@ -329,7 +343,7 @@ function updateSelector(select, items, selected) {
 function isPrepared(job) { return job?.status === 'paused' && job.stage === 'ready'; }
 function jobPriority(job) { return ['running', 'queued'].includes(job.status) ? 0 : isPrepared(job) ? 1 : job.status === 'completed' ? 3 : 2; }
 function settingsSummary(settings) {
-  return `${languageNames[settings.sourceLanguage] || settings.sourceLanguage || '자동 감지'} → ${settings.translate === false ? '번역 안 함' : languageNames[settings.targetLanguage] || settings.targetLanguage || '한국어'}`;
+  return `${settings.sttModel || DEFAULT_STT_MODEL} · ${languageNames[settings.sourceLanguage] || settings.sourceLanguage || '자동 감지'} → ${settings.translate === false ? '번역 안 함' : languageNames[settings.targetLanguage] || settings.targetLanguage || '한국어'}`;
 }
 function focusJob(jobId) {
   const node = Array.from(document.querySelectorAll('.job')).find((row) => row.dataset.jobId === jobId && !row.closest('[hidden]'));
@@ -345,22 +359,22 @@ function preparationEditor(job) {
   const form = el('form', undefined, 'prepared-settings');
   const draft = { node, form, saved: { ...job.settings }, dirty: false };
   const status = el('p', '이 작업에만 적용됩니다. 다음 영상의 기본 설정은 바뀌지 않습니다.', 'hint'); status.setAttribute('role', 'status');
-  for (const [name, text] of [['sourceLanguage', '원본 언어'], ['translate', '자막 번역하기'], ['targetLanguage', '번역 언어'], ['translationModel', '번역 모델']]) {
+  for (const [name, text] of [['sourceLanguage', '원본 언어'], ['sttModel', '음성 인식 모델'], ['translate', '자막 번역하기'], ['targetLanguage', '번역 언어'], ['translationModel', '번역 모델']]) {
     const label = el('label', text, name === 'translate' ? 'check-label' : undefined);
     const input = $(name).cloneNode(true); input.removeAttribute('id'); input.name = name;
     if (name === 'translate') label.prepend(input); else label.append(input);
     form.append(label);
   }
-  const read = () => ({ sourceLanguage: form.elements.sourceLanguage.value, targetLanguage: form.elements.targetLanguage.value, translate: form.elements.translate.checked, translationModel: form.elements.translationModel.value.trim() || DEFAULT_TRANSLATION_MODEL });
+  const read = () => ({ sourceLanguage: form.elements.sourceLanguage.value, sttModel: form.elements.sttModel.value, targetLanguage: form.elements.targetLanguage.value, translate: form.elements.translate.checked, translationModel: form.elements.translationModel.value.trim() || DEFAULT_TRANSLATION_MODEL });
   const sync = () => {
     form.elements.targetLanguage.disabled = !form.elements.translate.checked;
     form.elements.translationModel.disabled = !form.elements.translate.checked;
   };
   const hydrate = (settings) => {
-    for (const name of ['sourceLanguage', 'targetLanguage', 'translationModel']) {
+    for (const name of ['sourceLanguage', 'sttModel', 'targetLanguage', 'translationModel']) {
       const input = form.elements[name];
       if (input.tagName === 'SELECT' && !Array.from(input.options).some((option) => option.value === settings[name])) { const option = el('option', settings[name]); option.value = settings[name]; input.append(option); }
-      input.value = settings[name] || (name === 'translationModel' ? DEFAULT_TRANSLATION_MODEL : name === 'sourceLanguage' ? 'auto' : 'ko');
+      input.value = settings[name] || (name === 'translationModel' ? DEFAULT_TRANSLATION_MODEL : name === 'sttModel' ? DEFAULT_STT_MODEL : name === 'sourceLanguage' ? 'auto' : 'ko');
     }
     form.elements.translate.checked = settings.translate !== false; sync(); draft.dirty = false;
   };
@@ -548,6 +562,7 @@ function filteredIndices() {
 function issueReasons(cue, index) {
   const reasons = [];
   if (cue.translationError) reasons.push(`번역 오류: ${cue.translationError}`);
+  if (cue.timingAccuracy === 'estimated') reasons.push('자막 시간 추정 · 실제 영상과 싱크를 확인해 주세요.');
   if (!(cue.original || '').trim()) reasons.push('빈 원문 · 원문을 확인해 주세요.');
   if (!Number.isFinite(Number(cue.start)) || !Number.isFinite(Number(cue.end)) || cue.start < 0 || !(cue.end > cue.start)) reasons.push('잘못된 시간 · 종료는 시작보다 늦어야 합니다.');
   if (index > 0 && cue.start < history.present[index - 1].end) reasons.push('시간 겹침 · 이전 자막이 끝나기 전에 시작합니다.');
@@ -607,8 +622,8 @@ function renderCues() {
     const row = el('article', undefined, 'cue'); row.dataset.index = index; row.tabIndex = -1;
     const summary = button('', () => { selectedIndex = index; renderCues(); focusCue(index); });
     summary.className = 'cue-summary'; summary.setAttribute('aria-expanded', String(selectedIndex === index)); summary.setAttribute('aria-controls', `cue-detail-${index}`);
-    const meta = el('span', undefined, 'cue-meta'); meta.append(el('strong', `자막 ${index + 1}`), el('span', `${cueClock(cue.start)} → ${cueClock(cue.end)}`, 'cue-clock'));
-    const snippet = el('span', cue.translated?.trim() || cue.original?.trim() || '내용이 없는 자막', 'cue-snippet');
+    const meta = el('span', undefined, 'cue-meta'); meta.append(el('strong', `자막 ${index + 1}${cue.speaker ? ` · 화자 ${cue.speaker}` : ''}`), el('span', `${cueClock(cue.start)} → ${cueClock(cue.end)}`, 'cue-clock'));
+    const snippet = el('span', speakerMarkedText(cue, history.present[index - 1]) || '내용이 없는 자막', 'cue-snippet');
     summary.append(meta, snippet); row.append(summary);
     const reasons = issueReasons(cue, index);
     const issues = el('p', reasons.join(' · '), 'cue-issues hint'); issues.hidden = !reasons.length; row.append(issues);
@@ -628,13 +643,18 @@ function renderCues() {
       }, 'number'));
     }
     detail.append(times);
+    detail.append(field('화자 식별 (빈칸이면 미지정)', 'input', cue.speaker || '', (input) => {
+      changed(updateSpeakerAt(history.present, index, input.value), false);
+      meta.querySelector('strong').textContent = `자막 ${index + 1}${input.value.trim() ? ` · 화자 ${input.value.trim()}` : ''}`;
+      snippet.textContent = speakerMarkedText(history.present[index], history.present[index - 1]);
+    }));
     for (const [key, label] of [['original', '원문'], ['translated', '번역']]) {
       detail.append(field(label, 'textarea', cue[key], (input) => {
         // Keep the focused DOM node and its exact draft, including trailing spaces and IME input.
         const next = updateSubtitleTextAt(history.present, index, key, input.value);
         next[index] = { ...next[index], [key]: input.value };
         changed(next, false);
-        snippet.textContent = next[index].translated?.trim() || next[index].original?.trim() || '내용이 없는 자막';
+        snippet.textContent = speakerMarkedText(next[index], history.present[index - 1]) || '내용이 없는 자막';
         const reasons = issueReasons(next[index], index); issues.textContent = reasons.join(' · '); issues.hidden = !reasons.length;
       }));
     }
@@ -644,7 +664,9 @@ function renderCues() {
     const details = el('details'); details.append(el('summary', '자막 분할 · 병합'));
     const editing = el('div', undefined, 'cue-actions');
     const split = button('중간에서 분할', () => changed(splitSubtitleAt(history.present, index)), !editable()); split.dataset.edit = '';
-    const merge = button('다음 자막과 병합', () => changed(mergeSubtitleWithNext(history.present, index)), !editable() || index === history.present.length - 1); merge.dataset.edit = '';
+    const nextCue = history.present[index + 1];
+    const differentSpeaker = Boolean(nextCue && ((cue.speaker || '') !== (nextCue.speaker || '') || (cue.speakerScope ?? null) !== (nextCue.speakerScope ?? null)));
+    const merge = button('다음 자막과 병합', () => changed(mergeSubtitleWithNext(history.present, index)), !editable() || index === history.present.length - 1 || differentSpeaker); merge.dataset.edit = '';
     if (index === history.present.length - 1) merge.dataset.last = '';
     editing.append(split, merge); details.append(editing); detail.append(details); row.append(detail);
     fragment.append(row);
@@ -656,9 +678,9 @@ function renderCues() {
 }
 
 function readSettings() {
-  return { sourceLanguage: $('sourceLanguage').value, targetLanguage: $('targetLanguage').value, translate: $('translate').checked, translationModel: $('translationModel').value.trim() || DEFAULT_TRANSLATION_MODEL };
+  return { sourceLanguage: $('sourceLanguage').value, sttModel: $('sttModel').value, targetLanguage: $('targetLanguage').value, translate: $('translate').checked, translationModel: $('translationModel').value.trim() || DEFAULT_TRANSLATION_MODEL };
 }
-function sameSettings(a, b) { return ['sourceLanguage', 'targetLanguage', 'translate', 'translationModel'].every((key) => a[key] === b[key]); }
+function sameSettings(a, b) { return ['sourceLanguage', 'sttModel', 'targetLanguage', 'translate', 'translationModel'].every((key) => a[key] === b[key]); }
 function settingsChanged() {
   settingsTouched = true; connectionError = '';
   const unsaved = !sameSettings(readSettings(), savedSettings);
@@ -670,7 +692,7 @@ function translationState() { $('targetLanguage').disabled = !$('translate').che
 function syncConnection() {
   const selected = readSettings();
   const checked = connection.keyCheck;
-  const matches = checked && !connectionError && (!selected.translate || checked.translationModel === selected.translationModel);
+  const matches = checked && !connectionError && checked.transcriptionModel === selected.sttModel && (!selected.translate || checked.translationModel === selected.translationModel);
   const running = jobs.some((job) => ['running', 'queued'].includes(job.status));
   $('keyHint').hidden = connection.hasKey;
   $('keyStatus').textContent = connection.hasKey ? `API 키가 암호화되어 저장되어 있습니다.${running ? ' 키를 바꾸거나 삭제하려면 작업을 일시정지해 주세요.' : ''}` : '저장된 API 키가 없습니다. 본인의 키를 입력해 주세요.';
@@ -678,8 +700,8 @@ function syncConnection() {
   $('connectionCard').classList.toggle('connected', connection.hasKey);
   $('connectionHeading').hidden = connection.hasKey;
   $('activeModel').hidden = connection.hasKey;
-  $('activeModel').textContent = savedSettings.translate ? `저장된 번역 모델: ${savedSettings.translationModel}` : '번역 안 함 · 음성 인식: whisper-1';
-  $('settingsModel').textContent = selected.translate ? `번역 모델: ${selected.translationModel}` : '번역 안 함 · 음성 인식: whisper-1';
+  $('activeModel').textContent = `음성 인식: ${savedSettings.sttModel || DEFAULT_STT_MODEL} · ${savedSettings.translate ? `번역: ${savedSettings.translationModel}` : '번역 안 함'}`;
+  $('settingsModel').textContent = `음성 인식: ${selected.sttModel} · ${selected.translate ? `번역: ${selected.translationModel}` : '번역 안 함'}`;
   $('apiSettingsSummary').textContent = connection.hasKey ? (matches ? '연결 확인됨' : '키 저장됨') : '키 연결 필요';
   $('defaultSettingsSummary').textContent = settingsSummary(savedSettings);
   $('videoSettingsSummary').textContent = `다음 영상: ${settingsSummary(savedSettings)}`;
@@ -690,7 +712,7 @@ function syncConnection() {
   }
 }
 function hydrateSettings(settings) {
-  for (const key of ['sourceLanguage', 'targetLanguage', 'translationModel']) {
+  for (const key of ['sourceLanguage', 'sttModel', 'targetLanguage', 'translationModel']) {
     if (typeof settings[key] === 'string' && settings[key]) {
       if ($(key).tagName === 'SELECT' && !Array.from($(key).options).some((option) => option.value === settings[key])) {
         const option = el('option', settings[key]); option.value = settings[key]; $(key).append(option);
@@ -788,6 +810,26 @@ async function exportCues(job, cues, format) {
   const mime = { srt: 'application/x-subrip', vtt: 'text/vtt', json: 'application/json' }[format];
   const result = await nativeCall('export', { name: `${sanitizeFileBase(job.name)}.${format}`, mime, text });
   message(result === null || result === false || result?.saved === false ? '자막 저장을 취소했습니다.' : `${format.toUpperCase()} 자막 파일을 저장했습니다.`);
+}
+async function deleteCompletedJob(jobId) {
+  await runJobAction(jobId, async () => {
+    await flushSave();
+    await nativeCall('deleteJob', { jobId });
+    pendingDeletionId = '';
+    jobs = jobs.filter((job) => job.id !== jobId);
+    jobCards.delete(jobId);
+    if (current?.id === jobId) {
+      current = null;
+      history = createEditHistory();
+      savedRevision = revision = 0;
+    }
+    jobFingerprint = '';
+    renderJobs();
+    renderResults();
+    await show('jobs');
+    await refresh();
+    message('완료된 작업 기록을 삭제했습니다. 원본 영상은 유지됩니다.');
+  });
 }
 async function exportJob(jobId) {
   await runJobAction(jobId, async () => {

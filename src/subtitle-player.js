@@ -226,6 +226,9 @@ function normalizeJsonSubtitle(subtitle, offsetSeconds) {
     end,
     original,
     translated,
+    ...(subtitle.speaker != null && String(subtitle.speaker).trim() ? { speaker: String(subtitle.speaker).trim() } : {}),
+    ...(subtitle.speakerScope != null ? { speakerScope: subtitle.speakerScope } : {}),
+    ...(subtitle.timingAccuracy ? { timingAccuracy: subtitle.timingAccuracy } : {}),
   };
 }
 

@@ -181,6 +181,9 @@ export function mergeSubtitles(chunks, options = {}) {
           translated: translatedParts.length === partCount ? translatedParts[partIndex] : translated,
           ...(subtitle.status ? { status: subtitle.status } : {}),
           ...(subtitle.translationError ? { translationError: subtitle.translationError } : {}),
+          ...(subtitle.speaker ? { speaker: String(subtitle.speaker) } : {}),
+          ...(subtitle.speakerScope != null ? { speakerScope: subtitle.speakerScope } : {}),
+          ...(subtitle.timingAccuracy ? { timingAccuracy: subtitle.timingAccuracy } : {}),
         });
       });
     }
@@ -216,6 +219,9 @@ export function splitLongSubtitles(subtitles, maxTextLength = DEFAULT_MAX_SUBTIT
         translated: translated ? part : '',
         ...(subtitle.status ? { status: subtitle.status } : {}),
         ...(subtitle.translationError ? { translationError: subtitle.translationError } : {}),
+        ...(subtitle.speaker ? { speaker: subtitle.speaker } : {}),
+        ...(subtitle.speakerScope != null ? { speakerScope: subtitle.speakerScope } : {}),
+        ...(subtitle.timingAccuracy ? { timingAccuracy: subtitle.timingAccuracy } : {}),
       });
     });
   }
@@ -267,8 +273,8 @@ export function sortSubtitles(subtitles) {
 
 export function formatSrt(subtitles, field = 'translated') {
   return sortSubtitles(subtitles)
-    .map((subtitle, index) => {
-      const text = subtitleText(subtitle, field);
+    .map((subtitle, index, all) => {
+      const text = speakerMarkedText(subtitle, all[index - 1], field);
       return [
         String(index + 1),
         `${formatTimestamp(subtitle.start, ',')} --> ${formatTimestamp(subtitle.end, ',')}`,
@@ -280,8 +286,8 @@ export function formatSrt(subtitles, field = 'translated') {
 }
 
 export function formatVtt(subtitles, field = 'translated') {
-  const cues = sortSubtitles(subtitles).map((subtitle) => {
-    const text = subtitleText(subtitle, field);
+  const cues = sortSubtitles(subtitles).map((subtitle, index, all) => {
+    const text = speakerMarkedText(subtitle, all[index - 1], field);
     return [
       `${formatTimestamp(subtitle.start, '.')} --> ${formatTimestamp(subtitle.end, '.')}`,
       text,
@@ -290,6 +296,17 @@ export function formatVtt(subtitles, field = 'translated') {
   });
 
   return ['WEBVTT', '', ...cues].join('\n');
+}
+
+export function speakerMarkedText(subtitle, previous, field = 'translated') {
+  const text = subtitleText(subtitle, field);
+  const speaker = String(subtitle?.speaker ?? '').trim();
+  const previousSpeaker = String(previous?.speaker ?? '').trim();
+  const scope = subtitle?.speakerScope;
+  const previousScope = previous?.speakerScope;
+  // Speaker IDs from separate audio chunks are not necessarily the same person.
+  const sameScope = scope == null || previousScope == null || scope === previousScope;
+  return speaker && previousSpeaker && speaker !== previousSpeaker && sameScope ? `>> ${text}` : text;
 }
 
 export function formatTimestamp(seconds, millisecondSeparator = ',') {
@@ -511,6 +528,7 @@ function normalizeVerboseSegments(segments, fallbackDuration) {
       start: Number(segment.start ?? 0),
       end: Number(segment.end ?? segment.start ?? fallbackDuration),
       text: cleanSubtitleText(segment.text),
+      ...(segment.speaker != null && String(segment.speaker).trim() ? { speaker: String(segment.speaker).trim() } : {}),
     }));
 }
 

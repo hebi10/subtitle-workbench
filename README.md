@@ -1,4 +1,4 @@
-# Subtitle Workbench
+# Subtitle Workbench · 해비 자막
 
 영상·오디오에서 자막을 생성하고 번역·편집하는 웹 및 Android 도구입니다. OpenAI API로 음성 인식과 번역을 수행하고 `SRT`, `VTT`, `JSON` 파일을 내보냅니다.
 
@@ -139,3 +139,11 @@ Cross-Origin-Resource-Policy: same-origin
 - 브라우저 직접 호출은 OpenAI의 브라우저 CORS 정책에 따라 실패할 수 있으며 동작이 보장되지 않습니다.
 - API 키, 로컬 암호, `.env`, `.dev.vars` 파일을 공개 파일이나 로그에 넣지 마세요.
 - 긴 영상은 브라우저 CPU와 메모리를 많이 사용합니다.
+
+## 0.5.0 개발 브랜치 기능 및 검증 범위
+
+- 음성 인식: `whisper-1`(단어·구간 타임스탬프), `gpt-transcribe`(본문만 반환해 30초 단위 시간 추정), `gpt-4o-transcribe-diarize`(화자 태그). 구형 모델 두 개는 **2027년 2월 26일 종료 예정**입니다.
+- 화자 태그는 자막 JSON에 보존하고 SRT/VTT 내보내기에서 **동일 구간 내 화자가 바뀔 때만** `>> `를 붙입니다. 사용자가 수동으로 화자 ID를 지정할 수 있습니다. 다른 음성 분할의 화자 번호가 같은 사람임을 자동으로 보증하지 않습니다.
+- Android에 완료 작업 기록 삭제 기능을 추가했습니다. 원본 미디어 파일은 변경하지 않습니다.
+- Android 0.5.0 **소스**: `targetSdk=36`, `versionCode=5`; GitHub Actions CI 빌드와 실제 APK 게시·Play 배포는 별도 상태입니다. 자동 배포에는 5가지 Repository Secrets가 필요합니다. 자세한 내용은 [배포 자동화](docs/release-automation.md).
+- 로컬 AI 모델 설치·다운로드 및 실시간 마이크 인식은 이 릴리스에 포함되지 않습니다. Whisper/GPT 출력 호환성과 실제 기기에서 비용·성능을 검증한 뒤 독립 기능으로 개발해야 합니다.

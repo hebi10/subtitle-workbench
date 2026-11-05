@@ -11,8 +11,8 @@ param(
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $workspace = Split-Path -Parent $PSScriptRoot
-if (-not $SdkPath -or -not (Test-Path -LiteralPath (Join-Path $SdkPath 'platforms/android-35/android.jar'))) {
-    throw 'Set -SdkPath to an Android SDK with Platform 35 and Build Tools 35.0.0 installed.'
+if (-not $SdkPath -or -not (Test-Path -LiteralPath (Join-Path $SdkPath 'platforms/android-36/android.jar'))) {
+    throw 'Set -SdkPath to an Android SDK with Platform 36 and Build Tools 35.0.0 installed.'
 }
 if (-not $JavaHome -or -not (Test-Path -LiteralPath (Join-Path $JavaHome 'bin/java.exe'))) {
     throw 'Set -JavaHome to a JDK 17 or 21 installation.'
