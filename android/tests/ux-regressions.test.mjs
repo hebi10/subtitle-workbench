@@ -587,7 +587,7 @@ regression('offline AI model manager is accessible with no API key and returns s
   await page.evaluate(() => {
     const template = window.mockNative.jobs.find(job => job.id === 'complete-1');
     window.mockNative.jobs.push({
-      ...template, id: 'offline-vosk-fixture', uri: '', name: '로컬 AI 테스트.wav'
+      ...template, id: 'offline-vosk-fixture', uri: 'content://fixture/offline-audio', name: '로컬 AI 테스트.wav', durationMs: 2000
     });
     window.mockNative.cues['offline-vosk-fixture'] = [
       { start: 0.5, end: 2, original: '외부 API 없는 로컬 결과', translated: '', timingAccuracy: 'word' }
