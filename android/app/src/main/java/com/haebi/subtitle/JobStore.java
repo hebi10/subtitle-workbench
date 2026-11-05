@@ -73,10 +73,18 @@ public final class JobStore extends SQLiteOpenHelper {
         synchronized (WORKER_LOCK) {
             transaction(db -> {
                 requirePrepared(db, id);
+                JSONObject previous = get(id);
+                JSONObject checked = AppSettings.checked(settings == null ? new JSONObject() : settings);
+                String oldModel = AppSettings.transcriptionModel(previous.getJSONObject("settings"));
+                String nextModel = AppSettings.transcriptionModel(checked);
                 ContentValues values = new ContentValues();
-                values.put("settings", AppSettings.checked(settings == null ? new JSONObject() : settings).toString());
+                values.put("settings", checked.toString());
                 values.put("updated_at", System.currentTimeMillis());
                 db.update("jobs", values, "id=?", new String[]{id});
+                if (!oldModel.equals(nextModel)) {
+                    db.delete("chunks", "job_id=?", new String[]{id});
+                    insertChunks(db, id, previous.getLong("durationMs"), nextModel);
+                }
             });
             return get(id);
         }
