@@ -37,7 +37,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
     private Button start, stop, save;
     private TextView status, partial, completed;
     private final StringBuilder liveText = new StringBuilder();
-    private long recordingOrigin = -1, turnStartMs;
+    private long recordingOrigin = -1, turnStartMs, turnStopMs;
     private boolean saving, destroyed, finishing;
 
     @Override public void onCreate(Bundle state) {
@@ -156,6 +156,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
         long now = SystemClock.elapsedRealtime();
         if (recordingOrigin < 0) recordingOrigin = now;
         turnStartMs = now - recordingOrigin;
+        turnStopMs = 0;
         liveText.setLength(0);
         partial.setText("연결 준비 중…");
         start.setEnabled(false);
@@ -175,7 +176,9 @@ public final class CloudLiveRecognitionActivity extends Activity {
                 String finalText = String.valueOf(text == null ? "" : text).trim();
                 if (!finalText.isEmpty()) {
                     try {
-                        draft.add(finalText, turnStartMs, SystemClock.elapsedRealtime() - recordingOrigin);
+                        long end = turnStopMs > 0 ? turnStopMs :
+                                Math.min(SystemClock.elapsedRealtime() - recordingOrigin, turnStartMs + 5L * 60_000);
+                        draft.add(finalText, turnStartMs, end);
                         completed.setText("확정 자막 " + draft.size() + "개\n마지막: " + finalText);
                         partial.setText("최종 자막 수신 완료");
                         status.setText("최종 문장이 저장 대기 상태입니다. 다음 문장 인식 또는 자막 저장이 가능합니다.");
@@ -188,6 +191,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
             @Override public void onError(String error) {
                 if (destroyed) return;
                 releaseClient();
+                partial.setText("전사 실패 · 임시 인식 문장은 저장되지 않았습니다.");
                 status.setText(error);
                 resetActions();
             }
@@ -203,6 +207,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
     private void stopRecognition() {
         if (client == null) return;
         stop.setEnabled(false);
+        turnStopMs = Math.max(1, SystemClock.elapsedRealtime() - recordingOrigin);
         status.setText("전송을 종료하고 최종 인식 결과를 기다리는 중…");
         client.stop();
     }
