@@ -384,3 +384,13 @@ progress::-webkit-progress-value { background: var(--ink); }
   #resultsView .section-heading { margin-top: 6px; min-height: 49px; }
   #resultsView .page-description { font-size: 13px; margin-bottom: 8px; }
 }
+
+
+.local-offline-entry { background: var(--paper); border: 1px solid var(--line); margin-top: 10px; }
+.local-offline-entry > summary { color: var(--ink); font-size: 15px; font-weight: 700; min-height: 49px; padding: 12px 13px; }
+.local-offline-entry > div { display: grid; gap: 10px; padding: 0 13px 13px; }
+.local-offline-entry p { margin: 0; }
+.local-offline-entry button { width: 100%; }
+#videoView .local-caption-entry { margin-top: 8px; gap: 5px; padding: 12px 14px; }
+#videoView .local-caption-entry button { min-height: 46px; }
+#videoView .subsection-label { margin-top: 17px; }
