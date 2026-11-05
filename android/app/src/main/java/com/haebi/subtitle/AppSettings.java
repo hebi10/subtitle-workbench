@@ -6,6 +6,15 @@ import org.json.JSONObject;
 /** Only global defaults are migrated. Persisted jobs keep their original model until explicitly changed. */
 final class AppSettings {
     static final String DEFAULT_TRANSLATION_MODEL = "gpt-6-luna";
+    static final String DEFAULT_TRANSCRIPTION_MODEL = "whisper-1";
+    static final long TEXT_TRANSCRIPTION_CHUNK_MS = 30_000L;
+    static long chunkMs(String model) { return "gpt-transcribe".equals(model) ? TEXT_TRANSCRIPTION_CHUNK_MS : JobStore.CHUNK_MS; }
+    static String transcriptionModel(JSONObject settings) {
+        String model = settings.optString("sttModel", DEFAULT_TRANSCRIPTION_MODEL).trim();
+        if (!model.equals("whisper-1") && !model.equals("gpt-transcribe") && !model.equals("gpt-4o-transcribe-diarize"))
+            throw new IllegalArgumentException("지원하지 않는 음성 인식 모델입니다.");
+        return model;
+    }
     private AppSettings() {}
 
     static JSONObject checked(JSONObject settings) throws JSONException {
@@ -15,6 +24,7 @@ final class AppSettings {
         if (!source.matches("auto|[a-z]{2,3}") || !target.matches("[a-z]{2,3}") || !model.matches("[A-Za-z0-9_.:-]{1,100}"))
             throw new IllegalArgumentException("언어와 번역 모델 설정을 확인해 주세요.");
         return new JSONObject().put("sourceLanguage", source).put("targetLanguage", target)
+                .put("sttModel", transcriptionModel(settings))
                 .put("translationModel", model).put("translate", settings.optBoolean("translate", true));
     }
 

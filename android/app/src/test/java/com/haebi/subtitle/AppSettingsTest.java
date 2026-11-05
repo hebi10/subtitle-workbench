@@ -21,6 +21,14 @@ public class AppSettingsTest {
         assertFalse(result.has("apiKey"));
     }
 
+    @Test public void transcriptionModelsAreValidatedAndControlChunkSize() throws Exception {
+        assertEquals("whisper-1", AppSettings.checked(new JSONObject()).getString("sttModel"));
+        assertEquals("gpt-transcribe", AppSettings.checked(new JSONObject().put("sttModel", "gpt-transcribe")).getString("sttModel"));
+        assertEquals(30000L, AppSettings.chunkMs("gpt-transcribe"));
+        assertEquals(JobStore.CHUNK_MS, AppSettings.chunkMs("whisper-1"));
+        assertThrows(IllegalArgumentException.class, () -> AppSettings.checked(new JSONObject().put("sttModel", "../unsafe")));
+    }
+
     @Test public void ordinaryValidationNeverChangesExistingJobModel() throws Exception {
         assertEquals("gpt-5.5", AppSettings.checked(new JSONObject().put("translationModel", "gpt-5.5"))
                 .getString("translationModel"));

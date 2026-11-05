@@ -179,7 +179,8 @@ public final class JobService extends Service {
             throw new java.io.IOException("원본 영상을 확인할 수 없습니다. 파일을 원래 위치에 복원하고 접근 권한을 확인한 뒤 이어해 주세요. 저장된 자막은 유지됩니다.", error);
         }
         int total = job.getInt("totalChunks");
-        for (ChunkPlan.Segment chunk : ChunkPlan.create(job.getLong("durationMs"), JobStore.CHUNK_MS, JobStore.PADDING_MS)) {
+        String sttModel = AppSettings.transcriptionModel(settings);
+        for (ChunkPlan.Segment chunk : ChunkPlan.create(job.getLong("durationMs"), AppSettings.chunkMs(sttModel), JobStore.PADDING_MS)) {
             token.check();
             if (!"running".equals(store.get(id).optString("status"))) { token.cancel(); token.check(); }
             if (store.isChunkComplete(id, chunk.index)) continue;
@@ -199,6 +200,15 @@ public final class JobService extends Service {
                         progress(id, "transcribing", chunk.index, null, "음성 인식 API 응답 대기 · " + (chunk.index + 1) + "/" + total);
                         JSONObject raw = api.transcribe(file, settings);
                         JSONArray cues = Transcript.normalize(raw, chunk.extractStartMs, chunk.startMs, chunk.endMs);
+                        if (sttModel.equals("gpt-transcribe") && raw.optJSONArray("words") == null && raw.optJSONArray("segments") == null) {
+                            for (int i = 0; i < cues.length(); i++) cues.getJSONObject(i).put("timingAccuracy", "estimated");
+                        }
+                        if (sttModel.equals("gpt-4o-transcribe-diarize")) {
+                            for (int i = 0; i < cues.length(); i++) {
+                                JSONObject cue = cues.getJSONObject(i);
+                                if (cue.has("speaker")) cue.put("speakerScope", chunk.index);
+                            }
+                        }
                         int batches = settings.optBoolean("translate", true) ? (cues.length() + JobStore.BATCH_SIZE - 1) / JobStore.BATCH_SIZE : 0;
                         store.saveTranscription(id, chunk.index, raw, cues, batches);
                         refreshNotification(id);

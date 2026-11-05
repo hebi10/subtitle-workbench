@@ -205,6 +205,9 @@ public final class MainActivity extends Activity {
                 case "saveCues":
                     store.saveEdited(params.getString("jobId"), checkedCues(params.getJSONArray("cues")));
                     result = true; break;
+                case "deleteJob":
+                    store.deleteCompleted(params.getString("jobId"));
+                    result = true; break;
                 case "importSubtitles": startPicker(id, IMPORT, null, null, null, null, null); return;
                 case "importCues":
                     String importedId = store.importCues(params.optString("name", "자막"), checkedCues(params.getJSONArray("cues")));
@@ -345,8 +348,14 @@ public final class MainActivity extends Activity {
                 throw new IllegalArgumentException("자막 시작·종료 시간을 확인해 주세요.");
             String original = cue.optString("original", ""), translated = cue.optString("translated", "");
             if (original.length() > 10000 || translated.length() > 10000) throw new IllegalArgumentException("자막 문장이 너무 깁니다.");
-            checked.put(new JSONObject().put("id", i + 1).put("start", start).put("end", end)
-                    .put("original", original).put("translated", translated).put("status", cue.optString("status", "success")));
+            JSONObject checkedCue = new JSONObject().put("id", i + 1).put("start", start).put("end", end)
+                    .put("original", original).put("translated", translated).put("status", cue.optString("status", "success"));
+            String speaker = cue.optString("speaker", "").trim();
+            if (speaker.length() > 32) throw new IllegalArgumentException("화자 이름은 32자 이하여야 합니다.");
+            if (!speaker.isEmpty()) checkedCue.put("speaker", speaker);
+            if (cue.has("speakerScope")) checkedCue.put("speakerScope", cue.get("speakerScope"));
+            if ("estimated".equals(cue.optString("timingAccuracy"))) checkedCue.put("timingAccuracy", "estimated");
+            checked.put(checkedCue);
         }
         return checked;
     }

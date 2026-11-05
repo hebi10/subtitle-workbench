@@ -79,8 +79,11 @@ final class Transcript {
             for (int p = 0; p < parts.size(); p++) {
                 double partStart = round(start + (end - start) * p / parts.size());
                 double partEnd = round(start + (end - start) * (p + 1) / parts.size());
-                global.add(new JSONObject().put("start", partStart).put("end", Math.max(partStart + 0.001, partEnd))
-                    .put("original", parts.get(p)).put("translated", "").put("status", "transcribed"));
+                JSONObject cue = new JSONObject().put("start", partStart).put("end", Math.max(partStart + 0.001, partEnd))
+                    .put("original", parts.get(p)).put("translated", "").put("status", "transcribed");
+                String speaker = item.optString("speaker", "").trim();
+                if (!speaker.isEmpty()) cue.put("speaker", speaker);
+                global.add(cue);
             }
         }
         global.sort(Comparator.comparingDouble(o -> o.optDouble("start")));

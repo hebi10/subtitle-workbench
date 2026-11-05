@@ -62,9 +62,10 @@ final class OpenAiClient {
 
     JSONObject checkConnection(JSONObject settings) throws IOException, JSONException {
         String translationModel = settings.optBoolean("translate", true) ? translationModel(settings) : "";
-        checkModel("whisper-1");
+        String transcriptionModel = AppSettings.transcriptionModel(settings);
+        checkModel(transcriptionModel);
         if (!translationModel.isEmpty()) checkModel(translationModel);
-        return new JSONObject().put("checkedAt", System.currentTimeMillis()).put("transcriptionModel", "whisper-1")
+        return new JSONObject().put("checkedAt", System.currentTimeMillis()).put("transcriptionModel", transcriptionModel)
             .put("translationModel", translationModel)
             .put("message", "API 키 인증과 모델 접근 권한을 확인했습니다. 실제 처리 가능 여부·결제 상태·잔여 할당량을 보장하는 검사는 아닙니다.");
     }
@@ -85,14 +86,20 @@ final class OpenAiClient {
         if (!file.isFile() || file.length() == 0 || file.length() > MAX_AUDIO_BYTES) throw new IOException("추출 오디오가 없거나 업로드 크기 제한을 초과했습니다.");
         String boundary = "haebi-" + UUID.randomUUID();
         StringBuilder header = new StringBuilder();
-        field(header, boundary, "model", "whisper-1");
-        field(header, boundary, "response_format", "verbose_json");
-        field(header, boundary, "timestamp_granularities[]", "segment");
-        field(header, boundary, "timestamp_granularities[]", "word");
+        String model = AppSettings.transcriptionModel(settings);
+        field(header, boundary, "model", model);
+        field(header, boundary, "response_format", model.equals("whisper-1") ? "verbose_json" :
+                model.equals("gpt-4o-transcribe-diarize") ? "diarized_json" : "json");
+        if (model.equals("whisper-1")) {
+            field(header, boundary, "timestamp_granularities[]", "segment");
+            field(header, boundary, "timestamp_granularities[]", "word");
+        } else if (model.equals("gpt-4o-transcribe-diarize")) {
+            field(header, boundary, "chunking_strategy", "auto");
+        }
         String language = settings.optString("sourceLanguage", "auto");
         if (!language.equals("auto")) {
             if (!language.matches("[a-zA-Z]{2,3}")) throw new IllegalArgumentException("원본 언어 코드를 확인해 주세요.");
-            field(header, boundary, "language", language);
+            field(header, boundary, model.equals("gpt-transcribe") ? "languages[]" : "language", language);
         }
         header.append("--").append(boundary).append("\r\nContent-Disposition: form-data; name=\"file\"; filename=\"chunk.m4a\"\r\nContent-Type: audio/mp4\r\n\r\n");
         byte[] prefix = header.toString().getBytes(StandardCharsets.UTF_8);
