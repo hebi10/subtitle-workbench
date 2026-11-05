@@ -581,6 +581,7 @@ regression('offline AI model manager is accessible with no API key and returns s
     window.nativeEvent({ type: 'status' });
   });
   await page.locator('#navVideo').click();
+  await page.locator('.local-offline-entry > summary').click();
   await page.locator('#openOfflineModel').click();
   await page.waitForFunction(() => window.mockNative.calls.some(call => call.method === 'openOfflineModel'));
   await page.evaluate(() => {
