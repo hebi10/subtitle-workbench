@@ -39,6 +39,7 @@ jobs:
           script: |
             chmod +x gradlew
             ./gradlew connectedDebugAndroidTest --no-daemon --stacktrace -Pandroid.testInstrumentationRunnerArguments.class=com.haebi.subtitle.MicrophoneActivityDeviceTest,com.haebi.subtitle.SecretStoreDeviceTest,com.haebi.subtitle.ResumeAdmissionDeviceTest
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell am start -n com.haebi.subtitle/.MainActivity
             sleep 5
             mkdir -p ../output
