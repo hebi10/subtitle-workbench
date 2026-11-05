@@ -6,6 +6,12 @@
 
 이 앱은 서비스 운영자의 OpenAI API 키를 제공하지 않습니다. Worker 프록시 모드와 브라우저 직접 호출 모드 모두에서 각 사용자가 자신의 OpenAI API 키를 입력해야 합니다.
 
+## v0.8.0 화면 리디자인
+
+웹 생성·편집·내보내기 및 Android 영상 추가·작업·결과·설정·자막 편집·마이크 인식 화면에 일관된 흑백 디자인을 적용했습니다. 320–1280px 반응형과 API 키/삭제 확인 영역의 가독성을 검증합니다. 자세한 디자인 토큰·화면별 검수 기준은 [v0.8 UI 가이드](docs/design-v0.8.md)를 참고하세요.
+
+**주의:** 아래 공개 GitHub 릴리스 APK v0.4.0은 과거 버전이며, v0.8.0 디자인을 포함하지 않습니다. 새 디버그 APK는 GitHub Actions의 검증 아티팩트에서 확인할 수 있습니다. 실제 Play Store 테스트 배포는 별도 서명키·Play 서비스 계정 설정이 필요합니다.
+
 ## Android 앱
 
 **[Android 0.4.0 APK 다운로드](https://github.com/hebi10/subtitle-workbench/releases/download/v0.4.0/haebi-subtitles-0.4.0.apk)** · [릴리스 안내](https://github.com/hebi10/subtitle-workbench/releases/tag/v0.4.0)
