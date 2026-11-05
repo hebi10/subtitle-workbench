@@ -219,6 +219,9 @@ export function splitLongSubtitles(subtitles, maxTextLength = DEFAULT_MAX_SUBTIT
         translated: translated ? part : '',
         ...(subtitle.status ? { status: subtitle.status } : {}),
         ...(subtitle.translationError ? { translationError: subtitle.translationError } : {}),
+        ...(subtitle.speaker ? { speaker: subtitle.speaker } : {}),
+        ...(subtitle.speakerScope != null ? { speakerScope: subtitle.speakerScope } : {}),
+        ...(subtitle.timingAccuracy ? { timingAccuracy: subtitle.timingAccuracy } : {}),
       });
     });
   }

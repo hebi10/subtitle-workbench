@@ -654,7 +654,7 @@ function renderCues() {
         const next = updateSubtitleTextAt(history.present, index, key, input.value);
         next[index] = { ...next[index], [key]: input.value };
         changed(next, false);
-        snippet.textContent = next[index].translated?.trim() || next[index].original?.trim() || '내용이 없는 자막';
+        snippet.textContent = speakerMarkedText(next[index], history.present[index - 1]) || '내용이 없는 자막';
         const reasons = issueReasons(next[index], index); issues.textContent = reasons.join(' · '); issues.hidden = !reasons.length;
       }));
     }

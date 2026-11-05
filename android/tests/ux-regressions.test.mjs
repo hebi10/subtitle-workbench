@@ -442,7 +442,7 @@ regression('speaker labels survive editing and preserve the transition marker in
   assert.doesNotMatch(await page.locator('.cue[data-index="2"] .cue-snippet').textContent(), />>/);
   await page.locator('.cue[data-index="0"] .cue-detail').getByLabel('화자 식별 (빈칸이면 미지정)').fill('B');
   await page.locator('#navJobs').click();
-  await page.waitForFunction(() => window.mockNative.calls.some((call) => call.method === 'saveCues'));
+  await page.waitForFunction(() => window.mockNative.cues['complete-1'].map((cue) => cue.speaker).join(',') === 'B,B,A');
   assert.deepEqual(await page.evaluate(() => window.mockNative.cues['complete-1'].map((cue) => cue.speaker)), ['B', 'B', 'A']);
   await jobCard(page, 'complete-1').getByRole('button', { name: 'SRT 저장', exact: true }).click();
   await page.waitForFunction(() => window.mockNative.calls.some((call) => call.method === 'export'));

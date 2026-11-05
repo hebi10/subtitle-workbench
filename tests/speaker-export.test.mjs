@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { formatSrt, formatVtt, mergeSubtitles, normalizeTranscriptionSegments, speakerMarkedText } from '../src/core.js';
+import { formatSrt, formatVtt, mergeSubtitles, normalizeTranscriptionSegments, speakerMarkedText, splitLongSubtitles } from '../src/core.js';
 import { updateSpeakerAt, mergeSubtitleWithNext, mergeShortSubtitles } from '../src/subtitle-editor.js';
 import { parseJsonSubtitles } from '../src/subtitle-player.js';
 
@@ -38,4 +38,13 @@ test('editing speaker supports clearing, and never merges two distinct speakers'
   const updated = updateSpeakerAt(cues, 0, 'two');
   assert.equal(mergeSubtitleWithNext(updated, 0).length, 1);
   assert.equal(updateSpeakerAt(updated, 0, '')[0].speaker, undefined);
+});
+
+test('long subtitle splitting preserves diarization metadata for every cue', () => {
+  const cue = { start: 1, end: 5, original: 'A speaker says this very long sentence for subtitles',
+    speaker: 'A', speakerScope: 2, timingAccuracy: 'estimated' };
+  const pieces = splitLongSubtitles([cue], 12);
+  assert.ok(pieces.length > 1);
+  assert.ok(pieces.every(part => part.speaker === 'A' && part.speakerScope === 2 && part.timingAccuracy === 'estimated'));
+  assert.doesNotMatch(formatSrt(pieces), />>/);
 });
