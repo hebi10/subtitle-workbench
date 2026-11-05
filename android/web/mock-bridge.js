@@ -7,7 +7,7 @@
   const partial = { id: 'partial-1', uri: 'content://fixture/partial', name: '이어하기 테스트.mp4', durationMs: 9000000, status: 'paused', stage: 'transcribing', completedChunks: 2, totalChunks: 22, settings: originalSettings, progress: { percent: 12.5, processedMs: 840000, transcribedChunks: 3, translatedChunks: 2, currentChunk: 3, batchCompleted: 2, batchTotal: 5, extractionPercent: null, elapsedMs: 125000, lastSavedAt: Date.now(), message: '번역 응답을 기다리는 중' } };
   const state = { jobs: [completed, partial], hasKey: true, keyCheck: null, cues: { 'complete-1': Array.from({ length: 27 }, (_, index) => cue(index)), 'partial-1': [cue(0), cue(1)] }, calls: [], failSave: false, failConnection: false };
   window.mockNative = state;
-  state.settings = JSON.parse(sessionStorage.getItem('mockNative.settings') || 'null') || { sourceLanguage: 'auto', targetLanguage: 'ko', translate: true, translationModel: 'gpt-6-luna' };
+  state.settings = JSON.parse(sessionStorage.getItem('mockNative.settings') || 'null') || { sourceLanguage: 'auto', targetLanguage: 'ko', translate: true, translationModel: 'gpt-6-luna', sttModel: 'whisper-1' };
   window.Native = { postMessage(raw) {
     const { id, method, params } = JSON.parse(raw);
     state.calls.push({ id, method, params });
@@ -21,7 +21,7 @@
           case 'setSettings': if (state.settings.translationModel !== params.settings.translationModel) state.keyCheck = null; state.settings = params.settings; sessionStorage.setItem('mockNative.settings', JSON.stringify(state.settings)); break;
           case 'setKey': state.hasKey = Boolean(params.key); state.keyCheck = null; break;
           case 'clearKey': state.hasKey = false; state.keyCheck = null; break;
-          case 'checkConnection': if (state.failConnection) throw new Error('테스트 모델에 접근할 수 없습니다. 모델 이름을 확인해 주세요.'); result = state.keyCheck = { checkedAt: Date.now(), transcriptionModel: 'whisper-1', translationModel: params.settings.translationModel, message: '키 인증과 모델 접근 확인' }; break;
+          case 'checkConnection': if (state.failConnection) throw new Error('테스트 모델에 접근할 수 없습니다. 모델 이름을 확인해 주세요.'); result = state.keyCheck = { checkedAt: Date.now(), transcriptionModel: params.settings.sttModel || 'whisper-1', translationModel: params.settings.translationModel, message: '키 인증과 모델 접근 확인' }; break;
           case 'openApiKeyPage': break;
           case 'pickVideo': {
             const replacement = params.replaceJobId ? state.jobs.find((item) => item.id === params.replaceJobId) : null;
@@ -39,6 +39,7 @@
             if (!job || job.status !== 'paused' || job.stage !== 'ready' || job.completedChunks || state.cues[job.id]?.length) throw new Error('생성을 시작하지 않은 준비 작업만 취소할 수 있습니다.');
             state.jobs = state.jobs.filter((item) => item.id !== job.id); delete state.cues[job.id]; break;
           case 'loadJob': result = { job, cues: state.cues[params.jobId] }; break;
+          case 'deleteJob': if (!job || job.status !== 'completed') throw new Error('완료된 작업만 삭제할 수 있습니다.'); state.jobs = state.jobs.filter((item) => item.id !== job.id); delete state.cues[job.id]; break;
           case 'saveCues': if (state.failSave) throw new Error('테스트 저장 실패'); if (job.status !== 'completed') throw new Error('완료된 작업만 편집할 수 있습니다.'); state.cues[job.id] = params.cues; break;
           case 'resume': job.status = 'running'; if (job.stage === 'ready') job.stage = 'extracting'; if (params.translationModel) job.settings = { ...job.settings, translationModel: params.translationModel }; break;
           case 'pause': job.status = 'paused'; break;

@@ -104,6 +104,17 @@ public class OpenAiClientTest {
         }
     }
 
+    @Test public void accessCheckRespectsSelectedTranscriptionModel() throws Exception {
+        List<String> paths = new ArrayList<>();
+        OpenAiClient api = new OpenAiClient("test-key", new OpenAiClient.Cancellation(), path -> {
+            paths.add(path);
+            return new StubConnection(200, ("{\"id\":\"" + path.substring("/models/".length()) + "\"}").getBytes(StandardCharsets.UTF_8));
+        });
+        JSONObject checked = api.checkConnection(new JSONObject().put("sttModel", "gpt-transcribe").put("translate", false));
+        assertEquals(List.of("/models/gpt-transcribe"), paths);
+        assertEquals("gpt-transcribe", checked.getString("transcriptionModel"));
+    }
+
     @Test public void accessCheckSkipsDisabledTranslationAndChecksSelectedModelWhenEnabled() throws Exception {
         List<String> paths = new ArrayList<>();
         OpenAiClient api = new OpenAiClient("test-key", new OpenAiClient.Cancellation(), path -> {
