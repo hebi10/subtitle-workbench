@@ -470,7 +470,7 @@ regression('on-device microphone entry is independent of the API key and returns
     window.nativeEvent({ type: 'status' });
   });
   await page.locator('#navVideo').click();
-  assert.equal(await page.locator('#pickVideo').isDisabled(), true);
+  await page.waitForFunction(() => document.getElementById('pickVideo').disabled);
   assert.equal(await page.locator('#openOnDevice').isEnabled(), true);
   await page.locator('#openOnDevice').click();
   await page.waitForFunction(() => window.mockNative.calls.some(call => call.method === 'openOnDevice'));
