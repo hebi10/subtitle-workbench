@@ -145,3 +145,11 @@ Set-Location android
 - GitHub Actions 빌드 및 모의 회귀 테스트와 별개로 실제 API 키·결제 계정·실기기의 마이크 입력으로 전송 및 수신이 정상 작동하는지 검증해야 합니다. 실제 유료 API 호출을 자동 테스트에서 수행하지 않습니다.
 
 공식 문서: https://developers.openai.com/api/docs/guides/realtime-transcription
+
+## v0.8.0 공통 UI 리디자인
+
+- 웹과 Android WebView 화면의 텍스트·카드·입력·버튼·상태 표시를 통일했습니다.
+- Android 영상 추가·작업·결과·자막 편집·설정 및 무료 온디바이스/유료 GPT 실시간 마이크의 네이티브 화면을 동일한 회색조로 정리했습니다.
+- 항목 선택과 삭제 확인, 오류 및 검수 경고 상태는 기존 문구와 동작을 유지합니다.
+- 모든 화면의 코드는 [디자인 시스템 가이드](../docs/design-v0.8.md)를 기준으로 하며, 320/390/800px Android WebView와 390/1280px 웹 화면 스크린샷을 CI에 보관합니다.
+- 이번 리디자인은 자체 로컬 AI 모델 다운로드나 Google Play 인증 설정을 추가하지 않습니다.
