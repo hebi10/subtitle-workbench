@@ -66,11 +66,11 @@ window.nativeResult = (response) => {
   if (response.error) item.reject(new Error(typeof response.error === 'string' ? response.error : response.error.message || '앱 요청을 처리하지 못했습니다.'));
   else item.resolve(response.result);
 };
-window.onDeviceCaptionSaved = async (jobId) => {
+window.onDeviceCaptionSaved = async (jobId, mode = '온디바이스') => {
   try {
     await refresh();
     await openJob(jobId, 'results');
-    message('온디바이스 마이크 자막을 저장했습니다. 결과에서 편집하거나 내보내세요.');
+    message(`${mode} 마이크 자막을 저장했습니다. 결과에서 편집하거나 내보내세요.`);
   } catch (error) {
     message('자막은 저장되었지만 결과 화면을 열지 못했습니다. 작업 목록을 확인하세요.', true);
   }
@@ -801,6 +801,7 @@ for (const [id, action] of Object.entries({
   clearKey: async () => { await nativeCall('clearKey'); $('apiKey').value = ''; connectionError = ''; $('confirmClearKey').hidden = true; await refresh(); message('이 기기에 저장된 API 키를 삭제했습니다.'); },
   jumpToExport: async () => { await show('results'); if (view === 'results') $('exportSection').focus({ preventScroll: true }); },
   openOnDevice: async () => { await flushSave(); await nativeCall('openOnDevice'); },
+  openCloudLive: async () => { await flushSave(); await nativeCall('openCloudLive'); },
   importSubtitles: async () => { await flushSave(); const file = await nativeCall('importSubtitles'); if (!file) return; const cues = parseSubtitleFileText(file.text, file.name); if (!cues.length) throw new Error('읽을 수 있는 자막이 없습니다. SRT, VTT 또는 JSON 형식을 확인해 주세요.'); setLoadedJob(await nativeCall('importCues', { name: file.name, cues })); await show('editor'); await refresh(); },
   preview: () => previewAt(0), retrySave: async () => { await flushSave(); message('변경 내용을 기기에 저장했습니다.'); },
   prevPage: () => changePage(-1), nextPage: () => changePage(1),

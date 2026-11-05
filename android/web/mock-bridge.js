@@ -46,6 +46,7 @@
           case 'preview': break;
           case 'export': result = state.cancelNextExport ? null : { saved: true }; state.cancelNextExport = false; break;
           case 'openOnDevice': break;
+          case 'openCloudLive': break;
           case 'importSubtitles': result = { name: '가져온 자막.srt', text: '1\n00:00:01,000 --> 00:00:03,000\n가져온 자막입니다.\n' }; break;
           case 'importCues': { const imported = { ...completed, id: `import-${state.jobs.length}`, name: params.name, uri: '', durationMs: 3000 }; state.jobs.push(imported); state.cues[imported.id] = params.cues; result = { job: imported, cues: params.cues }; break; }
           default: throw new Error(`Unknown fixture method: ${method}`);

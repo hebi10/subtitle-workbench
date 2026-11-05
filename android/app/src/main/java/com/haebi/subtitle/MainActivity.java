@@ -33,7 +33,7 @@ import java.util.concurrent.Executors;
 /** Only packaged, trusted HTML can send bridge messages. Keys never return to JavaScript. */
 public final class MainActivity extends Activity {
     private static final String ORIGIN = "https://appassets.androidplatform.net";
-    private static final int PICK_VIDEO = 101, EXPORT = 102, IMPORT = 103, ON_DEVICE_STT = 105;
+    private static final int PICK_VIDEO = 101, EXPORT = 102, IMPORT = 103, ON_DEVICE_STT = 105, CLOUD_LIVE = 106;
     private static final int MAX_TEXT_BYTES = 8 * 1024 * 1024;
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final ExecutorService connectionIo = Executors.newSingleThreadExecutor();
@@ -45,6 +45,7 @@ public final class MainActivity extends Activity {
     private PendingDocument documents;
     private volatile boolean destroyed;
     private String pendingOnDeviceJobId;
+    private String pendingCaptionMode;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -108,8 +109,10 @@ public final class MainActivity extends Activity {
         if (web != null) web.onResume();
         if (pendingOnDeviceJobId != null && web != null) {
             String savedId = pendingOnDeviceJobId;
+            String mode = pendingCaptionMode == null ? "온디바이스" : pendingCaptionMode;
             pendingOnDeviceJobId = null;
-            web.evaluateJavascript("window.onDeviceCaptionSaved && window.onDeviceCaptionSaved(" + JSONObject.quote(savedId) + ")", null);
+            pendingCaptionMode = null;
+            web.evaluateJavascript("window.onDeviceCaptionSaved && window.onDeviceCaptionSaved(" + JSONObject.quote(savedId) + ", " + JSONObject.quote(mode) + ")", null);
         }
         // This is a visible, user-initiated launch, including after a force-stop or reboot.
         try { JobService.recover(this); } catch (Exception ignored) { /* Jobs remain persisted for Resume. */ }
@@ -215,6 +218,17 @@ public final class MainActivity extends Activity {
                     store.deleteCompleted(params.getString("jobId"));
                     result = true; break;
                 case "importSubtitles": startPicker(id, IMPORT, null, null, null, null, null); return;
+                case "openCloudLive":
+                    String cloudRequestId = id;
+                    runOnUiThread(() -> {
+                        try {
+                            startActivityForResult(new Intent(this, CloudLiveRecognitionActivity.class), CLOUD_LIVE);
+                            reply(cloudRequestId, true, null);
+                        } catch (RuntimeException error) {
+                            reply(cloudRequestId, null, "GPT 실시간 인식 화면을 열 수 없습니다.");
+                        }
+                    });
+                    return;
                 case "openOnDevice":
                     String onDeviceRequestId = id;
                     runOnUiThread(() -> {
@@ -411,10 +425,11 @@ public final class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == ON_DEVICE_STT) {
+        if (requestCode == ON_DEVICE_STT || requestCode == CLOUD_LIVE) {
             String storedJobId = data == null ? null : data.getStringExtra("jobId");
             if (resultCode == RESULT_OK && storedJobId != null) {
                 pendingOnDeviceJobId = storedJobId;
+                pendingCaptionMode = requestCode == CLOUD_LIVE ? "GPT 실시간" : "온디바이스";
             }
             return;
         }

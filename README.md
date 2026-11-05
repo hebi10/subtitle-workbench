@@ -151,3 +151,7 @@ Cross-Origin-Resource-Policy: same-origin
 ## 0.6.0 온디바이스 자막 기능
 
 Android 12 이상에서 기기 자체 음성 인식 엔진이 제공되는 경우 **영상 추가 → 온디바이스 마이크 자막**을 사용할 수 있습니다. 모델 다운로드 요청은 Android 13 이상에서 지원하며 OS 서비스가 모델을 관리합니다. 이 경로는 API 키가 필요 없지만 기기마다 지원 여부가 다릅니다. 음성 인식 결과는 문장 단위로 저장하고 시간 정보는 추정값으로 표시합니다. [Android 상세 사용법](android/README.md)
+
+## Android 0.7.0 GPT 실시간 인식
+
+Android 앱에 별도의 **GPT 실시간 마이크 자막** 진입 경로를 추가했습니다. 사용자 자신의 OpenAI API 키와 유료 API 호출이 필요하며, 마이크 시작/종료는 사용자가 직접 제어합니다. 입력 음성은 Realtime API로 전송됩니다. 실제 기기 및 실계정 API 통합 테스트는 배포 전 검증이 필요합니다. 자세한 내용은 [Android 사용법](android/README.md)을 참고하세요.
