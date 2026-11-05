@@ -20,7 +20,7 @@ public class OfflineVoskDeviceTest {
                 assertTrue(hasText(root, "독립 로컬 AI 자막"));
                 assertTrue(hasText(root, "선택 모델 다운로드·설치"));
                 assertTrue(hasText(root, "영상·오디오 파일 선택"));
-                assertTrue(hasText(root, "로컬 AI 전사는 최대 60분"));
+                assertTrue(hasText(root, "오프라인 인식은 최대 60분"));
                 Button start = findButton(root, "오프라인 음성 인식 시작");
                 assertNotNull(start);
                 assertFalse(start.isEnabled());
