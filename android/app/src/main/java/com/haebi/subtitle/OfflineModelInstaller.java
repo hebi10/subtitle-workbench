@@ -71,11 +71,11 @@ final class OfflineModelInstaller {
     File download(OfflineModelCatalog.Spec spec, AtomicBoolean cancelled, Progress progress) throws Exception {
         File ready = installedModel(spec);
         if (ready != null) return ready;
+        if (!base.isDirectory() && !base.mkdirs()) throw new IOException("모델 보관 폴더를 만들 수 없습니다.");
         if (cache.getUsableSpace() < spec.minUsableBytes || base.getUsableSpace() < spec.minUsableBytes) {
             throw new IOException("로컬 AI 모델을 위해 저장 공간을 확보해 주세요. 권장 여유 공간 "
                     + (spec.minUsableBytes / (1024 * 1024)) + "MB");
         }
-        if (!base.isDirectory() && !base.mkdirs()) throw new IOException("모델 보관 폴더를 만들 수 없습니다.");
         String random = UUID.randomUUID().toString();
         File part = new File(cache, "vosk-model-" + random + ".zip");
         File staging = new File(base, ".extract-" + random);
