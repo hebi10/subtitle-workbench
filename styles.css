@@ -1578,3 +1578,23 @@ td { overflow-wrap: anywhere; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
 }
+
+
+/* v0.8 visual refinement: readable narrow action controls and useful idle state */
+.idle-guide { background: var(--panel); }
+.idle-guide h2 { font-size: 21px; margin: 0 0 16px; }
+.idle-guide .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; margin: 0 0 4px; }
+.idle-guide .form-help { background: var(--soft); border: 1px solid var(--line); padding: 12px 14px; margin: 16px 0 0; }
+.quick-steps { display: grid; gap: 10px; list-style: none; margin: 0; padding: 0; }
+.quick-steps li { background: #f9f9f9; border: 1px solid var(--line); display: grid; gap: 6px; padding: 16px; }
+.quick-steps strong { color: var(--text); font-size: 14px; font-weight: 700; }
+.quick-steps span { color: var(--muted); font-size: 13px; line-height: 1.6; }
+.workspace:not(.is-idle) .idle-guide { display: none; }
+.editor-layout { align-items: start; }
+.editor-main { align-self: start; }
+.editor-table-wrap:has(.empty-cell) { min-height: 0; max-height: none; }
+@media (max-width: 760px) {
+  .edit-history-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .edit-history-controls .ghost-button { min-width: 0; min-height: 48px; padding: 8px; width: 100%; font-size: 13px; white-space: nowrap; }
+  .edit-history-controls span { grid-column: 1 / -1; }
+}
