@@ -428,3 +428,38 @@ regression('editing a filtered cue time keeps that cue selected after it moves t
   assert.equal(await selectedCue(page).locator('textarea').nth(1).inputValue(), '검수 자막 1');
   assert.match(await page.locator('#pageInfo').textContent(), /2 \/ 2/);
 });
+
+regression('speaker labels survive editing and preserve the transition marker in SRT', async (page) => {
+  await page.evaluate(() => {
+    window.mockNative.cues['complete-1'] = [
+      { start: 0, end: 1, original: '첫 번째 발언', translated: '첫 번째 번역', speaker: 'A', speakerScope: 0 },
+      { start: 1, end: 2, original: '두 번째 발언', translated: '두 번째 번역', speaker: 'B', speakerScope: 0 },
+      { start: 2, end: 3, original: '다음 구간', translated: '다음 번역', speaker: 'A', speakerScope: 1 },
+    ];
+  });
+  await openEditor(page);
+  assert.match(await page.locator('.cue[data-index="1"] .cue-snippet').textContent(), />>/);
+  assert.doesNotMatch(await page.locator('.cue[data-index="2"] .cue-snippet').textContent(), />>/);
+  await page.locator('.cue[data-index="0"] .cue-detail').getByLabel('화자 식별 (빈칸이면 미지정)').fill('B');
+  await page.locator('#navJobs').click();
+  await page.waitForFunction(() => window.mockNative.calls.some((call) => call.method === 'saveCues'));
+  assert.deepEqual(await page.evaluate(() => window.mockNative.cues['complete-1'].map((cue) => cue.speaker)), ['B', 'B', 'A']);
+  await jobCard(page, 'complete-1').getByRole('button', { name: 'SRT 저장', exact: true }).click();
+  await page.waitForFunction(() => window.mockNative.calls.some((call) => call.method === 'export'));
+  const output = await page.evaluate(() => window.mockNative.calls.find((call) => call.method === 'export').params.text);
+  assert.doesNotMatch(output, />> 두 번째 번역/);
+  assert.doesNotMatch(output, />> 다음 번역/);
+});
+
+regression('completed work deletion requires explicit confirmation and preserves other jobs', async (page) => {
+  const card = jobCard(page, 'complete-1');
+  await card.getByRole('button', { name: '기록 삭제' }).click();
+  assert.equal(await page.evaluate(() => window.mockNative.calls.filter((call) => call.method === 'deleteJob').length), 0);
+  await card.getByRole('button', { name: '취소', exact: true }).click();
+  assert.equal(await page.evaluate(() => window.mockNative.jobs.some((job) => job.id === 'complete-1')), true);
+  await jobCard(page, 'complete-1').getByRole('button', { name: '기록 삭제' }).click();
+  await jobCard(page, 'complete-1').getByRole('button', { name: '삭제 확인' }).click();
+  await page.waitForFunction(() => !window.mockNative.jobs.some((job) => job.id === 'complete-1'));
+  await page.waitForFunction(() => !document.querySelector('.job[data-job-id="complete-1"]'));
+  assert.equal(await page.evaluate(() => window.mockNative.jobs.some((job) => job.id === 'partial-1')), true);
+});

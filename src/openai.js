@@ -1,7 +1,7 @@
 export const OPENAI_DEFAULTS = {
   apiBaseUrl: 'https://api.openai.com/v1',
   sttModel: 'whisper-1',
-  translationModel: 'gpt-5.5',
+  translationModel: 'gpt-6-luna',
   translationBatchSize: 30,
 };
 
