@@ -44,6 +44,7 @@ public final class MainActivity extends Activity {
     private String pendingId;
     private PendingDocument documents;
     private volatile boolean destroyed;
+    private String pendingOnDeviceJobId;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -105,6 +106,11 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         if (web != null) web.onResume();
+        if (pendingOnDeviceJobId != null && web != null) {
+            String savedId = pendingOnDeviceJobId;
+            pendingOnDeviceJobId = null;
+            web.evaluateJavascript("window.onDeviceCaptionSaved && window.onDeviceCaptionSaved(" + JSONObject.quote(savedId) + ")", null);
+        }
         // This is a visible, user-initiated launch, including after a force-stop or reboot.
         try { JobService.recover(this); } catch (Exception ignored) { /* Jobs remain persisted for Resume. */ }
     }
@@ -408,10 +414,7 @@ public final class MainActivity extends Activity {
         if (requestCode == ON_DEVICE_STT) {
             String storedJobId = data == null ? null : data.getStringExtra("jobId");
             if (resultCode == RESULT_OK && storedJobId != null) {
-                runOnUiThread(() -> {
-                    if (!destroyed) web.evaluateJavascript(
-                            "window.onDeviceCaptionSaved && window.onDeviceCaptionSaved(" + JSONObject.quote(storedJobId) + ")", null);
-                });
+                pendingOnDeviceJobId = storedJobId;
             }
             return;
         }
