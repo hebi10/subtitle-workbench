@@ -197,7 +197,7 @@ public final class OfflineVoskActivity extends Activity {
     private void requestDelete() {
         if (busy) return;
         OfflineModelCatalog.Spec spec = selected();
-        if (installer.installedModel(spec) == null) return;
+        if (!installer.hasLocalData(spec)) return;
         new AlertDialog.Builder(this).setTitle("로컬 AI 모델 삭제")
                 .setMessage(spec.title + " 모델 파일을 기기에서 삭제합니다. 저장된 자막 작업은 유지됩니다.")
                 .setNegativeButton("취소", null)
