@@ -597,7 +597,7 @@ regression('offline AI model manager is accessible with no API key and returns s
   await page.waitForFunction(() => document.querySelector('#resultName')?.textContent === '로컬 AI 테스트.wav');
   assert.equal(await page.locator('#resultsView').isVisible(), true);
   assert.match(await page.locator('#appMessage').textContent(), /독립 로컬 AI/);
-  assert.equal(await page.locator('#resultPreview').isDisabled(), true);
+  assert.equal(await page.locator('#resultPreview').isEnabled(), true);
   await page.locator('#editResult').click();
   assert.equal(await page.locator('.cue').count(), 1);
 });
