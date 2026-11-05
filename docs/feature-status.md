@@ -18,3 +18,8 @@
 
 관련 공식 API 가이드: https://developers.openai.com/api/docs/guides/speech-to-text
 지원 종료 공지: https://developers.openai.com/api/docs/deprecations
+
+## 0.6.0 온디바이스 구현
+- API 31+ OS 온디바이스 음성 인식 사용: 실시간 임시 문장 및 최종 문장 표시, 수동 시작·종료, SQLite 결과 저장.
+- API 33+ 사용 가능 모델 목록·다운로드 요청; API 34+ 다운로드 진행·완료 결과 수신.
+- `gpt-live-transcribe` API 기반 클라우드 실시간 전사와 자체 다운로드형 Whisper 등 로컬 런타임은 별도 구현 항목이며, 이 기능이 이를 대체한다고 주장하지 않습니다.
