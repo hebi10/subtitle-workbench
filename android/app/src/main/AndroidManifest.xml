@@ -23,6 +23,7 @@
         <activity android:name=".PreviewActivity" android:exported="false" />
         <activity android:name=".OnDeviceRecognitionActivity" android:exported="false" />
         <activity android:name=".CloudLiveRecognitionActivity" android:exported="false" />
+        <activity android:name=".OfflineVoskActivity" android:exported="false" />
         <service android:name=".JobService" android:exported="false"
             android:foregroundServiceType="dataSync|mediaProcessing" />
     </application>
