@@ -32,6 +32,17 @@ final class Pcm16Downsampler {
     }
 
     void flush() throws Exception {
+        // A low-rate source may end before the final upsampled interval; duplicate
+        // the last sample so exact one-second audio produces 16,000 output samples.
+        long expected = Math.round(sourceFrames * (double) OUTPUT_RATE / inputRate);
+        while (outputFrames < expected) {
+            buffer[filled++] = previous;
+            outputFrames++;
+            if (filled == buffer.length) {
+                sink.write(buffer, filled);
+                filled = 0;
+            }
+        }
         if (filled > 0) {
             sink.write(buffer, filled);
             filled = 0;
