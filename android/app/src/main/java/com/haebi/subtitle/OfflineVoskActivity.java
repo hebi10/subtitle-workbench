@@ -141,15 +141,18 @@ public final class OfflineVoskActivity extends Activity {
         if (selection == null || modelStatus == null) return;
         OfflineModelCatalog.Spec model = selected();
         File installed = installer.installedModel(model);
+        boolean damaged = installed == null && installer.hasLocalData(model);
         modelStatus.setText(installed != null
                 ? model.title + " 설치됨 · 저장 공간 "
                     + (installer.installedSize(model) / (1024 * 1024)) + "MB 사용\n"
                     + model.description
-                : model.title + " 설치되지 않음 · 모델 크기 약 " + model.approximateMegabytes
-                    + "MB\n" + model.description);
+                : damaged
+                    ? model.title + " 설치 정보가 손상되었습니다. 모델 삭제 후 다시 다운로드해 주세요."
+                    : model.title + " 설치되지 않음 · 모델 크기 약 " + model.approximateMegabytes
+                        + "MB\n" + model.description);
         selection.setEnabled(!busy);
-        download.setEnabled(!busy && installed == null);
-        delete.setEnabled(!busy && installed != null);
+        download.setEnabled(!busy && installed == null && !damaged);
+        delete.setEnabled(!busy && (installed != null || damaged));
         pick.setEnabled(!busy);
         run.setEnabled(!busy && installed != null && sourceUri != null);
         cancel.setEnabled(busy);
