@@ -1,0 +1,55 @@
+{
+  "language": "ko-KR",
+  "images": {
+    "icon": [
+      "icon.png"
+    ],
+    "featureGraphic": [
+      "feature-graphic.png"
+    ],
+    "phoneScreenshots": []
+  },
+  "assets": [
+    {
+      "file": "icon.png",
+      "purpose": "Google Play 앱 아이콘",
+      "width": 512,
+      "height": 512,
+      "sha256": "3d2b39350fe45a85184db701dcac2699d5adb0e5e8b802837b8c33bb2c671277",
+      "source": {
+        "type": "imagegen-built-in",
+        "generatedSourceFile": "exec-dbc30600-4238-4421-a327-190e99734a1a.png",
+        "promptFile": "generation-prompts.json",
+        "export": "Opaque RGB PNG, deterministic LANCZOS resize to Google Play dimensions"
+      }
+    },
+    {
+      "file": "feature-graphic.png",
+      "purpose": "Google Play 그래픽 이미지",
+      "width": 1024,
+      "height": 500,
+      "sha256": "960fd6df495ab476705a9857f8beacd3b0814dfc500549aa07d518d1f3af5be4",
+      "source": {
+        "type": "imagegen-built-in",
+        "generatedSourceFile": "exec-40dd2ff2-9804-4100-8cff-2cfc5176f74c.png",
+        "promptFile": "generation-prompts.json",
+        "export": "Opaque RGB PNG, deterministic LANCZOS resize to Google Play dimensions"
+      }
+    }
+  ],
+  "screenshotCapture": {
+    "status": "pending-execution",
+    "script": "scripts/capture-play-store.mjs",
+    "workflow": ".github/workflows/play-store-captures.yml",
+    "expectedFiles": [
+      "01-video.png",
+      "02-jobs.png",
+      "03-results.png",
+      "04-editor.png",
+      "05-settings.png"
+    ],
+    "referenceCiRunId": "42005589909",
+    "referenceCommit": "bb51ac0d7a09df68aefbdad472ec8691f99332da",
+    "note": "Final phone images will be real Android WebView source UI captured with the existing native bridge test fixture at 1080×1920, not AI-reconstructed screens. Do not publish listing until actual captures and their provenance replace this pending status."
+  }
+}

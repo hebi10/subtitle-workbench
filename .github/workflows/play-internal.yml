@@ -1,4 +1,4 @@
-name: Publish signed Android AAB to Google Play
+name: Play internal release
 
 on:
   workflow_run:
@@ -7,86 +7,187 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      track:
-        description: 'Target test track (internal default, closed = alpha)'
+      mode:
+        description: 'check = verify only; build = signed AAB only; deploy = upload to internal'
         required: true
         type: choice
-        default: internal
-        options:
-          - internal
-          - alpha
+        default: check
+        options: [check, build, deploy]
+      version_code:
+        description: 'Build-only versionCode (default 10); deploy always allocates from Play'
+        required: false
+        type: string
+        default: '10'
+      release_status:
+        description: 'completed = active internal; draft = draft release after Console bootstrap'
+        type: choice
+        default: completed
+        options: [completed, draft]
+      changes_not_sent_for_review:
+        description: 'Keep committed changes pending explicit Console review submission'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: play-subtitle-workbench
+  group: play-com-haebi-subtitle
   cancel-in-progress: false
 
 jobs:
-  publish:
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
+  source:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
-    env:
-      ANDROID_UPLOAD_KEYSTORE_B64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_B64 }}
-      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+      mode: ${{ github.event_name == 'workflow_run' && 'deploy' || inputs.mode }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
-      - name: Check deployment credentials
-        id: credentials
-        shell: bash
-        run: |
-          if [[ -n "$ANDROID_UPLOAD_KEYSTORE_B64" && -n "$ANDROID_KEYSTORE_PASSWORD" && -n "$ANDROID_KEY_ALIAS" && -n "$ANDROID_KEY_PASSWORD" && -n "$PLAY_SERVICE_ACCOUNT_JSON" ]]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "::error::Configure all five Android and Google Play secrets before manual deployment."
-            exit 1
-          else
-            echo "::notice::Play credentials missing; automatic upload skipped."
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-          fi
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require main source and completed required CI
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/release/source.py
+
+  gates:
+    needs: source
+    uses: ./.github/workflows/play-gates.yml
+    with:
+      source_sha: ${{ needs.source.outputs.sha }}
+
+  release:
+    needs: [source, gates]
+    if: needs.source.outputs.mode != 'check'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: google-play
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ANDROID_UPLOAD_CERT_SHA256: ${{ vars.ANDROID_UPLOAD_CERT_SHA256 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
       - uses: actions/setup-java@v4
-        if: steps.credentials.outputs.enabled == 'true'
         with:
           distribution: temurin
           java-version: '17'
+      - name: Reject source superseded while verification was running
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.source.outputs.sha }}
+        run: python3 scripts/release/source.py --assert-current "$SOURCE_SHA"
+      - name: Verify original upload key and prepare private signing file
+        env:
+          ANDROID_UPLOAD_KEYSTORE_B64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: python3 scripts/release/preflight.py signing
+      - name: Check Play authentication configuration
+        id: credentials
+        if: needs.source.outputs.mode == 'deploy'
+        env:
+          PLAY_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
+          PLAY_SERVICE_ACCOUNT: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: python3 scripts/release/preflight.py auth
+      - name: Authenticate with Workload Identity Federation
+        id: wif
+        if: needs.source.outputs.mode == 'deploy' && steps.credentials.outputs.auth_mode == 'wif'
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+      - name: Authenticate with legacy service-account JSON
+        id: json
+        if: needs.source.outputs.mode == 'deploy' && steps.credentials.outputs.auth_mode == 'json'
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+      - name: Allocate version above all uploaded bundles, APKs and tracks
+        id: version
+        if: needs.source.outputs.mode == 'deploy'
+        env:
+          PLAY_ACCESS_TOKEN: ${{ steps.wif.outputs.access_token || steps.json.outputs.access_token }}
+        run: python3 scripts/release/publisher.py --report output/play-allocation.json allocate
       - name: Install SDK 36
-        if: steps.credentials.outputs.enabled == 'true'
         shell: bash
         run: |
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | sort -V | tail -n 1)"
           test -n "$SDKMANAGER"
           "$SDKMANAGER" --install 'platforms;android-36' 'build-tools;35.0.0'
-      - name: Configure signing key securely
-        if: steps.credentials.outputs.enabled == 'true'
-        shell: bash
-        run: |
-          echo "$ANDROID_UPLOAD_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/upload-keystore.jks"
-          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload-keystore.jks" >> "$GITHUB_ENV"
-      - name: Verify and build signed release bundle
-        if: steps.credentials.outputs.enabled == 'true'
+      - name: Build signed release with the allocated versionCode
         working-directory: android
+        env:
+          ANDROID_VERSION_CODE: ${{ steps.version.outputs.version_code || inputs.version_code || '10' }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          chmod +x ./gradlew
-          ./gradlew --no-daemon testDebugUnitTest lintDebug bundleRelease
-      - name: Preserve signed bundle as workflow artifact
-        if: steps.credentials.outputs.enabled == 'true'
+          chmod +x gradlew
+          ./gradlew --no-daemon bundleRelease
+      - name: Verify AAB signature against original upload certificate
+        run: python3 scripts/release/preflight.py verify-bundle --bundle android/app/build/outputs/bundle/release/app-release.aab
+      - name: Preserve signed AAB
         uses: actions/upload-artifact@v4
         with:
-          name: subtitle-workbench-signed-aab
+          name: subtitle-signed-aab-${{ steps.version.outputs.version_code || inputs.version_code || '10' }}
           path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
           retention-days: 14
-      - name: Upload to Google Play test track
-        if: steps.credentials.outputs.enabled == 'true'
-        uses: r0adkll/upload-google-play@v1.1.5
+      - name: Reject stale source immediately before upload
+        if: needs.source.outputs.mode == 'deploy'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.source.outputs.sha }}
+        run: python3 scripts/release/source.py --assert-current "$SOURCE_SHA"
+      - name: Submit internal release and require fresh Play API readback
+        if: needs.source.outputs.mode == 'deploy'
+        env:
+          PLAY_ACCESS_TOKEN: ${{ steps.wif.outputs.access_token || steps.json.outputs.access_token }}
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+          RELEASE_STATUS: ${{ inputs.release_status || 'completed' }}
+          KEEP_FOR_REVIEW: ${{ inputs.changes_not_sent_for_review || false }}
+        shell: bash
+        run: |
+          args=()
+          if [[ "$KEEP_FOR_REVIEW" == 'true' ]]; then args+=(--changes-not-sent-for-review); fi
+          python3 scripts/release/publisher.py --report output/play-release.json deploy --bundle android/app/build/outputs/bundle/release/app-release.aab --version-code "$VERSION_CODE" --status "$RELEASE_STATUS" "${args[@]}"
+      - name: Preserve non-secret release reports
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: com.haebi.subtitle
-          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
-          tracks: ${{ github.event_name == 'workflow_dispatch' && inputs.track || 'internal' }}
-          status: completed
+          name: play-internal-report-${{ github.run_id }}
+          path: output/play-*.json
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Remove private signing material
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/subtitle-upload-keystore.jks"
+
+  checked:
+    needs: [source, gates]
+    if: needs.source.outputs.mode == 'check'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report verification without deployment
+        run: echo 'Exact-source CI and Android device checks passed. Mode check does not build a signed bundle or submit to Play.' >> "$GITHUB_STEP_SUMMARY"

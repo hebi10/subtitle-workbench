@@ -23,6 +23,7 @@
           case 'clearKey': state.hasKey = false; state.keyCheck = null; break;
           case 'checkConnection': if (state.failConnection) throw new Error('테스트 모델에 접근할 수 없습니다. 모델 이름을 확인해 주세요.'); result = state.keyCheck = { checkedAt: Date.now(), transcriptionModel: params.settings.sttModel || 'whisper-1', translationModel: params.settings.translationModel, message: '키 인증과 모델 접근 확인' }; break;
           case 'openApiKeyPage': break;
+          case 'openPrivacyPolicy': break;
           case 'pickVideo': {
             const replacement = params.replaceJobId ? state.jobs.find((item) => item.id === params.replaceJobId) : null;
             if (params.replaceJobId && (!replacement || replacement.status !== 'paused' || replacement.stage !== 'ready' || replacement.completedChunks || state.cues[replacement.id]?.length)) throw new Error('생성을 시작하지 않은 준비 작업만 변경할 수 있습니다.');

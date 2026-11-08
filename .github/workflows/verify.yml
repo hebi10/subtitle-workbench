@@ -20,6 +20,8 @@ jobs:
           node-version: '22'
       - name: Web unit tests
         run: npm test
+      - name: Play release automation unit tests
+        run: python3 -m unittest discover -s scripts/release/tests -v
       - name: Install Playwright for WebView UI regressions
         run: |
           npm install --no-save playwright
