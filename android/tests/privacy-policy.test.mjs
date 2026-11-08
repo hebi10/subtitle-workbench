@@ -38,3 +38,14 @@ test('Korean Play listing and release notes stay within store text limits', asyn
   assert.match(listing.fullDescription, /모델 설치에는 인터넷/);
   assert.ok([...(await read('docs/play-store/release-notes-ko.txt')).trim()].length <= 500);
 });
+
+test('privacy policy describes optional relay transmission, quotas and separate credential deletion', async () => {
+  const policy = await read('docs/privacy-policy.html');
+  assert.match(policy, /테스트 서버.*거쳐.*OpenAI/s);
+  assert.match(policy, /서버 전용 OpenAI API 키.*서버/s);
+  assert.match(policy, /임시 오디오.*삭제/s);
+  assert.match(policy, /집계.*사용량.*카운터|사용량.*집계.*카운터/s);
+  assert.match(policy, /저장된 테스트 연결 삭제/);
+  assert.doesNotMatch(policy, /중계 서버를 경유하지 않습니다/);
+  assert.match(policy, /공유 사용량 한도/);
+});

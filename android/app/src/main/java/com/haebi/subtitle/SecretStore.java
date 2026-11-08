@@ -14,14 +14,20 @@ import javax.crypto.spec.GCMParameterSpec;
 
 /** Only ciphertext and the public GCM nonce are written to private app preferences. */
 public final class SecretStore {
-    private static final String ALIAS = "haebi.subtitle.openai.v1";
+    private final String alias;
     private final SharedPreferences preferences;
 
-    public SecretStore(Context context) { preferences = context.getSharedPreferences("api_secret", Context.MODE_PRIVATE); }
+    public SecretStore(Context context) { this(context, "personal"); }
+
+    SecretStore(Context context, String scope) {
+        if (!scope.equals("personal") && !scope.equals("review_relay")) throw new IllegalArgumentException("인증 저장소를 확인해 주세요.");
+        alias = scope.equals("personal") ? "haebi.subtitle.openai.v1" : "haebi.subtitle.review_relay.v1";
+        preferences = context.getSharedPreferences(scope.equals("personal") ? "api_secret" : "review_relay_secret", Context.MODE_PRIVATE);
+    }
 
     public synchronized void setKey(String value) {
         String key = value == null ? "" : value.trim();
-        if (key.isEmpty() || key.length() > 512 || key.indexOf('\n') >= 0 || key.indexOf('\r') >= 0) throw new IllegalArgumentException("유효한 OpenAI API 키를 입력해 주세요.");
+        if (key.isEmpty() || key.length() > (alias.equals("haebi.subtitle.openai.v1") ? 512 : 2048) || key.indexOf('\n') >= 0 || key.indexOf('\r') >= 0) throw new IllegalArgumentException("유효한 인증 정보를 입력해 주세요.");
         try {
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.ENCRYPT_MODE, encryptionKey());
@@ -54,9 +60,9 @@ public final class SecretStore {
     private SecretKey encryptionKey() throws Exception {
         KeyStore store = KeyStore.getInstance("AndroidKeyStore");
         store.load(null);
-        if (store.containsAlias(ALIAS)) return (SecretKey) store.getKey(ALIAS, null);
+        if (store.containsAlias(alias)) return (SecretKey) store.getKey(alias, null);
         KeyGenerator generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
-        generator.init(new KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+        generator.init(new KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setRandomizedEncryptionRequired(true).setKeySize(256).build());
         return generator.generateKey();

@@ -35,7 +35,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
     private LiveTranscriptionClient client;
     private Spinner language;
     private Button start, stop, save;
-    private TextView status, partial, completed;
+    private TextView status, partial, completed, disclosure;
     private final StringBuilder liveText = new StringBuilder();
     private long recordingOrigin = -1, turnStartMs, turnStopMs;
     private boolean saving, destroyed, finishing;
@@ -45,12 +45,9 @@ public final class CloudLiveRecognitionActivity extends Activity {
         setTitle("해비 자막 · GPT 실시간 인식");
         buildView();
         try {
-            if (!new SecretStore(this).hasKey()) {
-                status.setText("저장된 OpenAI API 키가 없습니다. 설정에서 API 키를 연결한 후 다시 열어 주세요.");
-                start.setEnabled(false);
-            }
+            updateDisclosure(new CloudAccessStore(this).current());
         } catch (RuntimeException error) {
-            status.setText("API 키를 확인할 수 없습니다. 설정을 확인해 주세요.");
+            status.setText("사용할 클라우드 연결이 없습니다. 설정에서 개인 API 또는 테스트 연결을 저장해 주세요.");
             start.setEnabled(false);
         }
     }
@@ -99,7 +96,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
 
         label(root, "CLOUD / REALTIME", 11, true);
         label(root, "GPT 실시간 마이크 자막", 22, true);
-        label(root, "본인의 OpenAI API 키로 gpt-live-transcribe를 사용합니다. 마이크 음성을 OpenAI로 전송하며 API 이용 요금이 별도로 청구됩니다. 인식을 시작한 경우에만 전송합니다.", 14, false);
+        disclosure = label(root, "개인 API 연결은 API 이용 요금이 별도로 청구되며, 테스트 연결은 서버의 공용 테스트 한도가 적용됩니다. 선택한 전송 대상을 확인한 뒤 시작해 주세요.", 14, false);
         label(root, "인식 언어", 15, true);
         language = new Spinner(this);
         language.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item,
@@ -126,6 +123,13 @@ public final class CloudLiveRecognitionActivity extends Activity {
 
     private String chosenLanguage() { return LANGUAGES[language.getSelectedItemPosition()]; }
 
+    private void updateDisclosure(CloudAccess access) {
+        disclosure.setText(access.isRelay()
+                ? "테스트 연결: " + access.origin() + "\n마이크 음성을 이 테스트 서버를 거쳐 OpenAI의 gpt-live-transcribe로 전송합니다. 개인 API 키와 개인 결제는 필요하지 않으며 서버의 공용 테스트 한도가 적용됩니다. 시작을 누른 경우에만 전송합니다."
+                : "개인 API 연결: OpenAI\n본인의 OpenAI API 키로 gpt-live-transcribe를 사용합니다. 마이크 음성을 OpenAI로 전송하며 API 이용 요금이 별도로 청구됩니다. 시작을 누른 경우에만 전송합니다.");
+        start.setText(access.isRelay() ? "테스트 GPT 실시간 인식 시작" : "유료 GPT 실시간 인식 시작");
+    }
+
     private void requestStart() {
         if (saving || client != null) return;
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -145,10 +149,9 @@ public final class CloudLiveRecognitionActivity extends Activity {
 
     private void startRecognition() {
         if (client != null || saving) return;
-        final String key;
-        try { key = new SecretStore(this).getKey(); }
-        catch (RuntimeException error) { status.setText("API 키를 읽을 수 없습니다. 설정을 확인하세요."); return; }
-        if (key.trim().isEmpty()) { status.setText("API 키를 설정에서 저장한 뒤 시작하세요."); return; }
+        final CloudAccess access;
+        try { access = new CloudAccessStore(this).current(); updateDisclosure(access); }
+        catch (RuntimeException error) { status.setText("클라우드 연결을 읽을 수 없습니다. 설정에서 개인 API 또는 테스트 연결을 확인해 주세요."); return; }
         long now = SystemClock.elapsedRealtime();
         if (recordingOrigin < 0) recordingOrigin = now;
         turnStartMs = now - recordingOrigin;
@@ -192,7 +195,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
                 resetActions();
             }
         });
-        try { client.start(key); }
+        try { client.start(access); }
         catch (RuntimeException error) {
             releaseClient();
             status.setText("실시간 전사 연결을 시작하지 못했습니다.");

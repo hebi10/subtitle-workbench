@@ -5,23 +5,42 @@
   const originalSettings = { sourceLanguage: 'en', targetLanguage: 'ko', translate: true, translationModel: 'original-model' };
   const completed = { id: 'complete-1', uri: 'content://fixture/video', name: '150분 인터뷰 테스트.mp4', durationMs: 9000000, status: 'completed', stage: 'completed', completedChunks: 22, totalChunks: 22, settings: originalSettings };
   const partial = { id: 'partial-1', uri: 'content://fixture/partial', name: '이어하기 테스트.mp4', durationMs: 9000000, status: 'paused', stage: 'transcribing', completedChunks: 2, totalChunks: 22, settings: originalSettings, progress: { percent: 12.5, processedMs: 840000, transcribedChunks: 3, translatedChunks: 2, currentChunk: 3, batchCompleted: 2, batchTotal: 5, extractionPercent: null, elapsedMs: 125000, lastSavedAt: Date.now(), message: '번역 응답을 기다리는 중' } };
-  const state = { jobs: [completed, partial], hasKey: true, keyCheck: null, cues: { 'complete-1': Array.from({ length: 27 }, (_, index) => cue(index)), 'partial-1': [cue(0), cue(1)] }, calls: [], failSave: false, failConnection: false };
+  const state = { jobs: [completed, partial], hasPersonalKey: true, cloudMode: 'personal', reviewRelay: { url: '', hasCode: false }, keyCheck: null, cues: { 'complete-1': Array.from({ length: 27 }, (_, index) => cue(index)), 'partial-1': [cue(0), cue(1)] }, calls: [], failSave: false, failConnection: false };
+  Object.defineProperty(state, 'hasKey', {
+    enumerable: true,
+    get: () => state.cloudMode === 'relay' ? state.reviewRelay.hasCode : state.hasPersonalKey,
+    set: (value) => { if (state.cloudMode === 'relay') state.reviewRelay.hasCode = Boolean(value); else state.hasPersonalKey = Boolean(value); },
+  });
+  const pinnedSettings = (settings) => ({ ...settings, _cloudMode: state.cloudMode, ...(state.cloudMode === 'relay' ? { _relayOrigin: state.reviewRelay.url } : {}) });
+  const sameDestination = (settings = {}) => (settings._cloudMode || 'personal') === state.cloudMode && (state.cloudMode !== 'relay' || settings._relayOrigin === state.reviewRelay.url);
   window.mockNative = state;
   state.settings = JSON.parse(sessionStorage.getItem('mockNative.settings') || 'null') || { sourceLanguage: 'auto', targetLanguage: 'ko', translate: true, translationModel: 'gpt-6-luna', sttModel: 'whisper-1' };
   window.Native = { postMessage(raw) {
     const { id, method, params } = JSON.parse(raw);
-    state.calls.push({ id, method, params });
+    state.calls.push({ id, method, params: method === 'setKey' ? { keySupplied: Boolean(params.key) } : method === 'setReviewRelay' ? { url: params.url, codeSupplied: Boolean(params.code) } : params });
     setTimeout(() => {
       try {
         let result = true;
         const job = state.jobs.find((item) => item.id === params.jobId);
+        if (['setKey', 'clearKey', 'usePersonalApi', 'setReviewRelay', 'clearReviewRelay'].includes(method) && state.jobs.some((item) => ['running', 'queued'].includes(item.status))) throw new Error('실행 또는 대기 중인 작업을 일시정지해 주세요.');
         switch (method) {
-          case 'status': result = { jobs: state.jobs, hasKey: state.hasKey, keyCheck: state.keyCheck, settings: state.settings, maxDurationMs: 10800000 }; break;
+          case 'status': result = { jobs: state.jobs, hasKey: state.hasKey, hasPersonalKey: state.hasPersonalKey, cloudMode: state.cloudMode, reviewRelay: state.reviewRelay, keyCheck: state.keyCheck, settings: state.settings, maxDurationMs: 10800000 }; break;
           case 'getSettings': result = state.settings; break;
           case 'setSettings': if (state.settings.translationModel !== params.settings.translationModel) state.keyCheck = null; state.settings = params.settings; sessionStorage.setItem('mockNative.settings', JSON.stringify(state.settings)); break;
-          case 'setKey': state.hasKey = Boolean(params.key); state.keyCheck = null; break;
-          case 'clearKey': state.hasKey = false; state.keyCheck = null; break;
-          case 'checkConnection': if (state.failConnection) throw new Error('테스트 모델에 접근할 수 없습니다. 모델 이름을 확인해 주세요.'); result = state.keyCheck = { checkedAt: Date.now(), transcriptionModel: params.settings.sttModel || 'whisper-1', translationModel: params.settings.translationModel, message: '키 인증과 모델 접근 확인' }; break;
+          case 'setKey': state.hasPersonalKey = Boolean(params.key); state.cloudMode = 'personal'; state.keyCheck = null; break;
+          case 'clearKey': state.hasPersonalKey = false; state.keyCheck = null; break;
+          case 'usePersonalApi': state.cloudMode = 'personal'; state.keyCheck = null; break;
+          case 'setReviewRelay': {
+            const url = new URL(params.url);
+            const host = url.hostname;
+            if (!params.url.startsWith('https://') || url.protocol !== 'https:' || url.port || url.username || url.password || url.pathname !== '/' || url.search || url.hash
+              || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(host) || host.includes('openai') || /\.(?:localhost|local|internal|lan|home|test|invalid|example|onion|arpa)$/.test(host)
+              || params.code && (!/^[A-Za-z0-9_-]{43,128}$/.test(params.code) || /^sk-/i.test(params.code))) throw new Error('HTTPS 서버 주소와 전용 테스트 접근 코드를 확인해 주세요.');
+            if (!params.code && (!state.reviewRelay.hasCode || state.reviewRelay.url !== url.origin)) throw new Error('다른 서버 주소에는 새 테스트 접근 코드를 입력해 주세요.');
+            state.reviewRelay = { url: url.origin, hasCode: true }; state.cloudMode = 'relay'; state.keyCheck = null; break;
+          }
+          case 'clearReviewRelay': state.reviewRelay = { url: '', hasCode: false }; state.cloudMode = 'personal'; state.keyCheck = null; break;
+          case 'checkConnection': if (state.failConnection) throw new Error('테스트 모델에 접근할 수 없습니다. 모델 이름을 확인해 주세요.'); result = state.keyCheck = { checkedAt: Date.now(), cloudMode: state.cloudMode, ...(state.cloudMode === 'relay' ? { relayOrigin: state.reviewRelay.url } : {}), transcriptionModel: params.settings.sttModel || 'whisper-1', translationModel: params.settings.translationModel, message: '키 인증과 모델 접근 확인' }; break;
           case 'openApiKeyPage': break;
           case 'openPrivacyPolicy': break;
           case 'pickVideo': {
@@ -29,20 +48,20 @@
             if (params.replaceJobId && (!replacement || replacement.status !== 'paused' || replacement.stage !== 'ready' || replacement.completedChunks || state.cues[replacement.id]?.length)) throw new Error('생성을 시작하지 않은 준비 작업만 변경할 수 있습니다.');
             if (state.failNextPick) { const reason = state.failNextPick; state.failNextPick = false; throw new Error(typeof reason === 'string' ? reason : '테스트 영상 선택 실패'); }
             if (state.cancelNextPick) { state.cancelNextPick = false; result = null; break; }
-            const ready = { ...partial, id: replacement?.id || `ready-${state.jobs.filter((item) => item.id.startsWith('ready-')).length + 1}`, name: replacement ? '다시 선택한 영상.mp4' : '선택한 영상.mp4', status: 'paused', stage: 'ready', completedChunks: 0, settings: { ...params.settings }, progress: { percent: 0, processedMs: 0, transcribedChunks: 0, translatedChunks: 0, currentChunk: 0, batchCompleted: 0, batchTotal: 0, extractionPercent: null, elapsedMs: 0, lastSavedAt: 0 } };
+            const ready = { ...partial, id: replacement?.id || `ready-${state.jobs.filter((item) => item.id.startsWith('ready-')).length + 1}`, name: replacement ? '다시 선택한 영상.mp4' : '선택한 영상.mp4', status: 'paused', stage: 'ready', completedChunks: 0, settings: pinnedSettings(params.settings), progress: { percent: 0, processedMs: 0, transcribedChunks: 0, translatedChunks: 0, currentChunk: 0, batchCompleted: 0, batchTotal: 0, extractionPercent: null, elapsedMs: 0, lastSavedAt: 0 } };
             if (replacement) state.jobs[state.jobs.indexOf(replacement)] = ready; else state.jobs.push(ready);
             state.cues[ready.id] = []; result = { job: ready, cues: [] }; break;
           }
           case 'updatePreparedSettings':
             if (!job || job.status !== 'paused' || job.stage !== 'ready' || job.completedChunks || state.cues[job.id]?.length) throw new Error('생성을 시작하지 않은 준비 작업만 변경할 수 있습니다.');
-            job.settings = { ...params.settings }; result = job; break;
+            job.settings = { ...params.settings, _cloudMode: job.settings._cloudMode || 'personal', ...(job.settings._relayOrigin ? { _relayOrigin: job.settings._relayOrigin } : {}) }; result = job; break;
           case 'cancelPrepared':
             if (!job || job.status !== 'paused' || job.stage !== 'ready' || job.completedChunks || state.cues[job.id]?.length) throw new Error('생성을 시작하지 않은 준비 작업만 취소할 수 있습니다.');
             state.jobs = state.jobs.filter((item) => item.id !== job.id); delete state.cues[job.id]; break;
           case 'loadJob': result = { job, cues: state.cues[params.jobId] }; break;
           case 'deleteJob': if (!job || job.status !== 'completed') throw new Error('완료된 작업만 삭제할 수 있습니다.'); state.jobs = state.jobs.filter((item) => item.id !== job.id); delete state.cues[job.id]; break;
           case 'saveCues': if (state.failSave) throw new Error('테스트 저장 실패'); if (job.status !== 'completed') throw new Error('완료된 작업만 편집할 수 있습니다.'); state.cues[job.id] = params.cues; break;
-          case 'resume': job.status = 'running'; if (job.stage === 'ready') job.stage = 'extracting'; if (params.translationModel) job.settings = { ...job.settings, translationModel: params.translationModel }; break;
+          case 'resume': if (!sameDestination(job?.settings)) throw new Error('원래 연결로 전환해야 이어할 수 있습니다.'); job.status = 'running'; if (job.stage === 'ready') job.stage = 'extracting'; if (params.translationModel) job.settings = { ...job.settings, translationModel: params.translationModel }; break;
           case 'pause': job.status = 'paused'; break;
           case 'preview': break;
           case 'export': result = state.cancelNextExport ? null : { saved: true }; state.cancelNextExport = false; break;

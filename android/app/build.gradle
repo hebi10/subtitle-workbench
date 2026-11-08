@@ -1,6 +1,6 @@
 plugins { id 'com.android.application' }
 
-def releaseVersionCode = providers.gradleProperty('versionCode').orElse(providers.environmentVariable('ANDROID_VERSION_CODE')).getOrElse('10')
+def releaseVersionCode = providers.gradleProperty('versionCode').orElse(providers.environmentVariable('ANDROID_VERSION_CODE')).getOrElse('11')
 if (!(releaseVersionCode ==~ /[0-9]+/) || releaseVersionCode.toBigInteger() < 1 || releaseVersionCode.toBigInteger() > 2100000000) {
     throw new GradleException('versionCode must be an integer from 1 to 2100000000')
 }
@@ -13,7 +13,7 @@ android {
         minSdk 26
         targetSdk 36
         versionCode releaseVersionCode.toInteger()
-        versionName '0.9.1'
+        versionName '0.10.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     compileOptions {

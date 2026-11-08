@@ -23,9 +23,11 @@ final class AppSettings {
         String model = settings.optString("translationModel", DEFAULT_TRANSLATION_MODEL).trim();
         if (!source.matches("auto|[a-z]{2,3}") || !target.matches("[a-z]{2,3}") || !model.matches("[A-Za-z0-9_.:-]{1,100}"))
             throw new IllegalArgumentException("언어와 번역 모델 설정을 확인해 주세요.");
-        return new JSONObject().put("sourceLanguage", source).put("targetLanguage", target)
+        JSONObject checked = new JSONObject().put("sourceLanguage", source).put("targetLanguage", target)
                 .put("sttModel", transcriptionModel(settings))
                 .put("translationModel", model).put("translate", settings.optBoolean("translate", true));
+        CloudJobDestination.copy(settings, checked);
+        return checked;
     }
 
     static JSONObject upgrade(JSONObject settings) throws JSONException {

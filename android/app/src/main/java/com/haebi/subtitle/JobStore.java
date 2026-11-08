@@ -75,6 +75,8 @@ public final class JobStore extends SQLiteOpenHelper {
                 requirePrepared(db, id);
                 JSONObject previous = get(id);
                 JSONObject checked = AppSettings.checked(settings == null ? new JSONObject() : settings);
+                checked.remove("_cloudMode"); checked.remove("_relayOrigin");
+                CloudJobDestination.copy(previous.getJSONObject("settings"), checked);
                 String oldModel = AppSettings.transcriptionModel(previous.getJSONObject("settings"));
                 String nextModel = AppSettings.transcriptionModel(checked);
                 ContentValues values = new ContentValues();
@@ -436,10 +438,12 @@ public final class JobStore extends SQLiteOpenHelper {
     private static JSONObject safeSettings(JSONObject source) throws JSONException {
         JSONObject input = source == null ? new JSONObject() : source;
         // Explicit whitelist: API keys, proxy credentials and arbitrary UI values never reach SQLite.
-        return new JSONObject().put("sourceLanguage", limited(input.optString("sourceLanguage", "auto"), 16))
+        JSONObject safe = new JSONObject().put("sourceLanguage", limited(input.optString("sourceLanguage", "auto"), 16))
             .put("targetLanguage", limited(input.optString("targetLanguage", "ko"), 32))
             .put("sttModel", AppSettings.transcriptionModel(input))
             .put("translationModel", limited(input.optString("translationModel", "gpt-6-luna"), 100)).put("translate", input.optBoolean("translate", true));
+        CloudJobDestination.copy(input, safe);
+        return safe;
     }
 
     private JSONObject progressSnapshot(JSONObject job, Cursor row) throws JSONException {

@@ -1,0 +1,14 @@
+{$REVIEW_RELAY_DOMAIN} {
+    request_body {
+        max_size 25165824
+    }
+    reverse_proxy relay:8080 {
+        stream_timeout 6m
+        transport http {
+            dial_timeout 10s
+            response_header_timeout 190s
+            read_timeout 190s
+            write_timeout 190s
+        }
+    }
+}

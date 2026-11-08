@@ -17,9 +17,26 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Web unit tests
         run: npm test
+      - name: Review relay server tests without paid API calls
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          npm ci --prefix server/review-relay
+          npm test --prefix server/review-relay
+      - name: Build relay container and verify isolated startup
+        run: |
+          docker build -t subtitle-review-relay:ci server/review-relay
+          docker compose --env-file server/review-relay/.env.example -f server/review-relay/compose.yml config --quiet
+          docker run -d --name subtitle-relay-ci --network none --read-only --tmpfs /data:uid=1000,gid=1000,mode=0700 --tmpfs /tmp -e REVIEW_RELAY_ENABLED=true -e REVIEW_ACCESS_CODE=fixture_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -e OPENAI_API_KEY=sk-fixture_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa subtitle-review-relay:ci
+          trap 'docker rm -f subtitle-relay-ci >/dev/null 2>&1 || true' EXIT
+          for attempt in 1 2 3 4 5; do
+            if docker exec subtitle-relay-ci node --input-type=module -e 'const r = await fetch("http://127.0.0.1:8080/v1/models/whisper-1"); process.exit(r.status === 401 ? 0 : 1)'; then exit 0; fi
+            sleep 1
+          done
+          exit 1
       - name: Play release automation unit tests
         run: python3 -m unittest discover -s scripts/release/tests -v
       - name: Install Playwright for WebView UI regressions
@@ -38,6 +55,7 @@ jobs:
           path: |
             output/redesign-web/*.png
             output/redesign-android/*.png
+            output/review-relay-ui/*.png
           retention-days: 14
           if-no-files-found: warn
 
