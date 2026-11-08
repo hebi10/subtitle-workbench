@@ -29,8 +29,9 @@
       </details>
       <p class="subsection-label">마이크 자막</p>
       <div class="local-caption-entry"><button id="openOnDevice" type="button">온디바이스 마이크 자막</button><p class="hint">Android 12 이상에서 지원되는 기기 음성 인식 엔진을 사용하며, OpenAI API 키가 필요하지 않습니다.</p></div>
-      <div class="local-caption-entry"><button id="openCloudLive" type="button">GPT 실시간 마이크 자막</button><p class="hint">마이크 음성을 OpenAI로 전송합니다. 본인의 API 키와 별도 이용 요금이 필요하며 인식 시작 전 안내를 제공합니다.</p></div>
-      <p id="keyHint" class="hint">본인의 OpenAI API 키를 저장하면 영상을 선택할 수 있습니다.</p>
+      <div class="local-caption-entry"><button id="openCloudLive" type="button">GPT 실시간 마이크 자막</button><p id="cloudLiveNotice" class="hint">마이크 음성을 선택한 연결을 통해 OpenAI로 전송합니다. 인식 시작 전 전송 대상과 비용 안내를 확인하세요.</p></div>
+      <p id="keyHint" class="hint">개인 API 또는 테스트 서버 연결을 저장하면 영상을 선택할 수 있습니다.</p>
+      <p id="cloudTransmissionNotice" class="job-ready-note" hidden></p>
       <section id="connectionCard" class="connection-summary" aria-labelledby="connectionHeading"><div><h3 id="connectionHeading">내 API로 자막 생성</h3><p id="connectionSummary" class="hint">API 연결 상태를 확인하고 있습니다.</p><p id="activeModel" class="hint">번역 모델: gpt-6-luna</p></div><button id="openConnection" type="button">API 연결 설정</button></section>
       <div class="default-summary"><p id="videoSettingsSummary" class="hint"></p><button id="openDefaultSettings" type="button">기본 설정</button></div>
       <label id="preparedJobLabel" class="job-selector" hidden>준비할 영상<select id="preparedJobSelector"></select></label>
@@ -72,9 +73,18 @@
       <div class="section-heading"><div><p class="page-kicker">04 / PREFERENCES</p><h2 id="settingsHeading">설정</h2></div></div>
       <p class="page-description">API 키와 다음 작업에 적용할 기본값을 관리합니다.</p>
       <details id="apiSettings" class="settings-group"><summary>OpenAI API 연결<span id="apiSettingsSummary"></span></summary>
+      <div class="settings-section"><label>클라우드 연결 방식<select id="cloudMode"><option value="personal">개인 OpenAI API</option><option value="relay">테스트 서버</option></select></label><p id="connectionModeStatus" class="hint" role="status"></p></div>
+      <section id="personalApiSettings">
       <form id="keyForm" class="settings-section"><p id="keyStatus" role="status">API 키 상태 확인 중</p><label>본인의 OpenAI API 키<input id="apiKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="새 API 키 입력" required /></label><button class="primary" type="submit">API 키 암호화 저장</button><p class="hint">키는 이 기기의 Android Keystore로 암호화해 보관합니다. 저장된 키는 화면에 다시 표시하지 않습니다.</p></form>
-      <div class="connection-actions"><button id="checkConnection" type="button" disabled>연결 확인</button><button id="openApiKeyPage" type="button">API 키 발급 페이지</button><button id="requestClearKey" type="button" disabled>저장된 키 삭제</button></div><p id="connectionStatus" class="hint" role="status">연결 확인은 키 인증과 선택 모델 접근만 검사합니다. 결제 상태나 잔액은 확인하지 않습니다.</p>
+      <div class="connection-actions"><button id="openApiKeyPage" type="button">API 키 발급 페이지</button><button id="requestClearKey" type="button" disabled>저장된 키 삭제</button></div>
       <section id="confirmClearKey" class="confirm-key" aria-label="API 키 삭제 확인" hidden><p>이 기기에 저장한 API 키를 삭제할까요? 새 생성과 이어하기에는 키를 다시 저장해야 합니다. 저장된 자막은 유지됩니다.</p><div class="connection-actions"><button id="cancelClearKey" type="button">삭제 취소</button><button id="clearKey" type="button">이 기기에서 키 삭제</button></div></section>
+      </section>
+      <section id="reviewRelaySettings" hidden>
+      <form id="reviewRelayForm" class="settings-section"><p id="relayNotice" class="job-ready-note">테스트 접근 코드에는 개인 OpenAI API 키를 입력하지 마세요. 실제 오디오와 자막 텍스트를 입력한 테스트 서버를 거쳐 OpenAI로 전송합니다. 개인 API 계정에는 요금이 청구되지 않으며, 서버의 공유 사용량 한도로 중단될 수 있습니다.</p><label>테스트 서버 HTTPS 주소<input id="reviewRelayUrl" type="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://server.example.com" required /></label><label>전용 테스트 접근 코드<input id="reviewRelayCode" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="새 테스트 접근 코드" /></label><p id="reviewRelayStatus" class="hint" role="status">코드는 기기에서 암호화해 보관하며 화면에 다시 표시하지 않습니다.</p><button class="primary" type="submit">테스트 서버 연결 저장</button></form>
+      <div class="connection-actions"><button id="requestClearReviewRelay" type="button" disabled>저장된 테스트 연결 삭제</button></div>
+      <section id="confirmClearReviewRelay" class="confirm-key" aria-label="테스트 연결 삭제 확인" hidden><p>이 기기의 테스트 서버 주소와 접근 코드를 삭제할까요? 테스트 서버로 만든 미완료 작업은 같은 서버를 다시 연결해야 이어할 수 있습니다. 개인 API 키와 저장된 자막은 유지됩니다.</p><div class="connection-actions"><button id="cancelClearReviewRelay" type="button">테스트 연결 삭제 취소</button><button id="clearReviewRelay" type="button">이 기기에서 테스트 연결 삭제</button></div></section>
+      </section>
+      <div class="connection-actions"><button id="checkConnection" type="button" disabled>연결 확인</button></div><p id="connectionStatus" class="hint" role="status">연결 확인은 현재 연결의 인증과 선택 모델 접근만 검사합니다. 결제 상태나 잔액은 확인하지 않습니다.</p>
       </details>
       <details id="defaultSettings" class="settings-group"><summary>다음 영상의 기본 설정<span id="defaultSettingsSummary"></span></summary>
       <form id="settingsForm" class="settings-section">
@@ -87,7 +97,7 @@
           <option value="gpt-4o-transcribe-diarize">화자 자동 구분 (2027년 종료 예정)</option>
         </select></label><p class="hint">GPT Transcribe는 약 30초 단위로 작업하지만 자막 시각은 추정값입니다. 화자 자동 구분 모델의 인물 ID는 작업 구간별로 다를 수 있습니다.</p><label>번역 모델<input id="translationModel" type="text" value="gpt-6-luna" spellcheck="false" autocapitalize="off" maxlength="100" required /></label><p class="hint">기본 번역 모델은 gpt-6-luna입니다. 계정에서 사용할 수 있는 모델 이름을 입력하세요.</p></details><p id="settingsModel" class="hint">번역 모델: gpt-6-luna</p><p class="hint">Whisper와 화자 구분 모델은 2027년 2월 26일 지원 종료 예정입니다. 정확한 시간 싱크를 중시하면 기존 Whisper를 사용하고, 새 GPT 모델 결과는 영상과 비교해 시간을 수정하세요.</p><div class="settings-actions"><button type="submit">설정 저장</button><button id="discardSettings" type="button" disabled>변경 취소</button></div><p id="settingsStatus" role="status">저장한 설정은 새로 선택하는 영상에 적용됩니다.</p>
       </form></details>
-      <details id="dataSettings" class="settings-group"><summary>전송 데이터 · 비용 · 이어하기</summary><div class="settings-section"><p class="hint">음성 인식에는 추출된 오디오 구간이, 번역에는 자막 텍스트가 OpenAI로 전송됩니다. API 사용 요금은 OpenAI 계정에 별도로 청구됩니다. 긴 영상은 처리 시간과 비용이 늘어납니다.</p><p class="hint">생성 중 앱을 닫아도 저장된 구간에서 이어할 수 있습니다. 강제 중지나 재부팅 후에는 앱을 열고 이어하기를 눌러 주세요.</p><p class="hint">원본 파일을 이동하거나 삭제하면 이어하기와 미리보기가 불가능할 수 있습니다.</p></div></details>
+      <details id="dataSettings" class="settings-group"><summary>전송 데이터 · 비용 · 이어하기</summary><div class="settings-section"><p class="hint">음성 인식에는 추출된 오디오 구간이, 번역에는 자막 텍스트가 OpenAI로 전송됩니다. 개인 API는 본인 OpenAI 계정에 별도로 청구됩니다. 테스트 서버는 입력한 서버를 거쳐 전송하며 개인 API 계정 청구 없이 서버의 공유 사용량 한도를 적용합니다.</p><p class="hint">생성 중 앱을 닫아도 저장된 구간에서 이어할 수 있습니다. 강제 중지나 재부팅 후에는 앱을 열고 이어하기를 눌러 주세요.</p><p class="hint">원본 파일을 이동하거나 삭제하면 이어하기와 미리보기가 불가능할 수 있습니다.</p></div></details>
       <section class="settings-section" aria-labelledby="privacyHeading"><h3 id="privacyHeading">개인정보</h3><p class="hint">처리 방식별 전송 데이터와 기기 내 저장·삭제 방법을 확인할 수 있습니다.</p><button id="openPrivacyPolicy" type="button">개인정보처리방침 · 브라우저에서 열기</button></section>
     </section>
   </main>

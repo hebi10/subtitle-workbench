@@ -11,6 +11,7 @@ import org.json.JSONException;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
+import okhttp3.Dns;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.WebSocket;
@@ -28,8 +29,19 @@ final class LiveTranscriptionClient {
     private static final long MAX_RECORDING_MS = 5L * 60_000;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final Listener listener;
+    private volatile CloudAccess access;
     private final OkHttpClient http = new OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS)
+            .followRedirects(false).followSslRedirects(false)
+            .dns(host -> {
+                java.util.List<java.net.InetAddress> addresses = Dns.SYSTEM.lookup(host);
+                CloudAccess selected = access;
+                if (selected != null && selected.isRelay()) {
+                    try { for (java.net.InetAddress address : addresses) CloudAccess.requirePublicAddress(address); }
+                    catch (java.io.IOException error) { throw new java.net.UnknownHostException("테스트 서버는 공개 인터넷 주소를 사용해야 합니다."); }
+                }
+                return addresses;
+            })
             .pingInterval(30, TimeUnit.SECONDS).build();
     private volatile WebSocket socket;
     private volatile AudioRecord recorder;
@@ -45,10 +57,15 @@ final class LiveTranscriptionClient {
     }
 
     void start(String apiKey) {
-        if (apiKey == null || apiKey.trim().isEmpty()) throw new IllegalArgumentException("OpenAI API 키가 필요합니다.");
-        postStatus("OpenAI 실시간 전사 서버에 연결 중…");
-        Request request = new Request.Builder().url(RealtimeTranscriptionProtocol.URL)
-                .header("Authorization", "Bearer " + apiKey.trim())
+        start(CloudAccess.personal(apiKey));
+    }
+
+    void start(CloudAccess selected) {
+        if (selected == null) throw new IllegalArgumentException("클라우드 연결을 먼저 설정해 주세요.");
+        access = selected;
+        postStatus(selected.isRelay() ? "테스트 서버를 통해 실시간 전사에 연결 중…" : "OpenAI 실시간 전사 서버에 연결 중…");
+        Request request = new Request.Builder().url(selected.realtimeUrl())
+                .header("Authorization", "Bearer " + selected.token())
                 .build();
         ui.postDelayed(() -> {
             if (!cancelled && !completed && recorderThread == null)
@@ -78,7 +95,7 @@ final class LiveTranscriptionClient {
                         ws.close(1000, "Done");
                         ui.post(() -> { if (!cancelled) listener.onFinal(text); });
                     } else if ("error".equals(type)) {
-                        fail("OpenAI 실시간 전사 서버가 요청을 처리하지 못했습니다. 키와 사용 한도를 확인하세요.");
+                        fail(selected.isRelay() ? "테스트 서버가 요청을 처리하지 못했습니다. 접근 코드와 테스트 한도를 확인하세요." : "OpenAI 실시간 전사 서버가 요청을 처리하지 못했습니다. 키와 사용 한도를 확인하세요.");
                     }
                 } catch (JSONException error) { fail("실시간 전사 응답 형식이 올바르지 않습니다."); }
             }
@@ -117,7 +134,7 @@ final class LiveTranscriptionClient {
                 }
                 startTime = SystemClock.elapsedRealtime();
                 capturing = true;
-                postStatus("GPT 실시간 인식 중 · 마이크 음성이 OpenAI로 전송됩니다.");
+                postStatus(access.isRelay() ? "GPT 실시간 인식 중 · 마이크 음성이 테스트 서버를 거쳐 OpenAI로 전송됩니다." : "GPT 실시간 인식 중 · 마이크 음성이 OpenAI로 전송됩니다.");
                 byte[] pcm = new byte[9_600];
                 while (capturing && !cancelled) {
                     if (SystemClock.elapsedRealtime() - startTime >= MAX_RECORDING_MS) {

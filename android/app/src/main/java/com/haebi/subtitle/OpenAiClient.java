@@ -36,6 +36,7 @@ final class OpenAiClient {
         Thread thread = new Thread(task, "subtitle-api-deadline"); thread.setDaemon(true); return thread;
     });
     private final String key;
+    private final CloudAccess access;
     private final Cancellation cancellation;
     private final ConnectionFactory connections;
     private final BiConsumer<Integer, Integer> retryListener;
@@ -45,7 +46,18 @@ final class OpenAiClient {
     }
 
     OpenAiClient(String key, Cancellation cancellation, BiConsumer<Integer, Integer> retryListener) {
-        this(key, cancellation, path -> (HttpURLConnection) new URL("https://api.openai.com/v1" + path).openConnection(), retryListener);
+        this(CloudAccess.personal(key), cancellation, retryListener);
+    }
+
+    OpenAiClient(CloudAccess access, Cancellation cancellation) {
+        this(access, cancellation, (next, maximum) -> { });
+    }
+
+    OpenAiClient(CloudAccess access, Cancellation cancellation, BiConsumer<Integer, Integer> retryListener) {
+        this(access, cancellation, path -> {
+            access.requirePublicResolution();
+            return (HttpURLConnection) new URL(access.restUrl(path)).openConnection();
+        }, retryListener);
     }
 
     OpenAiClient(String key, Cancellation cancellation, ConnectionFactory connections) {
@@ -53,8 +65,17 @@ final class OpenAiClient {
     }
 
     OpenAiClient(String key, Cancellation cancellation, ConnectionFactory connections, BiConsumer<Integer, Integer> retryListener) {
-        if (key == null || key.trim().isEmpty()) throw new IllegalArgumentException("OpenAI API 키를 먼저 저장해 주세요.");
-        this.key = key.trim();
+        this(CloudAccess.personal(key), cancellation, connections, retryListener);
+    }
+
+    OpenAiClient(CloudAccess access, Cancellation cancellation, ConnectionFactory connections) {
+        this(access, cancellation, connections, (next, maximum) -> { });
+    }
+
+    OpenAiClient(CloudAccess access, Cancellation cancellation, ConnectionFactory connections, BiConsumer<Integer, Integer> retryListener) {
+        if (access == null) throw new IllegalArgumentException("클라우드 연결을 먼저 설정해 주세요.");
+        this.access = access;
+        this.key = access.token();
         this.cancellation = cancellation;
         this.connections = connections;
         this.retryListener = retryListener;
@@ -67,7 +88,9 @@ final class OpenAiClient {
         if (!translationModel.isEmpty()) checkModel(translationModel);
         return new JSONObject().put("checkedAt", System.currentTimeMillis()).put("transcriptionModel", transcriptionModel)
             .put("translationModel", translationModel)
-            .put("message", "API 키 인증과 모델 접근 권한을 확인했습니다. 실제 처리 가능 여부·결제 상태·잔여 할당량을 보장하는 검사는 아닙니다.");
+            .put("cloudMode", access.mode()).put("relayOrigin", access.isRelay() ? access.origin() : "")
+            .put("message", access.isRelay() ? "테스트 접근 코드 인증과 모델 접근 권한을 확인했습니다. 실제 처리 가능 여부·테스트 잔여 한도를 보장하는 검사는 아닙니다."
+                : "API 키 인증과 모델 접근 권한을 확인했습니다. 실제 처리 가능 여부·결제 상태·잔여 할당량을 보장하는 검사는 아닙니다.");
     }
 
     private void checkModel(String model) throws IOException, JSONException {

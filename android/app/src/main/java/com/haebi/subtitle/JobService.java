@@ -159,8 +159,9 @@ public final class JobService extends Service {
     private void process(JSONObject job, OpenAiClient.Cancellation token) throws Exception {
         String id = job.getString("id");
         JSONObject settings = job.getJSONObject("settings");
-        String key = new SecretStore(this).getKey();
-        OpenAiClient api = new OpenAiClient(key, token, (attempt, maximum) -> {
+        CloudAccess access = new CloudAccessStore(this).current();
+        CloudJobDestination.requireMatch(settings, access);
+        OpenAiClient api = new OpenAiClient(access, token, (attempt, maximum) -> {
             JSONObject snapshot = store.get(id);
             int chunk = snapshot.optJSONObject("progress").optInt("currentChunk") - 1;
             progress(id, "waiting", chunk, null, "연결과 API 응답 대기 중 · 재시도 " + attempt + "/" + maximum);
@@ -300,7 +301,7 @@ public final class JobService extends Service {
         if (error instanceof org.json.JSONException) return "API 응답 형식이 올바르지 않습니다. 이어하기로 재시도해 주세요.";
         String message = error.getMessage();
         if (message == null || message.isEmpty()) message = "처리 중 오류가 발생했습니다. 이어하기로 재시도해 주세요.";
-        try { String key = new SecretStore(this).getKey(); if (!key.isEmpty()) message = message.replace(key, "[REDACTED]"); } catch (RuntimeException ignored) { }
+        message = new CloudAccessStore(this).redact(message);
         return message.substring(0, Math.min(message.length(), 1000));
     }
 }

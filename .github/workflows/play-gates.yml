@@ -22,7 +22,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -31,6 +31,12 @@ jobs:
         run: |
           npm test
           python3 -m unittest discover -s scripts/release/tests -v
+      - name: Review relay server tests without paid API calls
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          npm ci --prefix server/review-relay
+          npm test --prefix server/review-relay
       - name: Install Playwright and run WebView UI regressions
         env:
           PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright

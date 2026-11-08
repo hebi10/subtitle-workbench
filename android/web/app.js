@@ -40,8 +40,11 @@ let settingsTouched = false;
 let pendingDeletionId = '';
 let savedSettings = { sourceLanguage: 'auto', targetLanguage: 'ko', sttModel: DEFAULT_STT_MODEL, translate: true, translationModel: DEFAULT_TRANSLATION_MODEL };
 const preparedEditors = new Map();
-let connection = { hasKey: false, keyCheck: null };
+let connection = { hasKey: false, hasPersonalKey: false, cloudMode: 'personal', reviewRelay: { url: '', hasCode: false }, keyCheck: null };
+let connectionModeDraft = null;
+let relayDraftTouched = false;
 let checkingConnection = false;
+let changingConnection = false;
 let connectionError = '';
 const busyNodes = new WeakSet();
 const jobActionsInFlight = new Set();
@@ -123,6 +126,7 @@ async function show(next) {
   if (navigation !== navigationRevision) return;
   if (next === 'results') await ensureResult();
   if (navigation !== navigationRevision) return;
+  if (view === 'settings' && next !== 'settings') { $('reviewRelayCode').value = ''; $('apiKey').value = ''; }
   view = next;
   document.body.classList.toggle('is-editor', next === 'editor');
   for (const name of ['video', 'jobs', 'results', 'editor', 'settings']) $(`${name}View`).hidden = name !== next;
@@ -154,10 +158,18 @@ async function refresh() {
       if (!settingsTouched && state.settings) hydrateSettings(state.settings);
     }
     jobs = Array.isArray(state.jobs) ? state.jobs : [];
-    connection = { hasKey: Boolean(state.hasKey), keyCheck: state.keyCheck || null };
+    const previousMode = connection.cloudMode;
+    connection = {
+      hasKey: Boolean(state.hasKey), hasPersonalKey: Boolean(state.hasPersonalKey ?? state.hasKey),
+      cloudMode: state.cloudMode === 'relay' ? 'relay' : 'personal',
+      reviewRelay: { url: typeof state.reviewRelay?.url === 'string' ? state.reviewRelay.url : '', hasCode: Boolean(state.reviewRelay?.hasCode) },
+      keyCheck: state.keyCheck || null,
+    };
+    if (previousMode !== connection.cloudMode) { $('reviewRelayCode').value = ''; $('apiKey').value = ''; connectionError = ''; }
+    if (!relayDraftTouched) $('reviewRelayUrl').value = connection.reviewRelay.url;
     if (firstStatus) $('apiSettings').open = !connection.hasKey;
     syncConnection();
-    const fingerprint = JSON.stringify([jobs, connection.hasKey, savedSettings.translationModel, savedSettings.sttModel, pendingDeletionId]);
+    const fingerprint = JSON.stringify([jobs, connection.hasKey, connection.cloudMode, connection.reviewRelay.url, savedSettings.translationModel, savedSettings.sttModel, pendingDeletionId]);
     if (fingerprint !== jobFingerprint) { renderJobs(); jobFingerprint = fingerprint; }
     if (current && !changingJob) {
       const latest = jobs.find((job) => job.id === current.id);
@@ -198,12 +210,17 @@ function renderJobs() {
   for (const job of ordered) {
     const old = existing.get(job.id);
     const ready = isPrepared(job);
-    const renderKey = JSON.stringify([job, connection.hasKey, savedSettings.translationModel, savedSettings.sttModel, jobActionsInFlight.has(job.id), pendingDeletionId === job.id]);
+    const sameDestination = matchesJobDestination(job);
+    const renderKey = JSON.stringify([job, connection.hasKey, connection.cloudMode, connection.reviewRelay.url, savedSettings.translationModel, savedSettings.sttModel, jobActionsInFlight.has(job.id), pendingDeletionId === job.id]);
     if (old && (old.dataset.renderKey === renderKey || (ready && old.dataset.prepared === 'true'))) {
       if (ready) {
         old.querySelector('h3').textContent = job.name;
         old.querySelector('.job-state').lastChild.textContent = `${formatDuration(job.durationMs)} · ${Number(job.totalChunks) || 0}구간`;
         old.querySelector('.prepared-summary').textContent = settingsSummary(job.settings || {});
+        old.querySelector('.job-ready-note').textContent = jobTransmissionNotice(job);
+        const mismatch = old.querySelector('.job-destination-warning');
+        mismatch.hidden = sameDestination;
+        mismatch.textContent = jobDestinationWarning(job);
         const settings = job.settings || {};
         const settingDetails = {
           '원본 언어': languageNames[settings.sourceLanguage] || settings.sourceLanguage || '자동 감지',
@@ -213,7 +230,7 @@ function renderJobs() {
         };
         for (const line of old.querySelectorAll('.job-details > div')) line.querySelector('dd').textContent = settingDetails[line.querySelector('dt').textContent];
         old.querySelectorAll('button').forEach((node) => {
-          if (!busyNodes.has(node)) node.disabled = jobActionsInFlight.has(job.id) || (node.dataset.needsKey === 'true' && !connection.hasKey);
+          if (!busyNodes.has(node)) node.disabled = jobActionsInFlight.has(job.id) || (node.dataset.needsKey === 'true' && (!connection.hasKey || !sameDestination));
         });
       }
       nextNodes.push(old);
@@ -262,7 +279,13 @@ function renderJobs() {
     if (job.stage && job.status === 'running') article.append(el('p', detail.message || stageLabel(job.stage), 'hint'));
     if (ready) {
       article.append(el('p', settingsSummary(settings), 'prepared-summary hint'));
-      inspection.append(el('p', '생성 시작 시 추출한 오디오와 번역할 자막을 OpenAI로 전송합니다. API 사용 요금은 본인 계정에 청구됩니다. 긴 영상일수록 시간과 비용이 늘어납니다.', 'job-ready-note'));
+      article.append(el('p', jobTransmissionNotice(job), 'job-ready-note'));
+    }
+    if (ready || ['paused', 'error'].includes(job.status)) {
+      if (!ready) inspection.append(el('p', jobTransmissionNotice(job), 'job-ready-note'));
+      const warning = el('p', jobDestinationWarning(job), 'job-destination-warning hint');
+      warning.hidden = sameDestination;
+      article.append(warning);
     }
     if (!ready && ['paused', 'error'].includes(job.status)) inspection.append(el('p', '저장된 결과를 유지하고 남은 구간부터 이어갑니다.', 'hint'));
     if (job.error) article.append(el('p', job.error, 'job-error'));
@@ -282,16 +305,16 @@ function renderJobs() {
     }
     if (['running', 'queued'].includes(job.status)) actions.append(button('일시정지', () => runJobAction(job.id, async () => { await nativeCall('pause', { jobId: job.id }); await refresh(); }), jobActionsInFlight.has(job.id)));
     if (['paused', 'error'].includes(job.status)) {
-      const start = button(ready ? '생성 시작' : '이어하기', () => resumeJob(job.id), !connection.hasKey || jobActionsInFlight.has(job.id));
+      const start = button(ready ? '생성 시작' : '이어하기', () => resumeJob(job.id), !connection.hasKey || !sameDestination || jobActionsInFlight.has(job.id));
       start.dataset.needsKey = 'true';
       if (ready) start.classList.add('primary');
       actions.append(start);
       const selectedModel = savedSettings.translationModel;
       if (!ready && settings.translate !== false && settings.translationModel && selectedModel !== settings.translationModel) {
         inspection.append(el('p', `저장된 모델: ${selectedModel}. 이 모델로 이어하면 남은 번역에만 적용됩니다.`, 'hint job-model-note'));
-        inspection.append(button('현재 모델로 이어하기', () => resumeJob(job.id, selectedModel), !connection.hasKey || jobActionsInFlight.has(job.id)));
+        inspection.append(button('현재 모델로 이어하기', () => resumeJob(job.id, selectedModel), !connection.hasKey || !sameDestination || jobActionsInFlight.has(job.id)));
       }
-      if (!connection.hasKey || job.status === 'error') actions.append(button('API 설정 확인', () => openSettings()));
+      if (!connection.hasKey || !sameDestination || job.status === 'error') actions.append(button('API 설정 확인', () => openSettings()));
     }
     article.append(actions);
     if (ready) article.append(preparationEditor(job));
@@ -431,7 +454,9 @@ async function runJobAction(jobId, action) {
   finally { jobActionsInFlight.delete(jobId); renderJobs(); }
 }
 async function resumeJob(jobId, translationModel) {
-  const startingPrepared = isPrepared(jobs.find((job) => job.id === jobId));
+  const job = jobs.find((item) => item.id === jobId);
+  if (!matchesJobDestination(job)) throw new Error(jobDestinationWarning(job));
+  const startingPrepared = isPrepared(job);
   const preparation = preparedEditors.get(jobId);
   if (preparation?.dirty) {
     preparation.node.open = true;
@@ -698,25 +723,68 @@ function settingsChanged() {
   syncConnection();
 }
 function translationState() { $('targetLanguage').disabled = !$('translate').checked; $('translationModel').disabled = !$('translate').checked; syncConnection(); }
+async function changeConnection(action) {
+  if (changingConnection) return;
+  changingConnection = true; syncConnection();
+  try { await action(); }
+  finally { changingConnection = false; syncConnection(); }
+}
+function relayDraftOrigin(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password && url.pathname === '/' && !url.search && !url.hash ? url.origin : '';
+  } catch { return ''; }
+}
+function relayTransmissionNotice(url, live = false) {
+  return `${live ? '마이크 음성' : '실제 오디오와 자막 텍스트'}을 테스트 서버 ${url || '(주소 미설정)'} → OpenAI로 전송합니다. 개인 API 계정에는 요금이 청구되지 않으며 서버의 공유 사용량 한도로 중단될 수 있습니다.`;
+}
+function jobDestination(job) {
+  const settings = job?.settings || {};
+  return { mode: settings._cloudMode === 'relay' ? 'relay' : 'personal', origin: settings._relayOrigin || '' };
+}
+function matchesJobDestination(job) {
+  const destination = jobDestination(job);
+  return destination.mode === connection.cloudMode && (destination.mode !== 'relay' || destination.origin === connection.reviewRelay.url);
+}
+function jobTransmissionNotice(job) {
+  const destination = jobDestination(job);
+  return destination.mode === 'relay' ? relayTransmissionNotice(destination.origin) : '개인 API 연결: 생성 시작 시 추출한 오디오와 번역할 자막을 OpenAI로 전송합니다. API 사용 요금은 본인 계정에 청구됩니다. 긴 영상일수록 시간과 비용이 늘어납니다.';
+}
+function jobDestinationWarning(job) {
+  const destination = jobDestination(job);
+  return `${destination.mode === 'relay' ? `테스트 서버 ${destination.origin}` : '개인 API'}로 준비한 작업입니다. API 설정에서 원래 연결로 전환해야 시작하거나 이어할 수 있습니다.`;
+}
 function syncConnection() {
   const selected = readSettings();
   const checked = connection.keyCheck;
-  const matches = checked && !connectionError && checked.transcriptionModel === selected.sttModel && (!selected.translate || checked.translationModel === selected.translationModel);
+  const relay = connection.cloudMode === 'relay';
+  const modeLabel = relay ? '테스트 서버' : '개인 API';
+  const matches = checked && !connectionError && (checked.cloudMode || 'personal') === connection.cloudMode && (!relay || checked.relayOrigin === connection.reviewRelay.url) && checked.transcriptionModel === selected.sttModel && (!selected.translate || checked.translationModel === selected.translationModel);
   const running = jobs.some((job) => ['running', 'queued'].includes(job.status));
+  const locked = running || changingConnection || checkingConnection;
+  const draftMode = connectionModeDraft || connection.cloudMode;
+  $('cloudMode').value = draftMode;
+  $('personalApiSettings').hidden = draftMode !== 'personal';
+  $('reviewRelaySettings').hidden = draftMode !== 'relay';
+  $('connectionModeStatus').textContent = `현재 연결: ${modeLabel}${relay ? ` · ${connection.reviewRelay.url || '주소 미설정'}` : ''}.${connectionModeDraft === 'relay' && !relay ? ' 테스트 서버 연결 저장을 눌러야 전환됩니다.' : ''}${running ? ' 실행 또는 대기 중인 작업을 일시정지해야 연결을 변경할 수 있습니다.' : ''}`;
+  $('reviewRelayStatus').textContent = connection.reviewRelay.hasCode ? '테스트 코드가 암호화되어 저장되어 있습니다. 같은 서버 주소에서만 빈 코드로 저장된 코드를 재사용할 수 있습니다. 다른 서버는 새 코드를 입력하세요.' : '전용 테스트 접근 코드를 입력하세요. 기기에서 암호화해 보관하며 다시 표시하지 않습니다.';
   $('keyHint').hidden = connection.hasKey;
-  $('keyStatus').textContent = connection.hasKey ? `API 키가 암호화되어 저장되어 있습니다.${running ? ' 키를 바꾸거나 삭제하려면 작업을 일시정지해 주세요.' : ''}` : '저장된 API 키가 없습니다. 본인의 키를 입력해 주세요.';
-  $('connectionSummary').textContent = !connection.hasKey ? '본인의 OpenAI API 키를 연결해 시작하세요.' : connectionError ? '연결 확인 실패 · 설정을 확인해 주세요.' : matches ? 'API 키 인증 · 모델 접근 확인됨' : 'API 키 저장됨 · 연결 미확인';
+  $('keyStatus').textContent = connection.hasPersonalKey ? `API 키가 암호화되어 저장되어 있습니다.${running ? ' 키를 바꾸거나 삭제하려면 작업을 일시정지해 주세요.' : ''}` : '저장된 API 키가 없습니다. 본인의 키를 입력해 주세요.';
+  $('connectionSummary').textContent = `${modeLabel} · ${!connection.hasKey ? '연결 정보 저장 필요' : connectionError ? '연결 확인 실패 · 설정을 확인해 주세요.' : matches ? '인증 · 모델 접근 확인됨' : '저장됨 · 연결 미확인'}`;
   $('connectionCard').classList.toggle('connected', connection.hasKey);
   $('connectionHeading').hidden = connection.hasKey;
   $('activeModel').hidden = connection.hasKey;
   $('activeModel').textContent = `음성 인식: ${savedSettings.sttModel || DEFAULT_STT_MODEL} · ${savedSettings.translate ? `번역: ${savedSettings.translationModel}` : '번역 안 함'}`;
   $('settingsModel').textContent = `음성 인식: ${selected.sttModel} · ${selected.translate ? `번역: ${selected.translationModel}` : '번역 안 함'}`;
-  $('apiSettingsSummary').textContent = connection.hasKey ? (matches ? '연결 확인됨' : '키 저장됨') : '키 연결 필요';
+  $('apiSettingsSummary').textContent = `${modeLabel} · ${connection.hasKey ? (matches ? '연결 확인됨' : '연결 저장됨') : '연결 필요'}`;
   $('defaultSettingsSummary').textContent = settingsSummary(savedSettings);
   $('videoSettingsSummary').textContent = `다음 영상: ${settingsSummary(savedSettings)}`;
-  if (!checkingConnection) $('connectionStatus').textContent = connectionError || (matches ? `키 인증 · 모델 접근 확인 (${formatSavedAt(checked.checkedAt)}). 결제 상태나 잔액을 확인한 것은 아닙니다.` : '연결 확인은 키 인증과 선택 모델 접근만 검사합니다. 결제 상태나 잔액은 확인하지 않습니다.');
+  $('cloudTransmissionNotice').hidden = !relay;
+  $('cloudTransmissionNotice').textContent = relayTransmissionNotice(connection.reviewRelay.url);
+  $('cloudLiveNotice').textContent = relay ? relayTransmissionNotice(connection.reviewRelay.url, true) : '개인 API 연결: 마이크 음성을 OpenAI로 전송합니다. 본인의 API 키와 별도 이용 요금이 필요하며 인식 시작 전 안내를 제공합니다.';
+  if (!checkingConnection) $('connectionStatus').textContent = `${modeLabel} · ${connectionError || (matches ? `인증 · 모델 접근 확인 (${formatSavedAt(checked.checkedAt)}). 결제 상태나 잔액을 확인한 것은 아닙니다.` : '연결 확인은 현재 연결의 인증과 선택 모델 접근만 검사합니다. 결제 상태나 잔액은 확인하지 않습니다.')}`;
   $('connectionStatus').classList.toggle('error-text', Boolean(connectionError));
-  for (const [node, disabled] of [[$('pickVideo'), !connection.hasKey], [$('checkConnection'), !connection.hasKey || checkingConnection], [$('requestClearKey'), !connection.hasKey || running], [$('clearKey'), !connection.hasKey || running], [$('keyForm').querySelector('[type="submit"]'), running]]) {
+  for (const [node, disabled] of [[$('pickVideo'), !connection.hasKey || changingConnection], [$('checkConnection'), !connection.hasKey || checkingConnection || changingConnection], [$('requestClearKey'), !connection.hasPersonalKey || locked], [$('clearKey'), !connection.hasPersonalKey || locked], [$('apiKey'), locked], [$('keyForm').querySelector('[type="submit"]'), locked], [$('cloudMode'), running || checkingConnection || changingConnection], [$('reviewRelayUrl'), locked], [$('reviewRelayCode'), locked], [$('reviewRelayForm').querySelector('[type="submit"]'), locked], [$('requestClearReviewRelay'), !connection.reviewRelay.hasCode || locked], [$('clearReviewRelay'), !connection.reviewRelay.hasCode || locked]]) {
     if (!busyNodes.has(node)) node.disabled = disabled;
   }
 }
@@ -757,7 +825,30 @@ $('settingsForm').addEventListener('submit', (event) => {
 });
 $('keyForm').addEventListener('submit', (event) => {
   event.preventDefault();
-  void run(event.submitter, async () => { const key = $('apiKey').value.trim(); if (!key) throw new Error('API 키를 입력해 주세요.'); await nativeCall('setKey', { key }); $('apiKey').value = ''; connectionError = ''; await refresh(); message('API 키를 암호화해 저장했습니다. 연결 확인으로 키와 모델 접근을 검사할 수 있습니다.'); });
+  void run(event.submitter, () => changeConnection(async () => { const key = $('apiKey').value.trim(); if (!key) throw new Error('API 키를 입력해 주세요.'); await nativeCall('setKey', { key }); $('apiKey').value = ''; $('reviewRelayCode').value = ''; connectionModeDraft = null; connectionError = ''; await refresh(); message('API 키를 암호화해 저장했습니다. 연결 확인으로 키와 모델 접근을 검사할 수 있습니다.'); }));
+});
+$('cloudMode').addEventListener('change', (event) => {
+  $('reviewRelayCode').value = ''; $('apiKey').value = '';
+  $('confirmClearReviewRelay').hidden = true; $('confirmClearKey').hidden = true;
+  connectionModeDraft = $('cloudMode').value;
+  syncConnection();
+  if (connectionModeDraft === 'personal') void run(event.currentTarget, () => changeConnection(async () => {
+    try { await nativeCall('usePersonalApi'); connectionModeDraft = null; connectionError = ''; await refresh(); }
+    finally { connectionModeDraft = null; }
+  }));
+});
+$('reviewRelayForm').addEventListener('input', () => { relayDraftTouched = true; });
+$('apiSettings').addEventListener('toggle', () => { if (!$('apiSettings').open) { $('reviewRelayCode').value = ''; $('apiKey').value = ''; } });
+$('reviewRelayForm').addEventListener('submit', (event) => {
+  event.preventDefault();
+  void run(event.submitter, () => changeConnection(async () => {
+    const url = $('reviewRelayUrl').value.trim();
+    const code = $('reviewRelayCode').value.trim();
+    if (!code && (!connection.reviewRelay.hasCode || relayDraftOrigin(url) !== connection.reviewRelay.url)) throw new Error('다른 서버 주소에는 새 테스트 접근 코드를 입력해 주세요.');
+    await nativeCall('setReviewRelay', { url, code });
+    $('reviewRelayCode').value = ''; connectionModeDraft = null; relayDraftTouched = false; connectionError = '';
+    await refresh(); message('테스트 서버 연결을 저장했습니다. 실제 오디오와 자막은 표시된 서버를 거쳐 OpenAI로 전송됩니다.');
+  }));
 });
 $('jumpForm').addEventListener('submit', (event) => {
   event.preventDefault();
@@ -791,15 +882,18 @@ for (const [id, action] of Object.entries({
   openApiKeyPage: () => nativeCall('openApiKeyPage'),
   openPrivacyPolicy: () => nativeCall('openPrivacyPolicy'),
   checkConnection: async () => {
-    checkingConnection = true; connectionError = '';
-    $('connectionStatus').textContent = '키 인증과 선택 모델 접근을 확인하고 있습니다…';
-    try { await nativeCall('checkConnection', { settings: readSettings() }); await refresh(); message('API 키 인증과 모델 접근을 확인했습니다.'); }
+    checkingConnection = true; connectionError = ''; syncConnection();
+    $('connectionStatus').textContent = `${connection.cloudMode === 'relay' ? '테스트 서버' : '개인 API'} 인증과 선택 모델 접근을 확인하고 있습니다…`;
+    try { await nativeCall('checkConnection', { settings: readSettings() }); await refresh(); message(`${connection.cloudMode === 'relay' ? '테스트 서버' : 'API 키'} 인증과 모델 접근을 확인했습니다.`); }
     catch (error) { connectionError = `연결을 확인하지 못했습니다: ${error.message}`; throw error; }
     finally { checkingConnection = false; syncConnection(); }
   },
   requestClearKey: () => { $('confirmClearKey').hidden = false; $('cancelClearKey').focus(); },
   cancelClearKey: () => { $('confirmClearKey').hidden = true; $('requestClearKey').focus(); },
-  clearKey: async () => { await nativeCall('clearKey'); $('apiKey').value = ''; connectionError = ''; $('confirmClearKey').hidden = true; await refresh(); message('이 기기에 저장된 API 키를 삭제했습니다.'); },
+  clearKey: () => changeConnection(async () => { await nativeCall('clearKey'); $('apiKey').value = ''; connectionError = ''; $('confirmClearKey').hidden = true; await refresh(); message('이 기기에 저장된 API 키를 삭제했습니다.'); }),
+  requestClearReviewRelay: () => { $('reviewRelayCode').value = ''; $('confirmClearReviewRelay').hidden = false; $('cancelClearReviewRelay').focus(); },
+  cancelClearReviewRelay: () => { $('confirmClearReviewRelay').hidden = true; $('requestClearReviewRelay').focus(); },
+  clearReviewRelay: () => changeConnection(async () => { await nativeCall('clearReviewRelay'); $('reviewRelayCode').value = ''; relayDraftTouched = false; connectionModeDraft = null; connectionError = ''; $('confirmClearReviewRelay').hidden = true; await refresh(); message('이 기기에 저장된 테스트 서버 주소와 접근 코드를 삭제했습니다.'); }),
   jumpToExport: async () => { await show('results'); if (view === 'results') $('exportSection').focus({ preventScroll: true }); },
   openOnDevice: async () => { await flushSave(); await nativeCall('openOnDevice'); },
   openCloudLive: async () => { await flushSave(); await nativeCall('openCloudLive'); },

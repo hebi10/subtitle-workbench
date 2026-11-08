@@ -1,0 +1,46 @@
+services:
+  relay:
+    build: .
+    restart: unless-stopped
+    environment:
+      REVIEW_RELAY_ENABLED: ${REVIEW_RELAY_ENABLED:-false}
+      REVIEW_ACCESS_CODE: ${REVIEW_ACCESS_CODE:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      REVIEW_DB_PATH: /data/usage.sqlite
+      HOST: 0.0.0.0
+      REVIEW_DAILY_REQUESTS: ${REVIEW_DAILY_REQUESTS:-100}
+      REVIEW_DAILY_AUDIO_SECONDS: ${REVIEW_DAILY_AUDIO_SECONDS:-3600}
+      REVIEW_DAILY_REALTIME_SECONDS: ${REVIEW_DAILY_REALTIME_SECONDS:-600}
+      REVIEW_DAILY_TEXT_CHARS: ${REVIEW_DAILY_TEXT_CHARS:-60000}
+      REVIEW_TRANSLATION_MODELS: ${REVIEW_TRANSLATION_MODELS:-gpt-6-luna}
+    volumes:
+      - relay-data:/data
+    tmpfs:
+      - /tmp:size=192m,mode=1777
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 768m
+    cpus: 1.0
+    expose: ["8080"]
+    ports:
+      - "127.0.0.1:${REVIEW_RELAY_LOCAL_PORT:-18080}:8080"
+  caddy:
+    profiles: [standalone-tls]
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      REVIEW_RELAY_DOMAIN: ${REVIEW_RELAY_DOMAIN:-review.example.invalid}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [relay]
+volumes:
+  relay-data:
+  caddy-data:
+  caddy-config:

@@ -16,6 +16,28 @@ import static org.junit.Assert.*;
 
 @RunWith(AndroidJUnit4.class)
 public class PreparedJobDeviceTest {
+    @Test public void preparedSettingsCannotRemoveOrRetargetThePersistedCloudDestination() throws Exception {
+        String code = "fixture-review-code-abcdefghijklmnopqrstuvwxyz0123456789";
+        try (JobStore store = new JobStore(isolatedContext())) {
+            JSONObject pinned = CloudJobDestination.pin(new JSONObject().put("code", code), CloudAccess.relay("https://relay.subtitle.com", code));
+            String id = store.createPrepared("content://test/original", "fixture", 30_000L, pinned);
+            JSONObject original = store.get(id).getJSONObject("settings");
+            assertEquals("relay", original.getString("_cloudMode"));
+            assertFalse(original.has("code"));
+            JSONObject edited = store.updatePreparedSettings(id, new JSONObject().put("targetLanguage", "ja")
+                    .put("_cloudMode", "personal").put("_relayOrigin", "")).getJSONObject("settings");
+            assertEquals("relay", edited.getString("_cloudMode"));
+            assertEquals("https://relay.subtitle.com", edited.getString("_relayOrigin"));
+            assertEquals("ja", edited.getString("targetLanguage"));
+            CloudJobDestination.requireMatch(edited, CloudAccess.relay("https://relay.subtitle.com", code));
+            assertThrows(IllegalArgumentException.class, () -> CloudJobDestination.requireMatch(edited, CloudAccess.personal("fixture-personal")));
+            String legacy = store.createPrepared("content://test/legacy", "fixture", 30_000L, new JSONObject());
+            JSONObject legacyEdited = store.updatePreparedSettings(legacy, pinned).getJSONObject("settings");
+            assertFalse(legacyEdited.has("_cloudMode"));
+            CloudJobDestination.requireMatch(legacyEdited, CloudAccess.personal("fixture-personal"));
+        }
+    }
+
     @Test public void settingsChangePersistsValidatedValuesWithoutChangingSourceOrPlan() throws Exception {
         Context context = isolatedContext();
         String id;

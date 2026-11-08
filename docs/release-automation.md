@@ -16,7 +16,7 @@
 
 수동 실행은 `main`에서만 허용한다. `check`가 수동 실행의 기본값이다. `Verify web and Android`의 main push 실행이 성공하면 `internal`의 `deploy`가 자동 실행된다. 인증이나 서명이 없으면 실제 배포 작업은 실패한다. 누락을 성공이나 배포 완료로 표시하지 않는다.
 
-기본 앱 버전은 `0.9.1 (10)`이다. 빌드 전용 versionCode는 수동 입력값을 사용한다. 배포에서는 입력 versionCode를 무시하고 Play의 모든 현재 bundles, apks와 모든 tracks의 releases(초안 포함)를 조회한 최댓값 + 1을 사용한다. 최소값은 10이다. Gradle은 `-PversionCode=...` 또는 `ANDROID_VERSION_CODE`로 이를 받는다. 업로드 직전 같은 버전이 사용되었는지 다시 조회하고, 충돌하면 업로드 전에 실패한다. 외부 Console 편집으로 경합이 생긴 경우 새 버전을 할당하여 다시 빌드한다.
+기본 앱 버전은 `0.10.0 (11)`이다. 빌드 전용 versionCode는 수동 입력값을 사용한다. 배포에서는 입력 versionCode를 무시하고 Play의 모든 현재 bundles, apks와 모든 tracks의 releases(초안 포함)를 조회한 최댓값 + 1을 사용한다. 최소값은 10이다. Gradle은 `-PversionCode=...` 또는 `ANDROID_VERSION_CODE`로 이를 받는다. 업로드 직전 같은 버전이 사용되었는지 다시 조회하고, 충돌하면 업로드 전에 실패한다. 외부 Console 편집으로 경합이 생긴 경우 새 버전을 할당하여 다시 빌드한다.
 
 ## 인증 설정
 
@@ -87,3 +87,7 @@ python3 scripts/release/publisher.py --report output/play-promotion.json promote
 2026-11-08 CI에서 Gradle 8.11.1 다운로드가 GitHub 배포 URL의 HTTP 504로 반복 실패했다. `services.gradle.org`와 `downloads.gradle.org`가 모두 같은 GitHub 파일로 이동하므로 단순한 두 도메인 간 교체로는 해결되지 않았다. Wrapper는 [JetBrains Kotlin 공식 저장소에서 사용하는 캐시 경로](https://github.com/JetBrains/kotlin/blob/master/gradle/wrapper/gradle-wrapper.properties)인 `https://cache-redirector.jetbrains.com/services.gradle.org/distributions/gradle-8.11.1-bin.zip`을 사용한다. 확인 시 이 주소는 JetBrains의 `artifacts-caching-proxy.aws.intellij.net`으로 이동했고, 최종 응답은 HTTP 200, `x-artifact-caching-proxy: HIT`, 크기 136,920,070바이트였다.
 
 Gradle 버전은 8.11.1을 유지한다. [Gradle 공식 배포 체크섬](https://gradle.org/release-checksums/) 및 [Kotlin v2.1.20의 동일 버전 설정](https://github.com/JetBrains/kotlin/blob/v2.1.20/gradle/wrapper/gradle-wrapper.properties)과 일치하는 기존 `distributionSha256Sum`도 그대로 유지한다. Wrapper가 다운로드한 전체 ZIP의 SHA-256을 검증하므로 다른 파일이나 손상된 파일은 설치할 수 없다. TLS와 URL 검증을 끄거나 CI 실패를 성공 처리하는 대체 코드는 없다.
+
+## 테스트 서버 검증
+
+`Verify web and Android`와 `Play exact-source verification`은 Node 24에서 `server/review-relay`의 잠금 파일로 의존성을 설치하고 서버 테스트를 실행한다. ffmpeg를 사용한 실제 WAV 처리와 로컬 업스트림 fixture 검증이며 유료 OpenAI 호출이나 실제 서버 배포는 수행하지 않는다. 서버 배포와 실제 API 검증은 [테스트 서버 안내](../server/review-relay/README.md)와 공개 HTTPS 주소의 준비 상태를 확인한 후 별도로 진행한다. Play 배포 인증 계정에 VPS 또는 서버 운영 권한을 추가하지 않는다.

@@ -22,6 +22,21 @@ import static org.junit.Assert.*;
 public class OpenAiClientTest {
     private static final String RESPONSE = "{\"status\":\"completed\",\"output_text\":\"{\\\"translations\\\":[{\\\"id\\\":0,\\\"translated\\\":\\\"안녕\\\"}]}\"}";
 
+    @Test public void relayCheckUsesOnlySelectedCodeAndTagsItsDestinationWithoutExposingCredentials() throws Exception {
+        String code = "fixture-review-code-abcdefghijklmnopqrstuvwxyz0123456789";
+        List<StubConnection> requests = new ArrayList<>();
+        OpenAiClient api = new OpenAiClient(CloudAccess.relay("https://relay.subtitle.com", code), new OpenAiClient.Cancellation(), path -> {
+            StubConnection connection = new StubConnection(200, ("{\"id\":\"" + path.substring("/models/".length()) + "\"}").getBytes(StandardCharsets.UTF_8));
+            requests.add(connection); return connection;
+        });
+        JSONObject checked = api.checkConnection(new JSONObject());
+        assertEquals("relay", checked.getString("cloudMode"));
+        assertEquals("https://relay.subtitle.com", checked.getString("relayOrigin"));
+        assertFalse(checked.toString().contains(code));
+        assertEquals(2, requests.size());
+        for (StubConnection connection : requests) assertEquals("Bearer " + code, connection.getRequestProperty("Authorization"));
+    }
+
     @Test public void transientFailureRetriesButKeepsSubtitleIdentity() throws Exception {
         AtomicInteger count = new AtomicInteger();
         StubConnection success = new StubConnection(200, RESPONSE.getBytes(StandardCharsets.UTF_8));

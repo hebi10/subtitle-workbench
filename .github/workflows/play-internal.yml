@@ -14,10 +14,10 @@ on:
         default: check
         options: [check, build, deploy]
       version_code:
-        description: 'Build-only versionCode (default 10); deploy always allocates from Play'
+        description: 'Build-only versionCode (default 11); deploy always allocates from Play'
         required: false
         type: string
-        default: '10'
+        default: '11'
       release_status:
         description: 'completed = active internal; draft = draft release after Console bootstrap'
         type: choice
@@ -137,7 +137,7 @@ jobs:
       - name: Build signed release with the allocated versionCode
         working-directory: android
         env:
-          ANDROID_VERSION_CODE: ${{ steps.version.outputs.version_code || inputs.version_code || '10' }}
+          ANDROID_VERSION_CODE: ${{ steps.version.outputs.version_code || inputs.version_code || '11' }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -149,7 +149,7 @@ jobs:
       - name: Preserve signed AAB
         uses: actions/upload-artifact@v4
         with:
-          name: subtitle-signed-aab-${{ steps.version.outputs.version_code || inputs.version_code || '10' }}
+          name: subtitle-signed-aab-${{ steps.version.outputs.version_code || inputs.version_code || '11' }}
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14

@@ -41,6 +41,7 @@ public final class MainActivity extends Activity {
     private WebView web;
     private JobStore store;
     private SecretStore secrets;
+    private CloudAccessStore cloud;
     private String pendingId;
     private PendingDocument documents;
     private volatile boolean destroyed;
@@ -51,6 +52,7 @@ public final class MainActivity extends Activity {
         super.onCreate(state);
         store = new JobStore(this);
         secrets = new SecretStore(this);
+        cloud = new CloudAccessStore(this);
         documents = new PendingDocument(getFilesDir());
         web = new WebView(this);
         // Resize the WebView viewport itself: its own padding does not move CSS position:fixed bars.
@@ -146,7 +148,7 @@ public final class MainActivity extends Activity {
             if (params == null) params = new JSONObject();
             Object result;
             switch (method) {
-                case "status": result = new JSONObject().put("jobs", store.list()).put("hasKey", secrets.hasKey())
+                case "status": result = cloud.status().put("jobs", store.list())
                         .put("settings", readSettings()).put("keyCheck", readConnectionCheck()).put("maxDurationMs", JobStore.MAX_DURATION_MS); break;
                 case "getSettings": result = readSettings(); break;
                 case "setSettings":
@@ -160,13 +162,28 @@ public final class MainActivity extends Activity {
                     if (key.isEmpty() || key.length() > 1024 || key.contains("\n") || key.contains("\r"))
                         throw new IllegalArgumentException("유효한 API 키를 입력해 주세요.");
                     invalidateConnectionCheck();
-                    secrets.setKey(key);
-                    result = new JSONObject().put("hasKey", true); break;
+                    cloud.setPersonalKey(key);
+                    result = cloud.status(); break;
                 case "clearKey":
                     requireIdleForKeyChange();
                     invalidateConnectionCheck();
                     secrets.clearKey();
-                    result = new JSONObject().put("hasKey", false); break;
+                    result = cloud.status(); break;
+                case "setReviewRelay":
+                    requireIdleForKeyChange();
+                    invalidateConnectionCheck();
+                    cloud.setRelay(params.getString("url"), params.optString("code", ""));
+                    result = cloud.status(); break;
+                case "usePersonalApi":
+                    requireIdleForKeyChange();
+                    invalidateConnectionCheck();
+                    cloud.usePersonal();
+                    result = cloud.status(); break;
+                case "clearReviewRelay":
+                    requireIdleForKeyChange();
+                    invalidateConnectionCheck();
+                    cloud.clearRelay();
+                    result = cloud.status(); break;
                 case "checkConnection":
                     checkConnection(id, checkedSettings(params.has("settings") ? params.getJSONObject("settings") : readSettings()));
                     return;
@@ -183,18 +200,20 @@ public final class MainActivity extends Activity {
                     });
                     result = true; break;
                 case "pickVideo":
-                    if (!secrets.hasKey()) throw new IllegalArgumentException("먼저 API 키를 저장해 주세요.");
+                    CloudAccess selected = cloud.current();
                     String replacementId = params.optString("replaceJobId", "");
                     if (!replacementId.isEmpty()) store.requirePrepared(replacementId);
                     JSONObject videoSettings = checkedSettings(params.has("settings") ? params.getJSONObject("settings") : readSettings());
+                    CloudJobDestination.pin(videoSettings, selected);
                     startPicker(id, PICK_VIDEO, videoSettings, null, null, null, replacementId); return;
                 case "updatePreparedSettings":
+                    CloudJobDestination.requireMatch(store.get(params.getString("jobId")).getJSONObject("settings"), cloud.current());
                     result = store.updatePreparedSettings(params.getString("jobId"), params.getJSONObject("settings")); break;
                 case "cancelPrepared":
                     result = store.cancelPrepared(params.getString("jobId")); break;
                 case "resume":
-                    if (!secrets.hasKey()) throw new IllegalArgumentException("API 키를 다시 저장해 주세요.");
                     String resumeId = params.getString("jobId");
+                    CloudJobDestination.requireMatch(store.get(resumeId).getJSONObject("settings"), cloud.current());
                     if (queueResume(store, resumeId, params.has("translationModel") ? params.getString("translationModel") : null)) {
                         String requestId = id;
                         runOnUiThread(() -> {
@@ -316,8 +335,13 @@ public final class MainActivity extends Activity {
     }
 
     private Object readConnectionCheck() {
-        if (!secrets.hasKey()) return JSONObject.NULL;
-        try { return new JSONObject(getSharedPreferences("app_settings", MODE_PRIVATE).getString("keyCheck", "")); }
+        if (!cloud.isReady()) return JSONObject.NULL;
+        try {
+            CloudAccess access = cloud.current();
+            JSONObject result = new JSONObject(getSharedPreferences("app_settings", MODE_PRIVATE).getString("keyCheck", ""));
+            if (!access.mode().equals(result.optString("cloudMode")) || !(access.isRelay() ? access.origin() : "").equals(result.optString("relayOrigin"))) return JSONObject.NULL;
+            return result;
+        }
         catch (Exception ignored) { return JSONObject.NULL; }
     }
 
@@ -334,14 +358,13 @@ public final class MainActivity extends Activity {
         for (int i = 0; i < jobs.length(); i++) {
             JSONObject job = jobs.optJSONObject(i);
             if (job != null && (JobService.isWorking(job.optString("id")) || "running".equals(job.optString("status")) || "queued".equals(job.optString("status"))))
-                throw new IllegalArgumentException("API 키를 바꾸거나 삭제하려면 진행 중인 작업을 일시정지한 뒤 잠시 기다려 주세요.");
+                throw new IllegalArgumentException("클라우드 연결을 바꾸거나 삭제하려면 진행 중인 작업을 일시정지한 뒤 잠시 기다려 주세요.");
         }
     }
 
     private void checkConnection(String requestId, JSONObject settings) {
-        if (!secrets.hasKey()) throw new IllegalArgumentException("먼저 API 키를 저장해 주세요.");
         if (connectionCancellation != null) throw new IllegalArgumentException("API 연결을 확인하고 있습니다. 잠시 기다려 주세요.");
-        String apiKey = secrets.getKey();
+        CloudAccess access = cloud.current();
         SharedPreferences preferences = getSharedPreferences("app_settings", MODE_PRIVATE);
         long revision = preferences.getLong("keyRevision", 0);
         String persistedSettings = preferences.getString("settings", "{}");
@@ -350,9 +373,9 @@ public final class MainActivity extends Activity {
         connectionIo.execute(() -> {
             JSONObject checked = null;
             String failure = null;
-            try { checked = new OpenAiClient(apiKey, token).checkConnection(settings); }
+            try { checked = new OpenAiClient(access, token).checkConnection(settings); }
             catch (Exception error) {
-                failure = token.isCancelled() ? "연결 확인이 취소되었습니다. 다시 확인해 주세요." : connectionError(error);
+                failure = token.isCancelled() ? "연결 확인이 취소되었습니다. 다시 확인해 주세요." : connectionError(error, access);
             }
             final JSONObject result = checked;
             final String errorMessage = failure;
@@ -362,7 +385,7 @@ public final class MainActivity extends Activity {
                 if (destroyed) return;
                 boolean unchanged = revision == preferences.getLong("keyRevision", 0)
                         && persistedSettings.equals(preferences.getString("settings", "{}"));
-                if (!unchanged || token.isCancelled()) { reply(requestId, null, "API 키 또는 설정이 바뀌었습니다. 연결을 다시 확인해 주세요."); return; }
+                if (!unchanged || token.isCancelled()) { reply(requestId, null, "클라우드 연결 또는 설정이 바뀌었습니다. 연결을 다시 확인해 주세요."); return; }
                 if (result != null) {
                     if (!preferences.edit().putString("keyCheck", result.toString()).commit()) {
                         reply(requestId, null, "연결 확인 결과를 저장하지 못했습니다."); return;
@@ -373,7 +396,16 @@ public final class MainActivity extends Activity {
         });
     }
 
-    private static String connectionError(Exception error) {
+    private static String connectionError(Exception error, CloudAccess access) {
+        if (access.isRelay()) {
+            switch (OpenAiClient.failureCode(error)) {
+                case "authentication": return "테스트 접근 코드가 유효하지 않습니다. 코드를 다시 입력해 주세요.";
+                case "permission": return "테스트 서버의 모델 접근 권한을 확인해 주세요.";
+                case "quota": return "테스트 서버의 사용 한도에 도달했습니다.";
+                case "server": return "테스트 서버가 응답하지 않습니다. 잠시 뒤 다시 시도해 주세요.";
+                default: return "테스트 연결을 확인하지 못했습니다. 서버 주소·코드·모델 설정을 확인해 주세요.";
+            }
+        }
         switch (OpenAiClient.failureCode(error)) {
             case "authentication": return "API 키가 유효하지 않습니다. 키를 다시 입력해 주세요.";
             case "permission": return "이 API 키에 모델 접근 권한이 없습니다. 프로젝트 권한을 확인해 주세요.";
