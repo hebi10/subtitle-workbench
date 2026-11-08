@@ -81,3 +81,9 @@ python3 scripts/release/publisher.py --report output/play-promotion.json promote
 ```
 
 보고서에는 패키지·트랙·버전·API 확인 상태만 포함한다. API 응답 본문, 토큰, keystore, 비밀번호, JSON 인증은 출력하거나 산출물에 포함하지 않는다. 서명키 임시 파일은 항상 제거하고 AAB와 공개 상태 보고서만 별도 산출물로 보관한다.
+
+## Gradle 배포본 다운로드
+
+2026-11-08 CI에서 Gradle 8.11.1 다운로드가 GitHub 배포 URL의 HTTP 504로 반복 실패했다. `services.gradle.org`와 `downloads.gradle.org`가 모두 같은 GitHub 파일로 이동하므로 단순한 두 도메인 간 교체로는 해결되지 않았다. Wrapper는 [JetBrains Kotlin 공식 저장소에서 사용하는 캐시 경로](https://github.com/JetBrains/kotlin/blob/master/gradle/wrapper/gradle-wrapper.properties)인 `https://cache-redirector.jetbrains.com/services.gradle.org/distributions/gradle-8.11.1-bin.zip`을 사용한다. 확인 시 이 주소는 JetBrains의 `artifacts-caching-proxy.aws.intellij.net`으로 이동했고, 최종 응답은 HTTP 200, `x-artifact-caching-proxy: HIT`, 크기 136,920,070바이트였다.
+
+Gradle 버전은 8.11.1을 유지한다. [Gradle 공식 배포 체크섬](https://gradle.org/release-checksums/) 및 [Kotlin v2.1.20의 동일 버전 설정](https://github.com/JetBrains/kotlin/blob/v2.1.20/gradle/wrapper/gradle-wrapper.properties)과 일치하는 기존 `distributionSha256Sum`도 그대로 유지한다. Wrapper가 다운로드한 전체 ZIP의 SHA-256을 검증하므로 다른 파일이나 손상된 파일은 설치할 수 없다. TLS와 URL 검증을 끄거나 CI 실패를 성공 처리하는 대체 코드는 없다.
