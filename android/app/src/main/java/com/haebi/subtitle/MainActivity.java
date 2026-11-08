@@ -176,6 +176,12 @@ public final class MainActivity extends Activity {
                         catch (Exception error) { emitError("API 키 발급 페이지를 열 수 없습니다. 브라우저에서 platform.openai.com을 열어 주세요."); }
                     });
                     result = true; break;
+                case "openPrivacyPolicy":
+                    runOnUiThread(() -> {
+                        try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://hebi10.github.io/subtitle-workbench/privacy-policy.html"))); }
+                        catch (Exception error) { emitError("개인정보처리방침을 열 수 없습니다. 브라우저에서 hebi10.github.io/subtitle-workbench/privacy-policy.html을 열어 주세요."); }
+                    });
+                    result = true; break;
                 case "pickVideo":
                     if (!secrets.hasKey()) throw new IllegalArgumentException("먼저 API 키를 저장해 주세요.");
                     String replacementId = params.optString("replaceJobId", "");

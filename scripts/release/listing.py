@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+"""Validate or submit the reviewed ko-KR store listing and its explicit PNG assets."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import struct
+import sys
+
+from publisher import HttpTransport, PACKAGE, Publisher, ReleaseError
+
+CATEGORIES = {'icon', 'featureGraphic', 'phoneScreenshots'}
+FIELDS = {'title': 30, 'shortDescription': 80, 'fullDescription': 4000}
+
+
+def load_inputs(listing_path, manifest_path):
+    text = json.loads(Path(listing_path).read_text(encoding='utf-8'))
+    manifest_path = Path(manifest_path).resolve()
+    manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+    if text.get('language') != 'ko-KR' or manifest.get('language') != 'ko-KR':
+        raise ReleaseError('Only the reviewed ko-KR listing is supported')
+    for field, limit in FIELDS.items():
+        if not isinstance(text.get(field), str) or not text[field].strip() or len(text[field]) > limit:
+            raise ReleaseError(f'Listing {field} must contain 1–{limit} characters')
+    images = manifest.get('images', {})
+    if set(images) != CATEGORIES:
+        raise ReleaseError('Manifest must explicitly contain icon, featureGraphic and phoneScreenshots')
+    prepared = {}
+    for kind, names in images.items():
+        if not isinstance(names, list) or (len(names) != 1 if kind != 'phoneScreenshots' else not 2 <= len(names) <= 8):
+            raise ReleaseError('Manifest image counts are invalid')
+        prepared[kind] = []
+        for name in names:
+            if not isinstance(name, str):
+                raise ReleaseError('Manifest image names must be relative strings')
+            target = (manifest_path.parent / name).resolve()
+            if not target.is_relative_to(manifest_path.parent):
+                raise ReleaseError('Every asset must remain inside the manifest directory')
+            raw = target.read_bytes()
+            if len(raw) < 24 or raw[:8] != b'\x89PNG\r\n\x1a\n' or raw[12:16] != b'IHDR':
+                raise ReleaseError('Store assets must be PNG images')
+            width, height = struct.unpack('>II', raw[16:24])
+            valid = (width, height) == ((512, 512) if kind == 'icon' else (1024, 500))
+            if kind == 'phoneScreenshots':
+                valid = 320 <= min(width, height) and max(width, height) <= 3840 and max(width, height) <= 2 * min(width, height)
+            if not valid or len(raw) > 8 * 1024 * 1024:
+                raise ReleaseError('Store image dimensions or file size are outside the supported Play bounds')
+            prepared[kind].append({'data': raw, 'sha256': hashlib.sha256(raw).hexdigest(), 'name': name})
+    return {'listing': {key: text[key] for key in ('language', *FIELDS)}, 'images': prepared}
+
+
+def apply(client, plan, changes_not_sent_for_review=True):
+    with client.edit() as edit:
+        client.request('PUT', edit + '/listings/ko-KR', plan['listing'])
+        for kind, items in plan['images'].items():
+            path = edit + '/listings/ko-KR/' + kind
+            client.request('DELETE', path)
+            for item in items:
+                client.request('POST', path + '?uploadType=media', item['data'], 'image/png')
+        client.commit(edit, changes_not_sent_for_review)
+    try:
+        with client.edit() as edit:
+            actual = client.request('GET', edit + '/listings/ko-KR')
+            if any(actual.get(key) != value for key, value in plan['listing'].items()):
+                raise ReleaseError('Listing text mismatch')
+            for kind, items in plan['images'].items():
+                actual_images = client.request('GET', edit + '/listings/ko-KR/' + kind).get('images', [])
+                if [item.get('sha256', '').lower() for item in actual_images] != [item['sha256'] for item in items]:
+                    raise ReleaseError('Listing image readback mismatch')
+    except ReleaseError:
+        raise ReleaseError('Listing edit committed but fresh readback failed; inspect Console before retrying') from None
+    return {'package': PACKAGE, 'language': 'ko-KR', 'status': 'api_committed_and_verified',
+            'availability': 'requires_console_check', 'changesNotSentForReview': changes_not_sent_for_review,
+            'imageCounts': {kind: len(items) for kind, items in plan['images'].items()}}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('mode', choices=['check', 'apply'])
+    parser.add_argument('--listing', type=Path, default=Path('docs/play-store/listing-ko.json'))
+    parser.add_argument('--manifest', type=Path, default=Path('assets/play-store/ko-KR/manifest.json'))
+    parser.add_argument('--report', type=Path)
+    parser.add_argument('--send-for-review', action='store_true')
+    args = parser.parse_args()
+    try:
+        plan = load_inputs(args.listing, args.manifest)
+        result = {'package': PACKAGE, 'language': 'ko-KR', 'status': 'validated_not_submitted',
+                  'imageCounts': {kind: len(items) for kind, items in plan['images'].items()}}
+        if args.mode == 'apply':
+            client = Publisher(HttpTransport(os.environ.get('PLAY_ACCESS_TOKEN', '')))
+            result = apply(client, plan, changes_not_sent_for_review=not args.send_for_review)
+        if args.report:
+            args.report.parent.mkdir(parents=True, exist_ok=True)
+            args.report.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    except (ReleaseError, OSError, ValueError, KeyError) as error:
+        message = str(error) if isinstance(error, ReleaseError) else 'Listing input or API response is invalid'
+        print('Listing failed: ' + message, file=sys.stderr)
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

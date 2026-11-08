@@ -1,0 +1,150 @@
+{
+  "language": "ko-KR",
+  "images": {
+    "icon": [
+      "icon.png"
+    ],
+    "featureGraphic": [
+      "feature-graphic.png"
+    ],
+    "phoneScreenshots": [
+      "01-video.png",
+      "02-jobs.png",
+      "03-results.png",
+      "04-editor.png",
+      "05-settings.png"
+    ]
+  },
+  "assets": [
+    {
+      "file": "icon.png",
+      "purpose": "Google Play 앱 아이콘",
+      "width": 512,
+      "height": 512,
+      "sha256": "3d2b39350fe45a85184db701dcac2699d5adb0e5e8b802837b8c33bb2c671277",
+      "source": {
+        "type": "imagegen-built-in",
+        "generatedSourceFile": "exec-dbc30600-4238-4421-a327-190e99734a1a.png",
+        "promptFile": "generation-prompts.json",
+        "export": "Opaque RGB PNG, deterministic LANCZOS resize to Google Play dimensions"
+      }
+    },
+    {
+      "file": "feature-graphic.png",
+      "purpose": "Google Play 그래픽 이미지",
+      "width": 1024,
+      "height": 500,
+      "sha256": "960fd6df495ab476705a9857f8beacd3b0814dfc500549aa07d518d1f3af5be4",
+      "source": {
+        "type": "imagegen-built-in",
+        "generatedSourceFile": "exec-40dd2ff2-9804-4100-8cff-2cfc5176f74c.png",
+        "promptFile": "generation-prompts.json",
+        "export": "Opaque RGB PNG, deterministic LANCZOS resize to Google Play dimensions"
+      }
+    },
+    {
+      "file": "01-video.png",
+      "purpose": "영상 추가와 마이크 자막 진입",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "cf3a5af6cd6586268d395be87d84d50b3561544bbd05b22aea97e3ddc1676706",
+      "source": {
+        "type": "real-android-web-ui-with-native-bridge-fixture",
+        "provenanceFile": "capture-provenance.json",
+        "workflowRunId": "42468663330",
+        "checkedOutCommit": "8e151be15c7c77dcd38bc524ce6d1a8026689179",
+        "pullRequestHeadCommit": "25d6c2e69603c76d2337cc8a80f05a3be4ae304a",
+        "export": "Unchanged CI PNG; real source UI rendered by Chromium with native bridge fixture and illustrative seeded data",
+        "scrollY": 0
+      }
+    },
+    {
+      "file": "02-jobs.png",
+      "purpose": "일시정지 작업과 완료 작업 관리",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "7cdcf839196feb8bcd79c47217123a2685e969b6d35476e82fdd1023ae8d82d7",
+      "source": {
+        "type": "real-android-web-ui-with-native-bridge-fixture",
+        "provenanceFile": "capture-provenance.json",
+        "workflowRunId": "42468663330",
+        "checkedOutCommit": "8e151be15c7c77dcd38bc524ce6d1a8026689179",
+        "pullRequestHeadCommit": "25d6c2e69603c76d2337cc8a80f05a3be4ae304a",
+        "export": "Unchanged CI PNG; real source UI rendered by Chromium with native bridge fixture and illustrative seeded data",
+        "scrollY": 0
+      }
+    },
+    {
+      "file": "03-results.png",
+      "purpose": "SRT·VTT·JSON 내보내기",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "38e55ad2ece87531bda4171017868a9a5420fc7a786fb7adcb50a27994f7ac94",
+      "source": {
+        "type": "real-android-web-ui-with-native-bridge-fixture",
+        "provenanceFile": "capture-provenance.json",
+        "workflowRunId": "42468663330",
+        "checkedOutCommit": "8e151be15c7c77dcd38bc524ce6d1a8026689179",
+        "pullRequestHeadCommit": "25d6c2e69603c76d2337cc8a80f05a3be4ae304a",
+        "export": "Unchanged CI PNG; real source UI rendered by Chromium with native bridge fixture and illustrative seeded data",
+        "scrollY": 0
+      }
+    },
+    {
+      "file": "04-editor.png",
+      "purpose": "자막 시간·원문·화자 필드 편집",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "3c4e718fb7146e502e9b909f2f7cee1b6cb87f4876161be983b94c89f2ebec3b",
+      "source": {
+        "type": "real-android-web-ui-with-native-bridge-fixture",
+        "provenanceFile": "capture-provenance.json",
+        "workflowRunId": "42468663330",
+        "checkedOutCommit": "8e151be15c7c77dcd38bc524ce6d1a8026689179",
+        "pullRequestHeadCommit": "25d6c2e69603c76d2337cc8a80f05a3be4ae304a",
+        "export": "Unchanged CI PNG; real source UI rendered by Chromium with native bridge fixture and illustrative seeded data",
+        "scrollY": 350
+      }
+    },
+    {
+      "file": "05-settings.png",
+      "purpose": "API 연결과 기본값 관리",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "83043882c11ad0beef0ff7972672394ae91c26d952e1fac5dc62dac5c58a4d40",
+      "source": {
+        "type": "real-android-web-ui-with-native-bridge-fixture",
+        "provenanceFile": "capture-provenance.json",
+        "workflowRunId": "42468663330",
+        "checkedOutCommit": "8e151be15c7c77dcd38bc524ce6d1a8026689179",
+        "pullRequestHeadCommit": "25d6c2e69603c76d2337cc8a80f05a3be4ae304a",
+        "export": "Unchanged CI PNG; real source UI rendered by Chromium with native bridge fixture and illustrative seeded data",
+        "scrollY": 0
+      }
+    }
+  ],
+  "screenshotCapture": {
+    "status": "complete",
+    "script": "scripts/capture-play-store.mjs",
+    "workflow": ".github/workflows/play-store-captures.yml",
+    "capturedAt": "2026-11-08T09:48:01.258Z",
+    "workflowRunId": "42468663330",
+    "workflowRunUrl": "https://github.com/hebi10/subtitle-workbench/actions/runs/42468663330",
+    "pullRequest": 9,
+    "pullRequestHeadCommit": "25d6c2e69603c76d2337cc8a80f05a3be4ae304a",
+    "checkedOutCommit": "8e151be15c7c77dcd38bc524ce6d1a8026689179",
+    "provenanceFile": "capture-provenance.json",
+    "provenanceSha256": "74a4d7182e65bc4b05944d94f5e0fb9e52e23e670789e948ef00662c84ee4dd6",
+    "viewport": {
+      "width": 432,
+      "height": 768,
+      "deviceScaleFactor": 2.5
+    },
+    "note": "Android WebView HTML/CSS/JavaScript source rendered in Chromium. The existing native bridge browser-verification fixture supplies illustrative filenames, subtitle text, saved-state and progress data. These images document the actual source UI with fixture data; native Android runtime behavior and transcription/translation quality are outside this capture evidence.",
+    "visualReview": {
+      "status": "passed",
+      "imageCount": 5,
+      "findings": "Korean text, navigation, action buttons and relevant content are readable. The editor image is an actual scrolled viewport showing cue timing, the manual speaker field and original text. The settings image includes the privacy-policy button. No image reconstruction, crop, stretch, compositing or pixel editing was applied."
+    }
+  }
+}

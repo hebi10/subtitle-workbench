@@ -1,5 +1,10 @@
 plugins { id 'com.android.application' }
 
+def releaseVersionCode = providers.gradleProperty('versionCode').orElse(providers.environmentVariable('ANDROID_VERSION_CODE')).getOrElse('10')
+if (!(releaseVersionCode ==~ /[0-9]+/) || releaseVersionCode.toBigInteger() < 1 || releaseVersionCode.toBigInteger() > 2100000000) {
+    throw new GradleException('versionCode must be an integer from 1 to 2100000000')
+}
+
 android {
     namespace 'com.haebi.subtitle'
     compileSdk 36
@@ -7,8 +12,8 @@ android {
         applicationId 'com.haebi.subtitle'
         minSdk 26
         targetSdk 36
-        versionCode 9
-        versionName '0.9.0'
+        versionCode releaseVersionCode.toInteger()
+        versionName '0.9.1'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     compileOptions {
@@ -61,4 +66,37 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test:runner:1.6.2'
     androidTestImplementation 'androidx.test:core:1.6.1'
+}
+
+tasks.register('verifyReleaseUploadCertificate') {
+    doLast {
+        def required = ['ANDROID_KEYSTORE_PATH', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_ALIAS', 'ANDROID_KEY_PASSWORD', 'ANDROID_UPLOAD_CERT_SHA256']
+        if (required.any { !System.getenv(it)?.trim() }) {
+            throw new GradleException('Release signing requires the original upload key and ANDROID_UPLOAD_CERT_SHA256')
+        }
+        def expected = System.getenv('ANDROID_UPLOAD_CERT_SHA256').replace(':', '').toLowerCase(java.util.Locale.ROOT)
+        if (!(expected ==~ /[a-f0-9]{64}/)) {
+            throw new GradleException('ANDROID_UPLOAD_CERT_SHA256 must be the original upload certificate SHA-256')
+        }
+        try {
+            def keyStore = java.security.KeyStore.getInstance(file(System.getenv('ANDROID_KEYSTORE_PATH')), System.getenv('ANDROID_KEYSTORE_PASSWORD').toCharArray())
+            def certificate = keyStore.getCertificate(System.getenv('ANDROID_KEY_ALIAS'))
+            if (certificate == null || !keyStore.isKeyEntry(System.getenv('ANDROID_KEY_ALIAS'))) {
+                throw new GradleException('Original upload key alias was not found')
+            }
+            def actual = java.security.MessageDigest.getInstance('SHA-256').digest(certificate.encoded).encodeHex().toString()
+            if (actual != expected) {
+                throw new GradleException('Release upload certificate does not match the configured original certificate')
+            }
+        } catch (GradleException error) {
+            throw error
+        } catch (Exception ignored) {
+            throw new GradleException('Original upload keystore could not be verified')
+        }
+    }
+}
+tasks.configureEach { task ->
+    if (task.name == 'preReleaseBuild') {
+        task.dependsOn 'verifyReleaseUploadCertificate'
+    }
 }

@@ -1,0 +1,133 @@
+name: Play closed promotion
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'check = validate only; promote = move exact completed internal code to closed alpha'
+        type: choice
+        default: check
+        options: [check, promote]
+        required: true
+      version_code:
+        description: 'Existing completed internal versionCode; never rebuilt or uploaded'
+        type: string
+        required: true
+      changes_not_sent_for_review:
+        description: 'Keep committed changes pending explicit Console review submission'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-com-haebi-subtitle
+  cancel-in-progress: false
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require main source and completed required CI
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/release/source.py
+      - name: Validate exact versionCode input
+        env:
+          VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          python3 - <<'PY'
+          import os, sys
+          sys.path.insert(0, 'scripts/release')
+          from publisher import version_code
+          version_code(os.environ['VERSION_CODE'])
+          PY
+
+  gates:
+    needs: source
+    uses: ./.github/workflows/play-gates.yml
+    with:
+      source_sha: ${{ needs.source.outputs.sha }}
+
+  promote:
+    needs: [source, gates]
+    if: inputs.mode == 'promote'
+    runs-on: ubuntu-latest
+    environment: google-play
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
+      - name: Check Play authentication configuration
+        id: credentials
+        env:
+          PLAY_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
+          PLAY_SERVICE_ACCOUNT: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: python3 scripts/release/preflight.py auth
+      - name: Authenticate with Workload Identity Federation
+        id: wif
+        if: steps.credentials.outputs.auth_mode == 'wif'
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+      - name: Authenticate with legacy service-account JSON
+        id: json
+        if: steps.credentials.outputs.auth_mode == 'json'
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+      - name: Reject source superseded during verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.source.outputs.sha }}
+        run: python3 scripts/release/source.py --assert-current "$SOURCE_SHA"
+      - name: Promote exact existing internal version without bundle upload
+        env:
+          PLAY_ACCESS_TOKEN: ${{ steps.wif.outputs.access_token || steps.json.outputs.access_token }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          KEEP_FOR_REVIEW: ${{ inputs.changes_not_sent_for_review }}
+        shell: bash
+        run: |
+          args=()
+          if [[ "$KEEP_FOR_REVIEW" == 'true' ]]; then args+=(--changes-not-sent-for-review); fi
+          python3 scripts/release/publisher.py --report output/play-promotion.json promote --version-code "$VERSION_CODE" --track alpha "${args[@]}"
+      - name: Preserve non-secret promotion report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: play-closed-report-${{ github.run_id }}
+          path: output/play-promotion.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  checked:
+    needs: [source, gates]
+    if: inputs.mode == 'check'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report no promotion
+        run: echo 'Exact-source CI and device checks passed. Check mode does not authenticate or inspect/change the Play release.' >> "$GITHUB_STEP_SUMMARY"

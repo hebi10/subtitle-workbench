@@ -789,6 +789,7 @@ for (const [id, action] of Object.entries({
   dismissMessage: () => message(''),
   discardSettings: () => { hydrateSettings(savedSettings); settingsTouched = false; $('discardSettings').disabled = true; $('settingsStatus').textContent = '변경을 취소하고 저장된 설정을 불러왔습니다.'; },
   openApiKeyPage: () => nativeCall('openApiKeyPage'),
+  openPrivacyPolicy: () => nativeCall('openPrivacyPolicy'),
   checkConnection: async () => {
     checkingConnection = true; connectionError = '';
     $('connectionStatus').textContent = '키 인증과 선택 모델 접근을 확인하고 있습니다…';

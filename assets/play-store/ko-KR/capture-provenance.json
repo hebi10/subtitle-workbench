@@ -1,0 +1,91 @@
+{
+  "language": "ko-KR",
+  "capturedAt": "2026-11-08T09:48:01.258Z",
+  "source": {
+    "type": "real-android-web-ui-with-native-bridge-fixture",
+    "note": "Actual Android WebView HTML/CSS/JS rendered in Chromium. Native bridge responses use the existing browser verification fixture. Example filenames and subtitle text are illustrative seeded data. No AI-generated interface, native-screen simulation, inference output claim, crop, or image stretch.",
+    "commit": "8e151be15c7c77dcd38bc524ce6d1a8026689179",
+    "workflowRunId": "42468663330",
+    "viewport": {
+      "width": 432,
+      "height": 768,
+      "deviceScaleFactor": 2.5
+    },
+    "files": [
+      {
+        "file": "android/web/index.html",
+        "sha256": "4155e6a474d2c2ed1c2496ae45b0bc941136ef6f86e5351a6b2d9b5e1449da7b"
+      },
+      {
+        "file": "android/web/app.js",
+        "sha256": "92bd92e0a46fc59fadb5893b29eeb6ed1107592617e471f28b985c6141372713"
+      },
+      {
+        "file": "android/web/styles.css",
+        "sha256": "5f2bdf3ee08e90dc1a78a2060bace9f03a701c0a31a831d454eee3f26a05ee18"
+      },
+      {
+        "file": "src/core.js",
+        "sha256": "6b490d626c418cd3370212e42235c9e9f7b4e6a49f2b2ea5d153e046572c2501"
+      },
+      {
+        "file": "src/subtitle-editor.js",
+        "sha256": "f41397f24dd9bd7a0f48fb04c15bb592f8ab5d7c6aae9a67bcefd2079210a7be"
+      },
+      {
+        "file": "src/edit-history.js",
+        "sha256": "140e9cba55b21c19f20c1d418b29d7c15217d703596d22f61b7e09c7d4dc8a56"
+      },
+      {
+        "file": "src/subtitle-player.js",
+        "sha256": "62626f38a0740f3808e97c3a0df1e2338c83ef1c9f8dca87542e7fc05f6623a2"
+      },
+      {
+        "file": "android/web/mock-bridge.js",
+        "sha256": "9177df54837ebde6321ac130fec213758a15eca42260a2326518d66be5b520ad"
+      }
+    ]
+  },
+  "captures": [
+    {
+      "file": "01-video.png",
+      "purpose": "영상 추가와 마이크 자막 진입",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "cf3a5af6cd6586268d395be87d84d50b3561544bbd05b22aea97e3ddc1676706",
+      "scrollY": 0
+    },
+    {
+      "file": "02-jobs.png",
+      "purpose": "일시정지 작업과 완료 작업 관리",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "7cdcf839196feb8bcd79c47217123a2685e969b6d35476e82fdd1023ae8d82d7",
+      "scrollY": 0
+    },
+    {
+      "file": "03-results.png",
+      "purpose": "SRT·VTT·JSON 내보내기",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "38e55ad2ece87531bda4171017868a9a5420fc7a786fb7adcb50a27994f7ac94",
+      "scrollY": 0
+    },
+    {
+      "file": "04-editor.png",
+      "purpose": "원문·번역과 자막 시간 편집",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "3c4e718fb7146e502e9b909f2f7cee1b6cb87f4876161be983b94c89f2ebec3b",
+      "scrollY": 350
+    },
+    {
+      "file": "05-settings.png",
+      "purpose": "API 연결과 기본값 관리",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "83043882c11ad0beef0ff7972672394ae91c26d952e1fac5dc62dac5c58a4d40",
+      "scrollY": 0
+    }
+  ]
+}

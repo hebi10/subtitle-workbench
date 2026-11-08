@@ -1,0 +1,38 @@
+name: Capture Play Store screenshots
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/capture-play-store.mjs'
+      - '.github/workflows/play-store-captures.yml'
+      - 'android/web/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser and Korean fonts
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+      - name: Capture actual WebView user interface with fixture data
+        env:
+          PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
+        run: node scripts/capture-play-store.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: subtitle-workbench-play-store-ko-KR
+          path: output/play-store-captures/*
+          if-no-files-found: error
+          retention-days: 30
