@@ -56,7 +56,7 @@ test('invalid or overlong decoded audio and arbitrary multipart fields never rea
   for (const body of [invalid, arbitrary, wrongFormat]) {
     assert.equal((await fetch(f.origin + '/v1/audio/transcriptions', { method: 'POST', headers: f.headers, body })).status, 400);
   }
-  const tooLong = await fetch(f.origin + '/v1/audio/transcriptions', { method: 'POST', headers: f.headers, body: audioForm(31.1, 'gpt-transcribe') });
+  const tooLong = await fetch(f.origin + '/v1/audio/transcriptions', { method: 'POST', headers: f.headers, body: audioForm(31.201, 'gpt-transcribe') });
   assert.equal(tooLong.status, 413); assert.equal(f.requests.length, 0);
 });
 

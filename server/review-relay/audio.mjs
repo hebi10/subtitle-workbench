@@ -4,6 +4,9 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { RelayError } from './errors.mjs';
 
+const PCM_BYTES_PER_SECOND = 32000;
+const CODEC_PADDING_BYTES = 6400;
+
 export function wav(pcm) {
   const header = Buffer.alloc(44);
   header.write('RIFF'); header.writeUInt32LE(pcm.length + 36, 4); header.write('WAVEfmt ', 8);
@@ -15,6 +18,7 @@ export function wav(pcm) {
 
 export async function normalizeAudio(file, maxSeconds, signal, { timeoutMs = 30000, ffmpeg = 'ffmpeg', tempRoot = tmpdir() } = {}) {
   const directory = await mkdtemp(join(tempRoot, 'subtitle-review-'));
+  const maxPcmBytes = maxSeconds * PCM_BYTES_PER_SECOND + CODEC_PADDING_BYTES;
   try {
     if (signal?.aborted) throw new RelayError(408, 'request_timeout');
     const input = join(directory, 'upload');
@@ -32,7 +36,7 @@ export async function normalizeAudio(file, maxSeconds, signal, { timeoutMs = 300
       if (signal?.aborted) onAbort();
       child.stdout.on('data', chunk => {
         length += chunk.length;
-        if (length > maxSeconds * 32000) fail(new RelayError(413, 'audio_duration_exceeded'));
+        if (length > maxPcmBytes) fail(new RelayError(413, 'audio_duration_exceeded'));
         else chunks.push(chunk);
       });
       child.on('error', () => { failure ||= new RelayError(503, 'audio_decoder_unavailable'); });
@@ -43,6 +47,6 @@ export async function normalizeAudio(file, maxSeconds, signal, { timeoutMs = 300
         else resolve(Buffer.concat(chunks));
       });
     });
-    return { audio: wav(pcm), seconds: Math.ceil(pcm.length / 32000) };
+    return { audio: wav(pcm), seconds: Math.ceil(pcm.length / PCM_BYTES_PER_SECOND) };
   } finally { await rm(directory, { recursive: true, force: true }); }
 }

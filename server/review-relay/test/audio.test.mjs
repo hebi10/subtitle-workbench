@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { normalizeAudio, wav } from '../audio.mjs';
 import { fixture } from './helpers.mjs';
 
-test('decoder rejects full padded chunks beyond 421 seconds despite short claimed duration', async () => {
+test('decoder rejects chunks beyond the 421.2-second codec allowance despite short claimed duration', async () => {
   const pcm = Buffer.alloc(422 * 32000);
   const source = wav(pcm);
   // A false RIFF container size is not trusted as an audio duration or upload bound.
@@ -17,6 +18,38 @@ test('decoder rejects full padded chunks beyond 421 seconds despite short claime
 test('decoder accepts the actual 421-second padded limit', async () => {
   const result = await normalizeAudio(new Blob([wav(Buffer.alloc(421 * 32000))]), 421);
   assert.equal(result.seconds, 421); assert.equal(result.audio.length, 44 + 421 * 32000);
+});
+
+test('codec allowance accepts exactly 200ms of actual PCM and reserves rounded-up decoded seconds', async () => {
+  for (const maxSeconds of [31, 421]) {
+    const byteCap = maxSeconds * 32000 + 6400;
+    const result = await normalizeAudio(new Blob([wav(Buffer.alloc(byteCap))]), maxSeconds);
+    assert.equal(result.seconds, maxSeconds + 1);
+    assert.equal(result.audio.length, 44 + byteCap);
+    await assert.rejects(normalizeAudio(new Blob([wav(Buffer.alloc(byteCap + 2))]), maxSeconds), error => error.code === 'audio_duration_exceeded');
+  }
+});
+
+test('real 24kHz AAC-LC clips at planned boundaries survive codec padding but longer clips are rejected', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'relay-aac-boundary-'));
+  try {
+    for (const maxSeconds of [31, 421]) {
+      for (const extraSeconds of [0, 0.21]) {
+        const path = join(directory, `audio-${maxSeconds}-${extraSeconds}.m4a`);
+        execFileSync('ffmpeg', ['-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'anullsrc=r=24000:cl=mono',
+          '-t', String(maxSeconds + extraSeconds), '-c:a', 'aac', '-profile:a', 'aac_low', '-b:a', '64000', '-use_editlist', '0', path], { timeout: 30000 });
+        const source = new Blob([readFileSync(path)], { type: 'audio/mp4' });
+        if (extraSeconds) await assert.rejects(normalizeAudio(source, maxSeconds), error => error.code === 'audio_duration_exceeded');
+        else {
+          const normalized = await normalizeAudio(source, maxSeconds);
+          const decodedSeconds = (normalized.audio.length - 44) / 32000;
+          assert.ok(decodedSeconds > maxSeconds, 'fixture must exercise actual AAC frame padding');
+          assert.ok(decodedSeconds <= maxSeconds + 0.2);
+          assert.equal(normalized.seconds, Math.ceil(decodedSeconds));
+        }
+      }
+    }
+  } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
 test('decoder rejects playlist and concat demuxers before referencing another file or URL', async t => {
