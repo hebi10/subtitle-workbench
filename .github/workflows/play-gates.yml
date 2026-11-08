@@ -92,7 +92,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             chmod +x gradlew
-            ./gradlew connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.class=com.haebi.subtitle.MicrophoneActivityDeviceTest,com.haebi.subtitle.OfflineVoskDeviceTest,com.haebi.subtitle.SecretStoreDeviceTest,com.haebi.subtitle.ResumeAdmissionDeviceTest
+            ./gradlew connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.class=com.haebi.subtitle.MicrophoneActivityDeviceTest,com.haebi.subtitle.OfflineVoskDeviceTest,com.haebi.subtitle.SecretStoreDeviceTest,com.haebi.subtitle.PreparedJobDeviceTest,com.haebi.subtitle.ResumeAdmissionDeviceTest
       - name: Preserve device verification reports
         if: always()
         uses: actions/upload-artifact@v4

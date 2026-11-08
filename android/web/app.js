@@ -876,7 +876,16 @@ for (const [id, action] of Object.entries({
   resultPreview: () => previewAt(0), editResult: () => show('editor'),
   prevJobs: () => { jobsPage -= 1; renderJobs(); $('jobsHeading').scrollIntoView({ block: 'start' }); },
   nextJobs: () => { jobsPage += 1; renderJobs(); $('jobsHeading').scrollIntoView({ block: 'start' }); },
-  pickVideo: async () => { await flushSave(); const selected = await nativeCall('pickVideo', { settings: savedSettings }); await refresh(); if (selected) { await openPrepared(selected.job?.id || selected.id); message('영상이 준비되었습니다. 설정을 확인하고 생성 시작을 눌러 주세요.'); } else message('영상 선택을 취소했습니다.'); },
+  pickVideo: async () => {
+    const navigation = navigationRevision;
+    await flushSave();
+    const selected = await nativeCall('pickVideo', { settings: savedSettings });
+    await refresh();
+    if (selected) {
+      if (navigation === navigationRevision) await openPrepared(selected.job?.id || selected.id);
+      message('영상이 준비되었습니다. 설정을 확인하고 생성 시작을 눌러 주세요.');
+    } else message('영상 선택을 취소했습니다.');
+  },
   dismissMessage: () => message(''),
   discardSettings: () => { hydrateSettings(savedSettings); settingsTouched = false; $('discardSettings').disabled = true; $('settingsStatus').textContent = '변경을 취소하고 저장된 설정을 불러왔습니다.'; },
   openApiKeyPage: () => nativeCall('openApiKeyPage'),

@@ -61,6 +61,7 @@ const regression = (name, action) => test(name, { skip: !enabled }, () => withAp
 
 async function openConnection(page) {
   await page.locator('#navSettings').click();
+  await page.locator('#settingsView').waitFor({ state: 'visible' });
   if (!(await page.locator('#apiSettings').evaluate((node) => node.open))) await page.locator('#apiSettings > summary').click();
 }
 async function saveRelay(page, url = 'https://relay.subtitle.com', code = 'fixture_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') {
@@ -162,6 +163,8 @@ regression('a different server needs a new access code and pinned relay jobs ret
   await saveRelay(page);
   await page.locator('#navVideo').click();
   await page.locator('#pickVideo').click();
+  await page.locator('#preparedJobs .job[data-job-id="ready-1"]').waitFor({ state: 'visible' });
+  await page.waitForFunction(() => !document.getElementById('pickVideo').disabled);
   await openConnection(page);
   await page.locator('#reviewRelayUrl').fill('https://another.subtitle.com');
   await page.locator('#reviewRelayForm button[type="submit"]').click();
@@ -174,6 +177,24 @@ regression('a different server needs a new access code and pinned relay jobs ret
   assert.match(await prepared.locator('.job-ready-note').innerText(), /relay\.subtitle\.com/);
   assert.equal(await prepared.getByRole('button', { name: '생성 시작', exact: true }).isDisabled(), true);
   assert.match(await prepared.innerText(), /원래 연결/);
+});
+
+regression('a delayed video picker preserves the newer settings tab and the prepared job', async (page) => {
+  await saveRelay(page);
+  await page.locator('#navVideo').click();
+  await page.evaluate(() => { window.mockNative.methodDelays = { pickVideo: 300 }; });
+  await page.locator('#pickVideo').click();
+  await page.waitForFunction(() => window.mockNative.calls.some((call) => call.method === 'pickVideo'));
+  await openConnection(page);
+  await page.waitForFunction(() => window.mockNative.jobs.some((job) => job.id === 'ready-1') && !document.getElementById('pickVideo').disabled);
+  assert.equal(await page.locator('#settingsView').isVisible(), true);
+  assert.equal(await page.locator('#reviewRelayUrl').isVisible(), true);
+  assert.equal(await page.locator('#navSettings').getAttribute('aria-current'), 'page');
+  await page.locator('#navVideo').click();
+  const prepared = page.locator('#preparedJobs .job[data-job-id="ready-1"]');
+  await prepared.waitFor({ state: 'visible' });
+  assert.match(await prepared.locator('.job-ready-note').innerText(), /relay\.subtitle\.com.*OpenAI/);
+  assert.equal(await prepared.getByRole('button', { name: '생성 시작', exact: true }).isEnabled(), true);
 });
 
 test('review relay UI exposes a distinct secret input and common disclosure without a production fixture', async () => {

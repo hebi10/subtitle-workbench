@@ -38,7 +38,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             chmod +x gradlew
-            ./gradlew connectedDebugAndroidTest --no-daemon --stacktrace -Pandroid.testInstrumentationRunnerArguments.class=com.haebi.subtitle.MicrophoneActivityDeviceTest,com.haebi.subtitle.OfflineVoskDeviceTest,com.haebi.subtitle.SecretStoreDeviceTest,com.haebi.subtitle.ResumeAdmissionDeviceTest
+            ./gradlew connectedDebugAndroidTest --no-daemon --stacktrace -Pandroid.testInstrumentationRunnerArguments.class=com.haebi.subtitle.MicrophoneActivityDeviceTest,com.haebi.subtitle.OfflineVoskDeviceTest,com.haebi.subtitle.SecretStoreDeviceTest,com.haebi.subtitle.PreparedJobDeviceTest,com.haebi.subtitle.ResumeAdmissionDeviceTest
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell am start -n com.haebi.subtitle/.MainActivity
             sleep 5
