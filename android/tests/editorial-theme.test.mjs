@@ -48,18 +48,18 @@ test('Editorial Studio Android day/night resources and tokens match both CSS pal
 async function withPage(mobile, action) {
   const paths = mobile ? {
     '/': 'android/web/index.html', '/app.js': 'android/web/app.js',
-    '/styles.css': 'android/web/styles.css', '/shared/core.js': 'src/core.js',
+    '/styles.css': 'android/web/styles.css', '/editorial-mark-white.png': 'android/web/editorial-mark-white.png', '/shared/core.js': 'src/core.js',
     '/shared/subtitle-editor.js': 'src/subtitle-editor.js', '/shared/edit-history.js': 'src/edit-history.js',
     '/shared/subtitle-player.js': 'src/subtitle-player.js',
   } : null;
   const server = createServer(async (request, response) => {
     const pathname = new URL(request.url, 'http://localhost').pathname;
     const file = mobile ? paths[pathname] : pathname === '/' ? 'index.html' : pathname.slice(1);
-    if (!file || (!mobile && !/^(?:index\.html|styles\.css|src\/[a-z0-9-]+\.js)$/.test(file))) {
+    if (!file || (!mobile && !/^(?:index\.html|styles\.css|assets\/brand\/editorial-mark-white\.png|src\/[a-z0-9-]+\.js)$/.test(file))) {
       response.writeHead(404).end(); return;
     }
     try {
-      response.setHeader('Content-Type', file.endsWith('.css') ? 'text/css' : file.endsWith('.js') ? 'text/javascript' : 'text/html');
+      response.setHeader('Content-Type', file.endsWith('.png') ? 'image/png' : file.endsWith('.css') ? 'text/css' : file.endsWith('.js') ? 'text/javascript' : 'text/html');
       response.end(await readFile(join(root, file)));
     } catch { response.writeHead(404).end(); }
   });

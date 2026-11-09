@@ -21,12 +21,12 @@
       "purpose": "Google Play 앱 아이콘",
       "width": 512,
       "height": 512,
-      "sha256": "3d2b39350fe45a85184db701dcac2699d5adb0e5e8b802837b8c33bb2c671277",
+      "sha256": "86b29ea473098b9ed551fc7b290d3b3a24a8bd29c1ffc102b0f63649172dda0e",
       "source": {
-        "type": "imagegen-built-in",
-        "generatedSourceFile": "exec-dbc30600-4238-4421-a327-190e99734a1a.png",
-        "promptFile": "generation-prompts.json",
-        "export": "Opaque RGB PNG, deterministic LANCZOS resize to Google Play dimensions"
+        "type": "imagegen-assisted-raster",
+        "origin": "Editorial Studio 1-B generated brand boards, 2026-11-09",
+        "reference": "assets/brand/editorial-mark-white.png",
+        "export": "Opaque 8-color palette PNG 512x512, near-black background #171717"
       }
     },
     {
@@ -34,12 +34,12 @@
       "purpose": "Google Play 그래픽 이미지",
       "width": 1024,
       "height": 500,
-      "sha256": "960fd6df495ab476705a9857f8beacd3b0814dfc500549aa07d518d1f3af5be4",
+      "sha256": "31a996d13ca0541b8c20f54c0717f99b1ed0fc63bb5b1a79f670b367f7484548",
       "source": {
-        "type": "imagegen-built-in",
-        "generatedSourceFile": "exec-40dd2ff2-9804-4100-8cff-2cfc5176f74c.png",
-        "promptFile": "generation-prompts.json",
-        "export": "Opaque RGB PNG, deterministic LANCZOS resize to Google Play dimensions"
+        "type": "imagegen-assisted-raster-layout",
+        "origin": "Editorial Studio 1-B generated brand boards, 2026-11-09",
+        "reference": "assets/brand/editorial-mark-dark.png",
+        "export": "Typography and generated mark on #F5F5F5, 1024x500 palette PNG"
       }
     },
     {

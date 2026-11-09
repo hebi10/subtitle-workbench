@@ -44,7 +44,7 @@ android {
 }
 
 tasks.register('syncWebAssets', Sync) {
-    from('../web') { include 'index.html', 'app.js', 'styles.css'; into 'web' }
+    from('../web') { include 'index.html', 'app.js', 'styles.css', 'editorial-mark-white.png'; into 'web' }
     from('../../src') {
         include 'core.js', 'subtitle-editor.js', 'subtitle-player.js', 'edit-history.js'
         into 'shared'
