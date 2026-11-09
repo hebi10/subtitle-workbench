@@ -64,7 +64,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
         view.setText(text);
         NativeDesignSystem.button(view, primary, getResources().getDisplayMetrics().density);
         view.setOnClickListener(v -> action.run());
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(52));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.topMargin = dp(8);
         root.addView(view, lp);
         return view;
@@ -91,31 +91,40 @@ public final class CloudLiveRecognitionActivity extends Activity {
         scroll.addView(root);
         setContentView(scroll);
 
-        label(root, "CLOUD / REALTIME", 11, true);
-        label(root, "GPT 실시간 마이크 자막", 22, true);
-        disclosure = label(root, "개인 API 연결은 API 이용 요금이 별도로 청구되며, 테스트 연결은 서버의 공용 테스트 한도가 적용됩니다. 선택한 전송 대상을 확인한 뒤 시작해 주세요.", 14, false);
-        label(root, "인식 언어", 15, true);
+        float density = getResources().getDisplayMetrics().density;
+        NativeDesignSystem.header(root, "CLOUD / REALTIME", "GPT 실시간 마이크 자막",
+                "사용자가 인식을 시작한 동안에만 마이크 음성을 선택한 연결을 통해 전송합니다. 비용과 연결 대상을 먼저 확인하세요.", density);
+
+        LinearLayout connection = NativeDesignSystem.section(root, "01 / CONNECTION", "연결·인식 언어", density);
+        disclosure = label(connection,
+                "개인 API 연결은 API 이용 요금이 별도로 청구되며, 테스트 연결은 서버의 공용 테스트 한도가 적용됩니다. 선택한 전송 대상을 확인한 뒤 시작해 주세요.",
+                14, false);
+        NativeDesignSystem.statusPanel(disclosure, density);
+        label(connection, "인식 언어", 14, true);
         language = new Spinner(this);
         language.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item,
                 new String[]{"자동 감지", "한국어", "English", "日本語", "中文"}));
-        NativeDesignSystem.language(language, getResources().getDisplayMetrics().density);
-        root.addView(language);
+        language.setContentDescription("인식 언어");
+        NativeDesignSystem.language(language, density);
+        connection.addView(language, new LinearLayout.LayoutParams(-1, -2));
 
-        start = button(root, "유료 GPT 실시간 인식 시작", true, this::requestStart);
-        stop = button(root, "인식 종료 및 결과 확정", false, this::stopRecognition);
+        LinearLayout capture = NativeDesignSystem.section(root, "02 / LIVE", "실시간 음성 인식", density);
+        start = button(capture, "유료 GPT 실시간 인식 시작", true, this::requestStart);
+        stop = button(capture, "인식 종료 및 결과 확정", false, this::stopRecognition);
         stop.setEnabled(false);
-        status = label(root, "마이크를 시작하지 않았습니다.", 14, false);
-        NativeDesignSystem.surfaceText(status, getResources().getDisplayMetrics().density);
-        label(root, "실시간 인식 중", 16, true);
-        partial = label(root, "대기 중", 16, false);
-        NativeDesignSystem.surfaceText(partial, getResources().getDisplayMetrics().density);
-        label(root, "확정된 자막", 16, true);
-        completed = label(root, "저장할 자막이 없습니다.", 14, false);
-        NativeDesignSystem.surfaceText(completed, getResources().getDisplayMetrics().density);
-        save = button(root, "자막 작업 기록 저장 및 편집", true, this::saveCues);
+        status = label(capture, "마이크를 시작하지 않았습니다.", 14, false);
+        NativeDesignSystem.statusPanel(status, density);
+        label(capture, "실시간 인식 중", 15, true);
+        partial = label(capture, "대기 중", 15, false);
+        NativeDesignSystem.transcriptPanel(partial, density);
+
+        LinearLayout result = NativeDesignSystem.section(root, "03 / RESULT", "확정된 자막", density);
+        completed = label(result, "저장할 자막이 없습니다.", 14, false);
+        NativeDesignSystem.transcriptPanel(completed, density);
+        save = button(result, "자막 작업 기록 저장 및 편집", true, this::saveCues);
         save.setEnabled(false);
+        label(result, "한 번에 최대 5분 동안 인식할 수 있습니다. 말하는 도중 텍스트가 표시되고 종료 후 최종 문장이 저장됩니다. 정확한 단어별 시간은 제공하지 않아 구간 시간은 추정값입니다. 화면을 벗어나면 마이크 전송을 중지합니다.", 13, false);
         button(root, "닫기", false, this::closeRequested);
-        label(root, "한 번에 최대 5분 동안 인식할 수 있습니다. 말하는 도중 텍스트가 표시되고 종료 후 최종 문장이 저장됩니다. 정확한 단어별 시간은 제공하지 않아 구간 시간은 추정값입니다. 화면을 벗어나면 마이크 전송을 중지합니다.", 13, false);
     }
 
     private String chosenLanguage() { return LANGUAGES[language.getSelectedItemPosition()]; }
