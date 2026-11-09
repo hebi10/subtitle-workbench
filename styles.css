@@ -1721,3 +1721,10 @@ td { overflow-wrap: anywhere; }
   }
   .subtitle-panel[data-active='true'] .subtitle-secondary { color: #D4D4D4; }
 }
+
+/* Editorial Studio 1-B: shared symbol, live-text wordmark, system theme contrast. */
+.brand-symbol .brand-mark { display: block; width: 76%; height: 76%; object-fit: contain; }
+.brand-copy h1 { font-weight: 700; letter-spacing: -0.035em; }
+@media (prefers-color-scheme: dark) {
+  .brand-symbol .brand-mark { filter: invert(1); }
+}

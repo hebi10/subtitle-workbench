@@ -11,7 +11,7 @@ const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const output = resolve(process.env.STORE_CAPTURE_OUTPUT || join(root, 'output/play-store-captures'));
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const routes = {
-  '/': 'android/web/index.html', '/app.js': 'android/web/app.js', '/styles.css': 'android/web/styles.css',
+  '/': 'android/web/index.html', '/app.js': 'android/web/app.js', '/styles.css': 'android/web/styles.css', '/editorial-mark-white.png': 'android/web/editorial-mark-white.png',
   '/shared/core.js': 'src/core.js', '/shared/subtitle-editor.js': 'src/subtitle-editor.js',
   '/shared/edit-history.js': 'src/edit-history.js', '/shared/subtitle-player.js': 'src/subtitle-player.js',
 };
@@ -19,7 +19,7 @@ const server = createServer(async (request, response) => {
   const path = routes[new URL(request.url, 'http://localhost').pathname];
   if (!path) return response.writeHead(404).end();
   try {
-    response.setHeader('Content-Type', path.endsWith('.js') ? 'text/javascript; charset=utf-8' :
+    response.setHeader('Content-Type', path.endsWith('.png') ? 'image/png' : path.endsWith('.js') ? 'text/javascript; charset=utf-8' :
       path.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/html; charset=utf-8');
     response.end(await readFile(join(root, path)));
   } catch { response.writeHead(500).end(); }

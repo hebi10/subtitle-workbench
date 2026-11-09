@@ -14,11 +14,11 @@ test('v0.8 desktop and mobile web screens remain accessible and aligned', { skip
   const server = createServer(async (req, res) => {
     const pathname = new URL(req.url, 'http://localhost').pathname;
     const relative = pathname === '/' ? 'index.html' : pathname.replace(/^\//, '');
-    const allow = ['index.html', 'styles.css', 'favicon.ico', 'favicon.png'].includes(relative) ||
+    const allow = ['index.html', 'styles.css', 'favicon.ico', 'favicon.png', 'assets/brand/editorial-mark-white.png', 'apple-touch-icon.png'].includes(relative) ||
       /^src\/[a-z0-9-]+\.js$/.test(relative);
     if (!allow) { res.writeHead(404).end(); return; }
     try {
-      res.setHeader('Content-Type', relative.endsWith('.css') ? 'text/css; charset=utf-8' :
+      res.setHeader('Content-Type', relative.endsWith('.png') ? 'image/png' : relative.endsWith('.css') ? 'text/css; charset=utf-8' :
         relative.endsWith('.js') ? 'text/javascript; charset=utf-8' : 'text/html; charset=utf-8');
       res.end(await readFile(join(root, relative)));
     } catch { res.writeHead(404).end(); }

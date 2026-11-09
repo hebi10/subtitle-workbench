@@ -16,12 +16,12 @@ test('Android WebView UI with a mock native bridge', { skip: !process.env.PLAYWR
   const server = createServer(async (req, res) => {
     const pathname = new URL(req.url, 'http://localhost').pathname;
     const paths = {
-      '/': 'android/web/index.html', '/app.js': 'android/web/app.js', '/styles.css': 'android/web/styles.css',
+      '/': 'android/web/index.html', '/app.js': 'android/web/app.js', '/styles.css': 'android/web/styles.css', '/editorial-mark-white.png': 'android/web/editorial-mark-white.png',
       '/shared/core.js': 'src/core.js', '/shared/subtitle-editor.js': 'src/subtitle-editor.js',
       '/shared/edit-history.js': 'src/edit-history.js', '/shared/subtitle-player.js': 'src/subtitle-player.js',
     };
     if (!paths[pathname]) { res.writeHead(404).end(); return; }
-    try { res.setHeader('Content-Type', pathname.endsWith('.js') ? 'text/javascript; charset=utf-8' : pathname.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/html; charset=utf-8'); res.end(await readFile(join(root, paths[pathname]))); }
+    try { res.setHeader('Content-Type', pathname.endsWith('.png') ? 'image/png' : pathname.endsWith('.js') ? 'text/javascript; charset=utf-8' : pathname.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/html; charset=utf-8'); res.end(await readFile(join(root, paths[pathname]))); }
     catch { res.writeHead(500).end(); }
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
