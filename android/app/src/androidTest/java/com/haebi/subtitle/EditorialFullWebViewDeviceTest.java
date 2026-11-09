@@ -46,6 +46,8 @@ public final class EditorialFullWebViewDeviceTest {
                 WebView web = captured.get();
                 assertNotNull(web);
                 waitFor(web, "Boolean(document.querySelector('#navJobs') && document.querySelector('#appMessage'))");
+                waitFor(web, "Boolean(document.querySelector('#jobList [data-job-id]'))");
+                Thread.sleep(600);
                 String label = theme.get() + "-font" +
                         Math.round(context.getResources().getConfiguration().fontScale * 100);
                 show(web, "navVideo", "videoView");
@@ -92,7 +94,9 @@ public final class EditorialFullWebViewDeviceTest {
         evaluate(web, "(function(){document.getElementById(" + JSONObject.quote(navId) +
                 ").click();window.scrollTo(0,0);return true;})()");
         waitFor(web, "Boolean(document.getElementById(" + JSONObject.quote(section) +
-                ") && !document.getElementById(" + JSONObject.quote(section) + ").hidden)");
+                ") && !document.getElementById(" + JSONObject.quote(section) +
+                ").hidden && document.querySelector('.app-nav [aria-current=\\\"page\\\"]') && " +
+                "document.querySelector('.app-nav [aria-current=\\\"page\\\"]').id === " + JSONObject.quote(navId) + ")");
     }
 
     private static void assertViewport(WebView web, String section) throws Exception {
@@ -141,7 +145,7 @@ public final class EditorialFullWebViewDeviceTest {
     }
 
     private static void screenshot(Context context, String filename) throws Exception {
-        Thread.sleep(300);
+        Thread.sleep(750);
         Bitmap bitmap=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
         assertNotNull(filename, bitmap);
         File folder=context.getExternalFilesDir("editorial-5a-webview");
