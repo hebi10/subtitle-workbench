@@ -213,9 +213,10 @@ function renderJobs() {
   const ordered = [...jobs].sort((a, b) => jobPriority(a) - jobPriority(b));
   const activeCount = jobs.filter((job) => ['running', 'queued'].includes(job.status)).length;
   const preparedCount = jobs.filter(isPrepared).length;
+  const pausedCount = jobs.filter((job) => job.status === 'paused' && !isPrepared(job)).length;
   const completedCount = jobs.filter((job) => job.status === 'completed').length;
   const attentionCount = jobs.filter((job) => job.status === 'error').length;
-  $('jobsSummary').textContent = `전체 ${jobs.length}개 · 진행 ${activeCount} · 준비 ${preparedCount} · 완료 ${completedCount}${attentionCount ? ` · 오류 ${attentionCount}` : ''}`;
+  $('jobsSummary').textContent = `전체 ${jobs.length}개 · 진행 ${activeCount} · 준비 ${preparedCount} · 일시정지 ${pausedCount} · 완료 ${completedCount}${attentionCount ? ` · 오류 ${attentionCount}` : ''}`;
   const nextNodes = [];
   if (!jobs.length) nextNodes.push(el('p', '아직 작업이 없습니다. 영상을 선택하거나 자막 파일을 불러오세요.', 'empty'));
   for (const job of ordered) {

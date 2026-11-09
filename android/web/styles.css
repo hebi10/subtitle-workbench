@@ -867,3 +867,9 @@ progress::-webkit-progress-value { background:var(--ink); }
   #videoView .file-source .start-actions { grid-template-columns:1fr; }
   #jobsView .job-actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
+
+/* 3-A verification correction: preserve Korean words in compact connection summaries. */
+#videoView .file-source #connectionSummary {
+  overflow-wrap:normal;
+  word-break:keep-all;
+}

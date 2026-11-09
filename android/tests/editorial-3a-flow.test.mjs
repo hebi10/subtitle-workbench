@@ -106,7 +106,7 @@ test('3-A input sources group the connection with the file path, without changin
 test('3-A jobs provide accurate counts, progress and status-dependent primary actions', { skip: !enabled }, async () => {
   await withApp(390, 'light', async (page) => {
     await page.locator('#navJobs').click();
-    assert.match(await page.locator('#jobsSummary').innerText(), /전체 2개 · 진행 0 · 준비 0 · 완료 1/);
+    assert.match(await page.locator('#jobsSummary').innerText(), /전체 2개 · 진행 0 · 준비 0 · 일시정지 1 · 완료 1/);
     const paused = page.locator('#jobsView .job[data-job-id="partial-1"]');
     const complete = page.locator('#jobsView .job[data-job-id="complete-1"]');
     assert.equal(await paused.locator('.job-card-heading h3').innerText(), '이어하기 테스트.mp4');
