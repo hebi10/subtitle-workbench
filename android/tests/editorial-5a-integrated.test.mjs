@@ -105,6 +105,7 @@ async function runProduct(browser, mobile) {
           } else {
             await page.locator(nav).click();
           }
+          await page.locator(panel).waitFor({ state: 'visible' });
           assert.ok(await page.locator(panel).isVisible(), modeName + ' ' + name);
           const metrics = await page.evaluate(() => {
             const root = document.documentElement;
