@@ -104,6 +104,7 @@ test('4-A desktop and mobile workspaces preserve UI, source import and exports',
       }
     }
 
+    await page.emulateMedia({ colorScheme: 'light' });
     await page.locator('#subtitleFile').setInputFiles({
       name: '4a-fixture.srt',
       mimeType: 'text/plain',
@@ -117,6 +118,9 @@ test('4-A desktop and mobile workspaces preserve UI, source import and exports',
     assert.ok(await page.locator('#editorBody [data-cue-index]').count() >= 1, 'Existing search must still filter cues');
     await page.locator('#editorSearch').fill('');
     await page.screenshot({ path: join(out, 'edit-imported-1280-light.png'), animations: 'disabled' });
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.screenshot({ path: join(out, 'edit-imported-1280-dark.png'), animations: 'disabled' });
+    await page.emulateMedia({ colorScheme: 'light' });
     await page.locator('#tab-export').click();
     const downloads = await page.locator('#downloads a[download]').evaluateAll(
       nodes => nodes.map(node => ({ filename: node.download, href: node.getAttribute('href') }))
@@ -126,6 +130,8 @@ test('4-A desktop and mobile workspaces preserve UI, source import and exports',
     assert.ok(downloads.some(d => d.filename.endsWith('.json')));
     assert.ok(downloads.every(d => d.href?.startsWith('blob:')));
     await page.screenshot({ path: join(out, 'export-imported-1280-light.png'), animations: 'disabled' });
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.screenshot({ path: join(out, 'export-imported-1280-dark.png'), animations: 'disabled' });
     assert.deepEqual(errors, [], 'No client errors should arise from moving the workspace panels');
     await context.close();
   } finally {
