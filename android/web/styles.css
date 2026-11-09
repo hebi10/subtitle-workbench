@@ -495,3 +495,111 @@ progress::-webkit-progress-value { background: var(--ink); }
 @media (prefers-color-scheme: dark) {
   .brand-symbol .brand-mark { filter: invert(1); }
 }
+
+
+/* Editorial Studio 2-A: shared control, field, panel and status components. */
+:root {
+  --es-control-height:48px;
+  --es-control-padding:12px;
+  --es-control-surface:var(--paper);
+  --es-control-ink:var(--ink);
+  --es-control-border:var(--line);
+  --es-control-primary:var(--ink);
+  --es-control-on-primary:var(--es-on-action);
+  --es-control-disabled:var(--soft);
+  --es-control-disabled-ink:var(--muted);
+  --es-control-focus:var(--ink);
+  --es-card-background:var(--paper);
+  --es-card-border:var(--line);
+  --es-status-neutral:var(--soft);
+  --es-status-warning:var(--warning-bg);
+  --es-status-danger:#FFF1F2;
+  --es-status-danger-border:#DC9EAA;
+}
+@media (prefers-color-scheme:dark) {
+  :root { --es-status-danger:#3A242A; --es-status-danger-border:#A65F6C; }
+}
+button, .es-button {
+  display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  box-sizing:border-box; min-height:var(--es-control-height); padding:9px var(--es-control-padding);
+  border-radius:0; box-shadow:none; font-weight:600;
+}
+button.primary, .es-button--primary {
+  background:var(--es-control-primary); color:var(--es-control-on-primary);
+  border:1px solid var(--es-control-primary);
+}
+button:not(.primary):not([aria-current='page']), .es-button--secondary {
+  background:var(--es-control-surface); color:var(--es-control-ink);
+  border:1px solid var(--es-control-border);
+}
+button:disabled, button.primary:disabled, .es-button:disabled {
+  background:var(--es-control-disabled); color:var(--es-control-disabled-ink);
+  border-color:var(--es-control-border); opacity:1;
+}
+input:not([type='checkbox']):not([type='radio']):not([type='file']),
+select, textarea, .es-field {
+  min-height:var(--es-control-height); max-width:100%; border:1px solid var(--line-strong);
+  border-radius:0; background:var(--es-control-surface); color:var(--es-control-ink);
+  box-shadow:none; font-size:16px;
+}
+textarea { min-height:96px; }
+input[type='checkbox'], input[type='radio'] { accent-color:var(--es-control-primary); }
+button:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible, summary:focus-visible, a:focus-visible {
+  outline:2px solid var(--es-control-focus); outline-offset:2px;
+}
+.job, .connection-summary, #resultContent, .settings-group,
+.local-caption-entry, .editor-tools, .cue, .es-card {
+  background:var(--es-card-background); border:1px solid var(--es-card-border);
+  border-radius:0; box-shadow:none;
+}
+.job-state > :first-child, #cueCount, .es-status {
+  display:inline-flex; align-items:center; min-height:28px;
+  border:1px solid var(--line); border-radius:0;
+  background:var(--es-status-neutral); color:var(--ink);
+}
+.job[data-status='running'] .job-state > :first-child {
+  background:var(--es-control-primary); border-color:var(--es-control-primary);
+  color:var(--es-control-on-primary);
+}
+.job[data-status='error'] .job-state > :first-child, .es-status--error {
+  background:var(--es-status-danger); border-color:var(--es-status-danger-border);
+  color:var(--error);
+}
+.cue-issues, .es-status--warning {
+  background:var(--es-status-warning); color:var(--warning-ink);
+}
+progress, progress::-webkit-progress-bar, .es-progress { background:var(--soft); }
+progress::-webkit-progress-value { background:var(--ink); }
+.es-progress { border:0; border-radius:0; height:7px; }
+.app-nav button { min-width:0; gap:4px; }
+
+/* 2-A: flat, monochrome CSS-drawn pictograms; no font, SVG or library dependency. */
+.es-icon { position:relative; display:inline-block; flex:0 0 18px; width:18px; height:18px; color:inherit; pointer-events:none; }
+.es-icon::before, .es-icon::after { content:""; position:absolute; display:block; box-sizing:border-box; }
+.es-icon--video::before { inset:2px 0; border:2px solid currentColor; }
+.es-icon--video::after { left:7px; top:5px; width:7px; height:8px; background:currentColor; clip-path:polygon(0 0,100% 50%,0 100%); }
+.es-icon--jobs::before { inset:2px 1px; border:2px solid currentColor; }
+.es-icon--jobs::after { left:5px; right:4px; top:5px; height:8px; border-block:2px solid currentColor; }
+.es-icon--results::before { inset:1px 3px; border:2px solid currentColor; }
+.es-icon--results::after { left:6px; right:6px; top:7px; height:5px; border-block:2px solid currentColor; }
+.es-icon--settings::before { inset:2px 1px; border:2px solid currentColor; }
+.es-icon--settings::after { inset:5px 5px; border:2px solid currentColor; }
+.es-icon--add::before { left:8px; top:2px; width:2px; height:14px; background:currentColor; }
+.es-icon--add::after { left:2px; top:8px; width:14px; height:2px; background:currentColor; }
+.es-icon--play::before { inset:2px 3px; background:currentColor; clip-path:polygon(0 0,100% 50%,0 100%); }
+.es-icon--edit::before { left:2px; top:7px; width:15px; height:5px; border:2px solid currentColor; transform:rotate(-45deg); }
+.es-icon--edit::after { left:1px; bottom:1px; width:5px; height:2px; background:currentColor; transform:rotate(-45deg); }
+.es-icon--download::before { left:8px; top:1px; width:2px; height:11px; background:currentColor; }
+.es-icon--download::after { inset:8px 1px 2px; background:currentColor; clip-path:polygon(0 0,50% 65%,100% 0,100% 20%,50% 95%,0 20%); }
+.es-icon--mic::before { left:6px; top:1px; width:6px; height:11px; border:2px solid currentColor; border-radius:6px; }
+.es-icon--mic::after { left:3px; top:8px; width:12px; height:9px; border:2px solid currentColor; border-radius:0 0 9px 9px; }
+.es-icon--refresh::before { inset:2px; border:2px solid currentColor; border-radius:50%; }
+.es-icon--refresh::after { top:0; right:0; width:7px; height:7px; background:currentColor; clip-path:polygon(0 0,100% 0,100% 100%); }
+.es-icon--stop::before { inset:4px; background:currentColor; }
+.es-icon--back::before { left:2px; top:4px; width:10px; height:10px; border:2px solid currentColor; transform:rotate(45deg); }
+.es-icon--back::after { left:8px; top:3px; width:10px; height:12px; background:var(--es-control-surface); }
+
+@media (max-width:360px) {
+  .app-nav .es-icon { display:none; }
+}

@@ -26,9 +26,9 @@
 
       <main class="workspace is-idle">
         <nav class="workspace-tabs" role="tablist" aria-label="작업 탭">
-          <button id="tab-generate" class="workspace-tab is-active" type="button" role="tab" aria-controls="panel-generate" aria-selected="true" tabindex="0" data-tab-target="generate">생성</button>
-          <button id="tab-edit" class="workspace-tab" type="button" role="tab" aria-controls="panel-edit" aria-selected="false" tabindex="-1" data-tab-target="edit">편집</button>
-          <button id="tab-export" class="workspace-tab" type="button" role="tab" aria-controls="panel-export" aria-selected="false" tabindex="-1" data-tab-target="export">내보내기</button>
+          <button id="tab-generate" class="workspace-tab is-active" type="button" role="tab" aria-controls="panel-generate" aria-selected="true" tabindex="0" data-tab-target="generate"><span class="es-icon es-icon--video" aria-hidden="true"></span>생성</button>
+          <button id="tab-edit" class="workspace-tab" type="button" role="tab" aria-controls="panel-edit" aria-selected="false" tabindex="-1" data-tab-target="edit"><span class="es-icon es-icon--edit" aria-hidden="true"></span>편집</button>
+          <button id="tab-export" class="workspace-tab" type="button" role="tab" aria-controls="panel-export" aria-selected="false" tabindex="-1" data-tab-target="export"><span class="es-icon es-icon--results" aria-hidden="true"></span>내보내기</button>
         </nav>
         <p class="workflow-hint">01. 영상 준비와 자막 생성 → 02. 문장 검수와 시간 수정 → 03. 형식별 다운로드</p>
 
@@ -204,8 +204,8 @@
 
               <div id="runControls" class="run-controls" aria-label="자막 생성 실행">
                 <p id="startRequirement" class="start-requirement" aria-live="polite"></p>
-                <button id="startButton" class="primary-button" type="button" disabled>자막 생성 시작</button>
-                <button id="cancelButton" class="ghost-button" type="button" disabled>중단</button>
+                <button id="startButton" class="primary-button" type="button" disabled><span class="es-icon es-icon--play" aria-hidden="true"></span>자막 생성 시작</button>
+                <button id="cancelButton" class="ghost-button" type="button" disabled><span class="es-icon es-icon--stop" aria-hidden="true"></span>중단</button>
               </div>
 
               <details class="advanced-settings">
@@ -411,8 +411,8 @@
               </div>
 
               <div class="edit-history-controls" aria-label="편집 이력">
-                <button id="undoEdit" class="ghost-button" type="button" disabled>실행 취소</button>
-                <button id="redoEdit" class="ghost-button" type="button" disabled>다시 실행</button>
+                <button id="undoEdit" class="ghost-button" type="button" disabled><span class="es-icon es-icon--back" aria-hidden="true"></span>실행 취소</button>
+                <button id="redoEdit" class="ghost-button" type="button" disabled><span class="es-icon es-icon--refresh" aria-hidden="true"></span>다시 실행</button>
                 <span id="editHistoryStatus" role="status">편집 이력이 없습니다.</span>
               </div>
 
