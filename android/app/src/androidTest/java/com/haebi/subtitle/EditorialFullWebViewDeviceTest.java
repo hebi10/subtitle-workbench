@@ -95,8 +95,8 @@ public final class EditorialFullWebViewDeviceTest {
                 ").click();window.scrollTo(0,0);return true;})()");
         waitFor(web, "Boolean(document.getElementById(" + JSONObject.quote(section) +
                 ") && !document.getElementById(" + JSONObject.quote(section) +
-                ").hidden && document.querySelector('.app-nav [aria-current=\\\"page\\\"]') && " +
-                "document.querySelector('.app-nav [aria-current=\\\"page\\\"]').id === " + JSONObject.quote(navId) + ")");
+                ").hidden && document.querySelector('.app-nav [aria-current=page]') && " +
+                "document.querySelector('.app-nav [aria-current=page]').id === " + JSONObject.quote(navId) + ")");
     }
 
     private static void assertViewport(WebView web, String section) throws Exception {
