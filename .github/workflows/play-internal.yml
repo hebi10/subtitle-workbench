@@ -45,6 +45,7 @@ jobs:
     outputs:
       sha: ${{ steps.source.outputs.sha }}
       mode: ${{ steps.route.outputs.mode }}
+      target: ${{ steps.route.outputs.target }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -68,11 +69,21 @@ jobs:
           title="$(git log -1 --format=%s "$SOURCE_SHA")"
           if [[ "$EVENT_TYPE" == 'workflow_run' && "$title" == 'store: Editorial Studio 5-B trusted screenshot registration' ]]; then
             echo 'mode=listing' >> "$GITHUB_OUTPUT"
+            echo 'target=none' >> "$GITHUB_OUTPUT"
           elif [[ "$EVENT_TYPE" == 'workflow_run' ]]; then
+            if [[ "$title" == *'[deploy-internal]'* && "$title" == *'[deploy-closed]'* ]]; then
+              echo 'Conflicting Play target markers' >&2
+              exit 1
+            fi
             echo 'mode=deploy' >> "$GITHUB_OUTPUT"
+            if [[ "$title" == *'[deploy-closed]'* ]]; then
+              echo 'target=alpha' >> "$GITHUB_OUTPUT"
+            else
+              echo 'target=internal' >> "$GITHUB_OUTPUT"
+            fi
           else
             case "$REQUESTED_MODE" in
-              check|build|deploy) echo "mode=$REQUESTED_MODE" >> "$GITHUB_OUTPUT" ;;
+              check|build|deploy) echo "mode=$REQUESTED_MODE" >> "$GITHUB_OUTPUT"; echo 'target=internal' >> "$GITHUB_OUTPUT" ;;
               *) echo 'Unsupported release mode' >&2; exit 1 ;;
             esac
           fi
@@ -196,6 +207,12 @@ jobs:
           args=()
           if [[ "$KEEP_FOR_REVIEW" == 'true' ]]; then args+=(--changes-not-sent-for-review); fi
           python3 scripts/release/publisher.py --report output/play-release.json deploy --bundle android/app/build/outputs/bundle/release/app-release.aab --version-code "$VERSION_CODE" --status "$RELEASE_STATUS" "${args[@]}"
+      - name: Promote verified internal version to closed alpha on explicit release marker
+        if: needs.source.outputs.mode == 'deploy' && needs.source.outputs.target == 'alpha'
+        env:
+          PLAY_ACCESS_TOKEN: ${{ steps.wif.outputs.access_token || steps.json.outputs.access_token }}
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+        run: python3 scripts/release/publisher.py --report output/play-promotion.json promote --version-code "$VERSION_CODE" --track alpha
       - name: Submit only the reviewed 5-B phone screenshots and check fresh Play hashes
         if: needs.source.outputs.mode == 'listing'
         env:
