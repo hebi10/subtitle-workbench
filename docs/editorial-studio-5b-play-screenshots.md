@@ -37,3 +37,13 @@
 ## 상태
 - 이미지 제작·규격/원본 SHA 검수·Google Drive 백업 완료.
 - GitHub PR 검증·main 병합 및 Play API 등록 결과는 해당 완료 시 별도 갱신.
+
+
+## 5-B 등록 인증 오류와 기존 승인 경로 복구 (2026-11-09)
+- PR #20 병합 main: `4ef732872188cff7e48cd0a95b3d7870202d9045`.
+- `Verify web and Android` #42583900045 성공. 신규 `Editorial Studio 5-B phone screenshot registration` #42584606284은 `source` 통과, `apply` 인증 단계 실패.
+- Google Cloud WIF 응답: `unauthorized_client` / `The given credential is rejected by the attribute condition.` 즉 신규 워크플로가 Google Cloud WIF 허용 조건에 들어가지 않아 Google Play 업로드 전 거부됨. 이미지 형식·해시 문제가 아니다.
+- **기존 IAM 신뢰 조건이나 비밀키·인증 설정을 변경하지 않는다.** 이미 WIF 인증이 성공한 기존 `.github/workflows/play-internal.yml`에서 이번 복구 커밋 메시지 `store: Editorial Studio 5-B trusted screenshot registration`에 한해서 `listing` 모드로 라우팅한다. 이 모드는 기존 승인된 `google-play` 환경에서 `--phone-only --send-for-review`을 실행한다.
+- `listing` 모드는 AAB 서명키 준비·SDK 설치·빌드·배포·버전 할당을 건너뛴다. 기존 일반 `workflow_run` 배포 및 수동 `check/build/deploy` 동작은 변경하지 않는다.
+- 실패한 신규 `play-5b-screenshots.yml` 워크플로 파일은 제거한다. 대신 Play API 등록 후 신규 edit에서 8장 SHA-256와 제목·설명·아이콘·대표 그래픽이 그대로인지 재조회해야 완료로 처리한다.
+- Google Play 심사·테스터 노출은 API 등록 완료와 별도 확인한다.
