@@ -59,6 +59,7 @@ jobs:
             output/editorial-theme/*.png
             output/editorial-components/*.png
             output/editorial-3a/*.png
+            output/editorial-3b/*.png
           retention-days: 14
           if-no-files-found: warn
 
