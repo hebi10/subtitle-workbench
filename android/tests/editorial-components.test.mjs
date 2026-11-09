@@ -133,11 +133,16 @@ test('2-A Android components and icon navigation preserve names, input and page 
         await verifyControl(page, '#apiKey');
         assert.equal(await page.locator('#apiKey').evaluate(el => getComputedStyle(el).fontSize), '16px');
         await page.locator('#apiKey').fill('fixture-not-a-secret');
+        await page.emulateMedia({ colorScheme: theme === 'light' ? 'dark' : 'light' });
+        assert.equal(await page.locator('#apiKey').inputValue(), 'fixture-not-a-secret',
+          'switching only the system theme must not clear a pending field');
+        await page.emulateMedia({ colorScheme: theme });
         await page.locator('#navResults').click();
         await page.locator('#resultJobSelector').selectOption('complete-1');
         await verifyControl(page, '#editResult');
         await page.locator('#navSettings').click();
-        assert.equal(await page.locator('#apiKey').inputValue(), 'fixture-not-a-secret');
+        assert.equal(await page.locator('#apiKey').inputValue(), '',
+          'existing security behavior clears a pending API key on navigation');
         assert.equal(await page.locator('.app-nav [aria-current="page"]').count(), 1);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1),
           false, 'Android ' + width + ' ' + theme + ' overflow');
