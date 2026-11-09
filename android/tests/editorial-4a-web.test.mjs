@@ -87,8 +87,8 @@ test('4-A desktop and mobile workspaces preserve UI, source import and exports',
             assert.equal(await page.locator('.editor-toolbar .editor-toolgroup').count(), 2);
             assert.equal(await page.locator('.editor-toolgroup #editorSearch').count(), 1);
             assert.equal(await page.locator('.editor-toolgroup #editorGlobalOffset').count(), 1);
-            const scroll = await page.locator('.editor-table-wrap').evaluate(el => getComputedStyle(el));
-            assert.equal(scroll.overflowY, 'visible', 'Edit list should use a single document scroll');
+            const scroll = await page.locator('.editor-table-wrap').evaluate(el => getComputedStyle(el).overflowY);
+            assert.equal(scroll, 'visible', 'Edit list should use a single document scroll');
           }
           if (tab === 'export') {
             assert.equal(await page.locator('.studio-export-files #downloads').count(), 1);
