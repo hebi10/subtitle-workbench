@@ -56,6 +56,7 @@ jobs:
             output/redesign-web/*.png
             output/redesign-android/*.png
             output/review-relay-ui/*.png
+            output/editorial-theme/*.png
           retention-days: 14
           if-no-files-found: warn
 

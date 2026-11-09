@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +9,12 @@ import test from 'node:test';
 const require = createRequire(import.meta.url);
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const enabled = Boolean(process.env.PLAYWRIGHT_MODULE);
+const captureDir = join(root, 'output/editorial-theme');
+
+async function capture(page, name) {
+  await mkdir(captureDir, { recursive: true });
+  await page.screenshot({ path: join(captureDir, name + '.png'), fullPage: true, animations: 'disabled' });
+}
 const clean = (value) => value.toLowerCase().replace(/\s+/g, '');
 const palette = {
   light: { bg: 'rgb(245,245,245)', surface: 'rgb(255,255,255)', text: 'rgb(23,23,23)', action: 'rgb(255,255,255)' },
@@ -106,6 +112,7 @@ test('web palette follows OS dark/light changes without clearing inputs', { skip
     await page.locator('#apiKey').fill('test-only-placeholder');
     for (const theme of ['light', 'dark', 'light']) {
       await assertPalette(page, theme, { panel: '.tool-panel', selected: '#tab-generate' });
+      await capture(page, 'web-390-' + theme);
     }
   });
 });
@@ -119,6 +126,18 @@ test('Android WebView palette follows OS dark/light changes without clearing inp
       await assertPalette(page, theme, { panel: '.settings-group', selected: '#navSettings' });
       const field = await page.locator('#apiKey').evaluate((el) => getComputedStyle(el).backgroundColor);
       assert.equal(clean(field), palette[theme].surface);
+      await capture(page, 'android-settings-390-' + theme);
     }
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.locator('#navVideo').click();
+    await capture(page, 'android-video-390-dark');
+    await page.locator('#navJobs').click();
+    await capture(page, 'android-jobs-390-dark');
+    await page.locator('#navResults').click();
+    await page.locator('#resultJobSelector').selectOption('complete-1');
+    await capture(page, 'android-results-390-dark');
+    await page.locator('#editResult').click();
+    await page.locator('.cue textarea').first().waitFor({ state: 'visible' });
+    await capture(page, 'android-editor-390-dark');
   });
 });
