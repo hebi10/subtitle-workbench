@@ -1,6 +1,7 @@
 package com.haebi.subtitle;
 
 import android.content.Context;
+import android.os.Build;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Color;
@@ -10,6 +11,8 @@ import android.graphics.drawable.StateListDrawable;
 import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.LinearLayout;
+import android.view.View;
 
 /** Editorial Studio colors follow the Android system night mode. */
 final class NativeDesignSystem {
@@ -93,4 +96,59 @@ final class NativeDesignSystem {
         spinner.setPadding(dp(density, 12), 0, dp(density, 12), 0);
         spinner.setBackgroundTintList(ColorStateList.valueOf(ink(spinner.getContext())));
     }
+    static int soft(Context context) {
+        return isDark(context) ? Color.rgb(48, 48, 48) : Color.rgb(240, 240, 240);
+    }
+    private static TextView line(LinearLayout parent, String value, int size, boolean strong, float density) {
+        TextView label = new TextView(parent.getContext());
+        label.setText(value);
+        text(label, size, strong, density);
+        parent.addView(label, new LinearLayout.LayoutParams(-1, -2));
+        return label;
+    }
+    static void header(LinearLayout root, String kicker, String title, String description, float density) {
+        TextView eyebrow = line(root, kicker, 11, true, density);
+        eyebrow.setTextColor(muted(root.getContext()));
+        eyebrow.setPadding(0, 0, 0, dp(density, 4));
+        TextView heading = line(root, title, 22, true, density);
+        heading.setPadding(0, 0, 0, dp(density, 6));
+        if (Build.VERSION.SDK_INT >= 28) heading.setAccessibilityHeading(true);
+        TextView intro = line(root, description, 14, false, density);
+        intro.setPadding(0, 0, 0, dp(density, 8));
+    }
+    static LinearLayout section(LinearLayout parent, String index, String title, float density) {
+        Context context = parent.getContext();
+        LinearLayout group = new LinearLayout(context);
+        group.setOrientation(LinearLayout.VERTICAL);
+        group.setBackground(surface(paper(context), line(context), density));
+        group.setPadding(dp(density, 14), dp(density, 12), dp(density, 14), dp(density, 14));
+        group.setElevation(0f);
+        group.setTag("editorial-section:" + index);
+        LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2);
+        layout.topMargin = dp(density, 12);
+        parent.addView(group, layout);
+        TextView kicker = line(group, index, 11, true, density);
+        kicker.setTextColor(muted(context));
+        kicker.setPadding(0, 0, 0, dp(density, 2));
+        TextView heading = line(group, title, 17, true, density);
+        heading.setPadding(0, 0, 0, dp(density, 8));
+        if (Build.VERSION.SDK_INT >= 28) heading.setAccessibilityHeading(true);
+        return group;
+    }
+    static void statusPanel(TextView view, float density) {
+        Context context = view.getContext();
+        surfaceText(view, density);
+        view.setBackground(surface(soft(context), line(context), density));
+        view.setTextColor(ink(context));
+        view.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+    }
+    static void transcriptPanel(TextView view, float density) {
+        Context context = view.getContext();
+        surfaceText(view, density);
+        view.setBackground(surface(soft(context), line(context), density));
+        view.setTextColor(ink(context));
+        view.setMinHeight(dp(density, 88));
+        view.setTextIsSelectable(true);
+    }
+
 }

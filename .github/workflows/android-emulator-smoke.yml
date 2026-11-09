@@ -38,7 +38,23 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             chmod +x gradlew
-            ./gradlew connectedDebugAndroidTest --no-daemon --stacktrace -Pandroid.testInstrumentationRunnerArguments.class=com.haebi.subtitle.EditorialComponentsDeviceTest,com.haebi.subtitle.MicrophoneActivityDeviceTest,com.haebi.subtitle.OfflineVoskDeviceTest,com.haebi.subtitle.SecretStoreDeviceTest,com.haebi.subtitle.PreparedJobDeviceTest,com.haebi.subtitle.ResumeAdmissionDeviceTest
+            ./gradlew connectedDebugAndroidTest --no-daemon --stacktrace -Pandroid.testInstrumentationRunnerArguments.class=com.haebi.subtitle.EditorialComponentsDeviceTest,com.haebi.subtitle.EditorialNativeScreensDeviceTest,com.haebi.subtitle.MicrophoneActivityDeviceTest,com.haebi.subtitle.OfflineVoskDeviceTest,com.haebi.subtitle.SecretStoreDeviceTest,com.haebi.subtitle.PreparedJobDeviceTest,com.haebi.subtitle.ResumeAdmissionDeviceTest
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            mkdir -p ../output/editorial-native-3c
+            adb shell cmd uimode night no
+            adb shell am force-stop com.haebi.subtitle
+            adb shell am instrument -w -e class com.haebi.subtitle.EditorialNativeScreensDeviceTest com.haebi.subtitle.test/androidx.test.runner.AndroidJUnitRunner > ../output/editorial-native-3c/light-test.log
+            cat ../output/editorial-native-3c/light-test.log
+            grep -q 'OK (3 tests)' ../output/editorial-native-3c/light-test.log
+            adb pull /sdcard/Android/data/com.haebi.subtitle/files/editorial-3c/ ../output/editorial-native-3c/
+            adb shell cmd uimode night yes
+            adb shell am force-stop com.haebi.subtitle
+            adb shell am instrument -w -e class com.haebi.subtitle.EditorialNativeScreensDeviceTest com.haebi.subtitle.test/androidx.test.runner.AndroidJUnitRunner > ../output/editorial-native-3c/dark-test.log
+            cat ../output/editorial-native-3c/dark-test.log
+            grep -q 'OK (3 tests)' ../output/editorial-native-3c/dark-test.log
+            adb pull /sdcard/Android/data/com.haebi.subtitle/files/editorial-3c/ ../output/editorial-native-3c/
+            adb shell cmd uimode night no
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell am start -n com.haebi.subtitle/.MainActivity
             sleep 5
@@ -51,6 +67,7 @@ jobs:
           name: subtitle-emulator-integration
           path: |
             output/subtitle-emulator-home.png
+            output/editorial-native-3c/
             android/app/build/outputs/androidTest-results/connected/
             android/app/build/reports/androidTests/connected/
           if-no-files-found: warn

@@ -87,32 +87,39 @@ public final class OnDeviceRecognitionActivity extends Activity {
         root.setPadding(dp(20), dp(20), dp(20), dp(36));
         scroll.addView(root);
         setContentView(scroll);
-        addText(root, "ON-DEVICE / MICROPHONE", 11, true);
-        addText(root, "온디바이스 마이크 자막", 22, true);
-        addText(root, "기기의 음성 인식 서비스로 말하는 동안 자막을 만듭니다. OpenAI API 키나 API 이용 요금은 필요하지 않습니다. 인식 품질과 지원 언어는 기기마다 다릅니다.", 14, false);
-        addText(root, "인식 언어", 15, true);
+        float density = getResources().getDisplayMetrics().density;
+        NativeDesignSystem.header(root, "ON-DEVICE / MICROPHONE", "온디바이스 마이크 자막",
+                "기기의 음성 인식 서비스로 말하는 동안 자막을 만듭니다. OpenAI API 키나 API 이용 요금은 필요하지 않습니다. 인식 품질과 지원 언어는 기기마다 다릅니다.", density);
+
+        LinearLayout preparation = NativeDesignSystem.section(root, "01 / PREPARE", "인식 언어·모델", density);
+        addText(preparation, "인식 언어", 14, true);
         language = new Spinner(this);
-        language.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, new String[]{"한국어", "English", "日本語", "中文"}));
-        NativeDesignSystem.language(language, getResources().getDisplayMetrics().density);
-        root.addView(language);
-        checkButton = addButton(root, "언어 지원 확인", false, this::checkSupport);
-        downloadButton = addButton(root, "온디바이스 언어 모델 다운로드 요청", false, this::downloadModel);
-        addText(root, "모델은 Android 시스템 인식 서비스가 설치·관리합니다. Android 13 이상에서만 다운로드 요청을 지원합니다.", 13, false);
-        startButton = addButton(root, "마이크 인식 시작", true, this::requestStart);
-        stopButton = addButton(root, "인식 종료", false, this::stopListening);
+        language.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item,
+                new String[]{"한국어", "English", "日本語", "中文"}));
+        language.setContentDescription("인식 언어");
+        NativeDesignSystem.language(language, density);
+        preparation.addView(language, new LinearLayout.LayoutParams(-1, -2));
+        checkButton = addButton(preparation, "언어 지원 확인", false, this::checkSupport);
+        downloadButton = addButton(preparation, "온디바이스 언어 모델 다운로드 요청", false, this::downloadModel);
+        addText(preparation, "모델은 Android 시스템 인식 서비스가 설치·관리합니다. Android 13 이상에서만 다운로드 요청을 지원합니다.", 13, false);
+
+        LinearLayout capture = NativeDesignSystem.section(root, "02 / CAPTURE", "마이크 인식", density);
+        startButton = addButton(capture, "마이크 인식 시작", true, this::requestStart);
+        stopButton = addButton(capture, "인식 종료", false, this::stopListening);
         stopButton.setEnabled(false);
-        status = addText(root, "서비스 지원 상태를 확인 중입니다.", 14, false);
-        NativeDesignSystem.surfaceText(status, getResources().getDisplayMetrics().density);
-        addText(root, "인식 중인 문장", 16, true);
-        partial = addText(root, "마이크 입력 대기", 16, false);
-        NativeDesignSystem.surfaceText(partial, getResources().getDisplayMetrics().density);
-        addText(root, "저장 예정 자막", 16, true);
-        completed = addText(root, "확정된 문장이 없습니다.", 14, false);
-        NativeDesignSystem.surfaceText(completed, getResources().getDisplayMetrics().density);
-        saveButton = addButton(root, "완료 자막 저장 및 편집", true, this::save);
+        status = addText(capture, "서비스 지원 상태를 확인 중입니다.", 14, false);
+        NativeDesignSystem.statusPanel(status, density);
+        addText(capture, "인식 중인 문장", 15, true);
+        partial = addText(capture, "마이크 입력 대기", 15, false);
+        NativeDesignSystem.transcriptPanel(partial, density);
+
+        LinearLayout result = NativeDesignSystem.section(root, "03 / RESULT", "확정된 자막", density);
+        completed = addText(result, "확정된 문장이 없습니다.", 14, false);
+        NativeDesignSystem.transcriptPanel(completed, density);
+        saveButton = addButton(result, "완료 자막 저장 및 편집", true, this::save);
         saveButton.setEnabled(false);
+        addText(result, "말을 마친 후 다음 문장은 인식을 다시 시작하세요. 자막 시간은 마이크 호출 시점을 기준으로 계산된 추정값이며, 확정되지 않은 임시 문장은 저장되지 않습니다.", 13, false);
         addButton(root, "닫기", false, this::closeRequested);
-        addText(root, "말을 마친 후 다음 문장은 인식을 다시 시작하세요. 자막 시간은 마이크 호출 시점을 기준으로 계산된 추정값이며, 확정되지 않은 임시 문장은 저장되지 않습니다.", 13, false);
     }
 
     private TextView addText(LinearLayout root, String text, int sp, boolean strong) {
@@ -128,7 +135,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
         node.setText(label);
         NativeDesignSystem.button(node, primary, getResources().getDisplayMetrics().density);
         node.setOnClickListener(view -> action.run());
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(52));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
         params.topMargin = dp(7);
         root.addView(node, params);
         return node;

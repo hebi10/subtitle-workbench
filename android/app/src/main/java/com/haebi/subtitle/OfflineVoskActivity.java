@@ -69,10 +69,11 @@ public final class OfflineVoskActivity extends Activity {
         scroll.addView(root);
         setContentView(scroll);
 
-        label(root, "OFFLINE / LOCAL AI", 11, true);
-        label(root, "독립 로컬 AI 자막", 22, true);
-        label(root, "앱이 직접 다운로드한 Vosk 언어 모델로 영상·음성 파일을 전사합니다. 모델 설치 후에는 인터넷과 OpenAI API 키 없이 사용할 수 있습니다.", 14, false);
-        label(root, "01 · 언어 모델", 16, true);
+        float density = getResources().getDisplayMetrics().density;
+        NativeDesignSystem.header(root, "OFFLINE / LOCAL AI", "독립 로컬 AI 자막",
+                "앱이 직접 다운로드한 Vosk 언어 모델로 영상·음성 파일을 전사합니다. 모델 설치 후에는 인터넷과 OpenAI API 키 없이 사용할 수 있습니다.", density);
+
+        LinearLayout models = NativeDesignSystem.section(root, "01 / MODEL", "언어 모델 준비", density);
         selection = new Spinner(this);
         String[] choices = new String[OfflineModelCatalog.MODELS.length];
         for (int index = 0; index < choices.length; index++) {
@@ -80,36 +81,37 @@ public final class OfflineVoskActivity extends Activity {
             choices[index] = model.title + " · 약 " + model.approximateMegabytes + "MB";
         }
         selection.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, choices));
-        NativeDesignSystem.language(selection, getResources().getDisplayMetrics().density);
-        root.addView(selection);
+        selection.setContentDescription("언어 모델 선택");
+        NativeDesignSystem.language(selection, density);
+        models.addView(selection, new LinearLayout.LayoutParams(-1, -2));
         selection.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(android.widget.AdapterView<?> parent, android.view.View view, int position, long id) { render(); }
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
         });
-        modelStatus = label(root, "", 14, false);
-        NativeDesignSystem.surfaceText(modelStatus, getResources().getDisplayMetrics().density);
-        download = button(root, "선택 모델 다운로드·설치", true, this::downloadSelected);
-        delete = button(root, "다운로드한 모델 삭제", false, this::requestDelete);
+        modelStatus = label(models, "", 14, false);
+        NativeDesignSystem.statusPanel(modelStatus, density);
+        download = button(models, "선택 모델 다운로드·설치", true, this::downloadSelected);
+        delete = button(models, "다운로드한 모델 삭제", false, this::requestDelete);
 
-        label(root, "02 · 음성 파일", 16, true);
-        sourceStatus = label(root, "선택한 영상·오디오가 없습니다.", 14, false);
-        NativeDesignSystem.surfaceText(sourceStatus, getResources().getDisplayMetrics().density);
-        pick = button(root, "영상·오디오 파일 선택", false, this::pickFile);
-        label(root, "오프라인 인식은 최대 60분 파일을 지원합니다. 기기 성능에 따라 처리 시간이 길어질 수 있습니다. 원본은 복사하지 않고 파일 선택기의 읽기 권한으로 미리보기와 연결합니다.", 13, false);
+        LinearLayout media = NativeDesignSystem.section(root, "02 / FILE", "영상·오디오 선택", density);
+        sourceStatus = label(media, "선택한 영상·오디오가 없습니다.", 14, false);
+        NativeDesignSystem.statusPanel(sourceStatus, density);
+        pick = button(media, "영상·오디오 파일 선택", false, this::pickFile);
+        label(media, "오프라인 인식은 최대 60분 파일을 지원합니다. 기기 성능에 따라 처리 시간이 길어질 수 있습니다. 원본은 복사하지 않고 파일 선택기의 읽기 권한으로 미리보기와 연결합니다.", 13, false);
 
-        label(root, "03 · 인식 결과", 16, true);
-        run = button(root, "오프라인 음성 인식 시작", true, this::runTranscription);
-        cancel = button(root, "다운로드·인식 중단", false, () -> { cancelled.set(true); status.setText("중단 요청을 처리하고 있습니다…"); });
+        LinearLayout transcription = NativeDesignSystem.section(root, "03 / TRANSCRIPTION", "자막 생성·저장", density);
+        run = button(transcription, "오프라인 음성 인식 시작", true, this::runTranscription);
+        cancel = button(transcription, "다운로드·인식 중단", false, () -> { cancelled.set(true); status.setText("중단 요청을 처리하고 있습니다…"); });
         cancel.setEnabled(false);
-        status = label(root, "언어 모델과 영상·오디오를 선택하세요.", 14, false);
-        NativeDesignSystem.surfaceText(status, getResources().getDisplayMetrics().density);
-        captionPreview = label(root, "인식 결과는 이곳에 표시됩니다.", 14, false);
-        NativeDesignSystem.surfaceText(captionPreview, getResources().getDisplayMetrics().density);
-        save = button(root, "자막 저장 및 편집", true, this::save);
+        status = label(transcription, "언어 모델과 영상·오디오를 선택하세요.", 14, false);
+        NativeDesignSystem.statusPanel(status, density);
+        label(transcription, "인식된 자막", 15, true);
+        captionPreview = label(transcription, "인식 결과는 이곳에 표시됩니다.", 14, false);
+        NativeDesignSystem.transcriptPanel(captionPreview, density);
+        save = button(transcription, "자막 저장 및 편집", true, this::save);
         save.setEnabled(false);
+        label(transcription, "Vosk 소형 모델은 Whisper와 인식 정확도가 다릅니다. 한국어 소형 모델의 공개 Zeroth 테스트 WER는 28.1%입니다. 모델 다운로드에만 네트워크를 사용하며 음성 파일은 OpenAI로 전송하지 않습니다. 모델 라이선스: Apache-2.0.", 13, false);
         button(root, "닫기", false, this::closeRequested);
-
-        label(root, "Vosk 소형 모델은 Whisper와 인식 정확도가 다릅니다. 한국어 소형 모델의 공개 Zeroth 테스트 WER는 28.1%입니다. 모델 다운로드에만 네트워크를 사용하며 음성 파일은 OpenAI로 전송하지 않습니다. 모델 라이선스: Apache-2.0.", 13, false);
     }
 
     private TextView label(LinearLayout root, String text, int size, boolean strong) {
@@ -125,7 +127,7 @@ public final class OfflineVoskActivity extends Activity {
         view.setText(text);
         NativeDesignSystem.button(view, primary, getResources().getDisplayMetrics().density);
         view.setOnClickListener(v -> action.run());
-        LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, dp(52));
+        LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2);
         layout.topMargin = dp(8);
         root.addView(view, layout);
         return view;
