@@ -1043,3 +1043,16 @@ body.is-editor main {
   #settingsView .settings-overview { gap:8px; padding:10px; }
   #settingsView .settings-overview > div { padding:0; }
 }
+
+
+/* Editorial Studio 5-A: focused controls must remain visible above the fixed nav and IME. */
+html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
+#settingsView :is(input,select,textarea,button),
+#editorView :is(input,select,textarea,button),
+#videoView :is(input,select,textarea,button),
+#resultsView :is(input,select,textarea,button) {
+  scroll-margin-bottom:calc(106px + env(safe-area-inset-bottom));
+}
+@media (max-width:360px) {
+  .app-nav button { white-space:normal; overflow-wrap:normal; word-break:keep-all; line-height:1.3; }
+}

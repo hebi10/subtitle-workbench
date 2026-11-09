@@ -70,6 +70,7 @@ public final class MainActivity extends Activity {
             return insets;
         });
         web.getSettings().setJavaScriptEnabled(true);
+        web.getSettings().setTextZoom(Math.round(100f * getResources().getConfiguration().fontScale));
         web.getSettings().setAllowFileAccess(false);
         web.getSettings().setAllowContentAccess(false);
         web.getSettings().setDomStorageEnabled(false);
