@@ -528,7 +528,10 @@ button.primary, .es-button--primary {
   background:var(--es-control-primary); color:var(--es-control-on-primary);
   border:1px solid var(--es-control-primary);
 }
-button:not(.primary):not([aria-current='page']), .es-button--secondary {
+button:not(.primary):not([aria-current='page']) {
+  color:var(--es-control-ink); border-color:var(--es-control-border);
+}
+.es-button--secondary {
   background:var(--es-control-surface); color:var(--es-control-ink);
   border:1px solid var(--es-control-border);
 }
