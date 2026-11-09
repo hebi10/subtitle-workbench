@@ -109,7 +109,7 @@ test('3-A jobs provide accurate counts, progress and status-dependent primary ac
     assert.match(await page.locator('#jobsSummary').innerText(), /전체 2개 · 진행 0 · 준비 0 · 완료 1/);
     const paused = page.locator('#jobsView .job[data-job-id="partial-1"]');
     const complete = page.locator('#jobsView .job[data-job-id="complete-1"]');
-    assert.equal(await paused.locator('.job-card-heading h3').innerText(), '강의 영상.mp4');
+    assert.equal(await paused.locator('.job-card-heading h3').innerText(), '이어하기 테스트.mp4');
     assert.equal(await paused.locator('.job-state span').first().innerText(), '일시정지');
     assert.equal(await paused.locator('progress').getAttribute('value'), '12.5');
     assert.equal(await paused.getByRole('button', { name: '이어하기', exact: true }).evaluate(
@@ -143,7 +143,7 @@ test('3-A results keep edit icon, read-only label and export destination after r
     assert.deepEqual(await page.evaluate(() => window.mockNative.calls.filter(
       (call) => call.method === 'export').slice(-3).map((call) => call.params.name.split('.').at(-1))), ['srt', 'vtt', 'json']);
     await page.locator('#resultJobSelector').selectOption('partial-1');
-    await page.waitForFunction(() => document.getElementById('resultName').textContent.includes('강의'));
+    await page.waitForFunction(() => document.getElementById('resultName').textContent.includes('이어하기'));
     assert.equal(await page.getByRole('button', { name: '자막 보기', exact: true }).count(), 1);
     assert.equal(await page.locator('#editResult .es-icon--edit').count(), 1);
   });
@@ -162,6 +162,7 @@ test('3-A visual first-fold and responsive layouts, light/dark, preserve native 
         ]) {
           await page.locator('#' + target).click();
           const nav = await checkViewport(page, section + '-' + width + '-' + theme);
+          await page.locator(action).first().waitFor({ state: 'visible' });
           const bounds = await page.locator(action).first().boundingBox();
           assert.ok(bounds && bounds.y >= 0 && bounds.y + bounds.height <= nav.navTop,
             section + ' primary action must be above bottom navigation at ' + width + '-' + theme);
