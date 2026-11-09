@@ -107,6 +107,12 @@ function button(text, action, disabled = false) {
   node.addEventListener('click', () => run(node, action));
   return node;
 }
+function actionIcon(node, name) {
+  const symbol = el('span', undefined, `es-icon es-icon--${name}`);
+  symbol.setAttribute('aria-hidden', 'true');
+  node.prepend(symbol);
+  return node;
+}
 async function run(node, action) {
   if (busyNodes.has(node)) return;
   const wasDisabled = node.disabled;
@@ -205,6 +211,12 @@ function renderJobs() {
   const list = $('jobList');
   const existing = jobCards;
   const ordered = [...jobs].sort((a, b) => jobPriority(a) - jobPriority(b));
+  const activeCount = jobs.filter((job) => ['running', 'queued'].includes(job.status)).length;
+  const preparedCount = jobs.filter(isPrepared).length;
+  const pausedCount = jobs.filter((job) => job.status === 'paused' && !isPrepared(job)).length;
+  const completedCount = jobs.filter((job) => job.status === 'completed').length;
+  const attentionCount = jobs.filter((job) => job.status === 'error').length;
+  $('jobsSummary').textContent = `전체 ${jobs.length}개 · 진행 ${activeCount} · 준비 ${preparedCount} · 일시정지 ${pausedCount} · 완료 ${completedCount}${attentionCount ? ` · 오류 ${attentionCount}` : ''}`;
   const nextNodes = [];
   if (!jobs.length) nextNodes.push(el('p', '아직 작업이 없습니다. 영상을 선택하거나 자막 파일을 불러오세요.', 'empty'));
   for (const job of ordered) {
@@ -238,7 +250,8 @@ function renderJobs() {
     }
     const article = el('article', undefined, 'job');
     article.dataset.jobId = job.id; article.dataset.status = job.status; article.dataset.renderKey = renderKey; article.dataset.prepared = String(ready); article.tabIndex = -1;
-    article.append(el('h3', job.name));
+    const cardHeading = el('div', undefined, 'job-card-heading');
+    cardHeading.append(el('h3', job.name));
     const state = el('div', undefined, 'job-state');
     const total = Number(job.totalChunks) || 0;
     const done = Number(job.completedChunks) || 0;
@@ -246,7 +259,8 @@ function renderJobs() {
     const detail = job.progress || {};
     const durationMs = nonnegative(job.durationMs);
     state.append(el('span', ready ? '준비됨' : statusNames[job.status] || job.status), el('span', `${formatDuration(durationMs)} · ${total}구간`));
-    article.append(state);
+    cardHeading.append(state);
+    article.append(cardHeading);
     const measured = typeof detail.percent === 'number' && Number.isFinite(detail.percent);
     const percent = job.status === 'completed' ? 100 : Math.min(100, Math.max(0, measured ? detail.percent : total ? done / total * 100 : 0));
     const progress = el('progress'); progress.max = 100; progress.value = percent;
@@ -290,25 +304,30 @@ function renderJobs() {
     if (!ready && ['paused', 'error'].includes(job.status)) inspection.append(el('p', '저장된 결과를 유지하고 남은 구간부터 이어갑니다.', 'hint'));
     if (job.error) article.append(el('p', job.error, 'job-error'));
     const actions = el('div', undefined, 'job-actions');
-    if (!ready) actions.append(button(job.status === 'completed' ? '자막 편집' : '자막 보기', () => openJob(job.id)));
-    if (!ready) actions.append(button('결과 보기', () => openJob(job.id, 'results')));
+    if (!ready) {
+      const open = actionIcon(button(job.status === 'completed' ? '자막 편집' : '자막 보기', () => openJob(job.id)), 'edit');
+      if (job.status === 'completed') open.classList.add('primary');
+      actions.append(open);
+      actions.append(button('결과 보기', () => openJob(job.id, 'results')));
+    }
     if (job.status === 'completed') {
-      actions.append(button('SRT 저장', () => exportJob(job.id), jobActionsInFlight.has(job.id)));
+      actions.append(actionIcon(button('SRT 저장', () => exportJob(job.id), jobActionsInFlight.has(job.id)), 'download'));
       if (pendingDeletionId === job.id) {
         const confirmation = el('p', '저장된 자막과 작업 기록을 삭제합니다. 원본 영상은 삭제하지 않습니다.', 'hint delete-warning');
         article.append(confirmation);
-        actions.append(button('삭제 확인', () => deleteCompletedJob(job.id), jobActionsInFlight.has(job.id)));
+        const remove = button('삭제 확인', () => deleteCompletedJob(job.id), jobActionsInFlight.has(job.id));
+        remove.classList.add('danger'); actions.append(remove);
         actions.append(button('취소', () => { pendingDeletionId = ''; renderJobs(); }));
       } else {
         actions.append(button('기록 삭제', () => { pendingDeletionId = job.id; renderJobs(); }));
       }
     }
-    if (['running', 'queued'].includes(job.status)) actions.append(button('일시정지', () => runJobAction(job.id, async () => { await nativeCall('pause', { jobId: job.id }); await refresh(); }), jobActionsInFlight.has(job.id)));
+    if (['running', 'queued'].includes(job.status)) actions.append(actionIcon(button('일시정지', () => runJobAction(job.id, async () => { await nativeCall('pause', { jobId: job.id }); await refresh(); }), jobActionsInFlight.has(job.id)), 'stop'));
     if (['paused', 'error'].includes(job.status)) {
       const start = button(ready ? '생성 시작' : '이어하기', () => resumeJob(job.id), !connection.hasKey || !sameDestination || jobActionsInFlight.has(job.id));
       start.dataset.needsKey = 'true';
-      if (ready) start.classList.add('primary');
-      actions.append(start);
+      if (ready || job.status === 'paused') start.classList.add('primary');
+      actions.append(actionIcon(start, 'play'));
       const selectedModel = savedSettings.translationModel;
       if (!ready && settings.translate !== false && settings.translationModel && selectedModel !== settings.translationModel) {
         inspection.append(el('p', `저장된 모델: ${selectedModel}. 이 모델로 이어하면 남은 번역에만 적용됩니다.`, 'hint job-model-note'));
@@ -334,7 +353,7 @@ function renderJobs() {
     if (!isPrepared(job)) return jobCards.get(job.id);
     const summary = el('article', undefined, 'job prepared-link'); summary.dataset.jobId = job.id; summary.tabIndex = -1;
     summary.append(el('h3', job.name), el('p', `준비됨 · ${formatDuration(job.durationMs)}`, 'hint'));
-    const actions = el('div', undefined, 'job-actions'); actions.append(button('준비 확인', () => openPrepared(job.id))); summary.append(actions);
+    const actions = el('div', undefined, 'job-actions'); actions.append(actionIcon(button('준비 확인', () => openPrepared(job.id)), 'play')); summary.append(actions);
     return summary;
   });
   if (!visibleNodes.length) {
@@ -528,7 +547,7 @@ function renderResults() {
   $('resultMeta').textContent = `${statusNames[current.status] || current.status} · 자막 ${history.present.length}개 · ${formatDuration(current.durationMs)}`;
   $('resultStatus').textContent = loading ? '자막을 불러오는 중입니다…' : !history.present.length ? '아직 저장된 자막이 없습니다. 작업 화면에서 진행 상태를 확인해 주세요.' : !editable() ? '현재까지 저장된 부분 결과입니다. 생성이 완료되면 편집할 수 있습니다.' : !current.uri ? '불러온 자막입니다. 연결된 영상이 없어 미리보기는 사용할 수 없습니다.' : '자막을 확인하고 파일로 저장하세요.';
   $('resultPreview').disabled = !current.uri || loading;
-  $('editResult').textContent = editable() ? '자막 편집' : '자막 보기';
+  $('editResult').querySelector('[data-result-edit-label]').textContent = editable() ? '자막 편집' : '자막 보기';
   $('editResult').disabled = !history.present.length || loading;
   syncEditorButtons();
 }

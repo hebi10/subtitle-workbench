@@ -20,39 +20,51 @@
   <main>
     <div id="messageBar" class="message-bar" hidden><p id="appMessage" class="message" role="status" hidden></p><button id="dismissMessage" type="button" aria-label="알림 닫기">닫기</button></div>
     <section id="videoView" aria-labelledby="videoHeading" hidden>
-      <div class="section-heading"><div><p class="page-kicker">01 / INPUT</p><h2 id="videoHeading">영상 추가</h2></div><span class="hint">최대 3시간</span></div>
-      <p class="page-description">영상에서 자막을 생성하거나 음성을 바로 텍스트로 변환할 수 있습니다.</p>
-      <div class="start-actions"><button id="pickVideo" class="primary" type="button" disabled><span class="es-icon es-icon--video" aria-hidden="true"></span>영상 선택</button><button id="importSubtitles" type="button"><span class="es-icon es-icon--add" aria-hidden="true"></span>자막 불러오기</button></div>
-      <details class="local-offline-entry">
+      <div class="section-heading"><div><p class="page-kicker">01 / INPUT</p><h2 id="videoHeading">영상 추가</h2></div></div>
+      <p class="page-description">파일이나 마이크를 선택해 자막 작업을 시작합니다.</p>
+      <section class="file-source" aria-labelledby="fileSourceHeading">
+        <div class="source-heading"><div><p class="source-kicker">FILE / TRANSCRIPTION</p><h3 id="fileSourceHeading">파일에서 자막 만들기</h3></div><span class="source-capacity">영상 최대 3시간</span></div>
+        <div class="start-actions"><button id="pickVideo" class="primary" type="button" disabled><span class="es-icon es-icon--video" aria-hidden="true"></span>영상 선택</button><button id="importSubtitles" type="button"><span class="es-icon es-icon--add" aria-hidden="true"></span>자막 불러오기</button></div>
+        <section id="connectionCard" class="connection-summary" aria-labelledby="connectionHeading"><div><h3 id="connectionHeading">내 API로 자막 생성</h3><p id="connectionSummary" class="hint">API 연결 상태를 확인하고 있습니다.</p><p id="activeModel" class="hint">번역 모델: gpt-6-luna</p></div><button id="openConnection" type="button">API 연결 설정</button></section>
+        <p id="keyHint" class="hint">개인 API 또는 테스트 서버 연결을 저장하면 영상을 선택할 수 있습니다.</p>
+        <p id="cloudTransmissionNotice" class="job-ready-note" hidden></p>
+        <div class="default-summary"><p id="videoSettingsSummary" class="hint"></p><button id="openDefaultSettings" type="button">기본 설정</button></div>
+        <details class="local-offline-entry">
         <summary>독립 로컬 AI · 영상/음성 파일</summary>
         <div><p class="hint">Vosk 언어 모델을 앱에서 직접 다운로드합니다. 설치 후에는 API 키나 인터넷 없이 최대 60분 파일을 자막으로 만들 수 있습니다. 모델 크기는 약 42~87MB입니다.</p><button id="openOfflineModel" type="button">로컬 AI 모델 관리 및 파일 전사</button></div>
-      </details>
-      <p class="subsection-label">마이크 자막</p>
-      <div class="local-caption-entry"><button id="openOnDevice" type="button"><span class="es-icon es-icon--mic" aria-hidden="true"></span>온디바이스 마이크 자막</button><p class="hint">Android 12 이상에서 지원되는 기기 음성 인식 엔진을 사용하며, OpenAI API 키가 필요하지 않습니다.</p></div>
-      <div class="local-caption-entry"><button id="openCloudLive" type="button"><span class="es-icon es-icon--mic" aria-hidden="true"></span>GPT 실시간 마이크 자막</button><p id="cloudLiveNotice" class="hint">마이크 음성을 선택한 연결을 통해 OpenAI로 전송합니다. 인식 시작 전 전송 대상과 비용 안내를 확인하세요.</p></div>
-      <p id="keyHint" class="hint">개인 API 또는 테스트 서버 연결을 저장하면 영상을 선택할 수 있습니다.</p>
-      <p id="cloudTransmissionNotice" class="job-ready-note" hidden></p>
-      <section id="connectionCard" class="connection-summary" aria-labelledby="connectionHeading"><div><h3 id="connectionHeading">내 API로 자막 생성</h3><p id="connectionSummary" class="hint">API 연결 상태를 확인하고 있습니다.</p><p id="activeModel" class="hint">번역 모델: gpt-6-luna</p></div><button id="openConnection" type="button">API 연결 설정</button></section>
-      <div class="default-summary"><p id="videoSettingsSummary" class="hint"></p><button id="openDefaultSettings" type="button">기본 설정</button></div>
-      <label id="preparedJobLabel" class="job-selector" hidden>준비할 영상<select id="preparedJobSelector"></select></label>
-      <div id="preparedJobs" class="job-list"><p class="empty">영상을 선택하면 여기에서 생성을 준비합니다.</p></div>
+        </details>
+        <label id="preparedJobLabel" class="job-selector" hidden>준비할 영상<select id="preparedJobSelector"></select></label>
+        <div id="preparedJobs" class="job-list"><p class="empty">영상을 선택하면 여기에서 생성을 준비합니다.</p></div>
+      </section>
+      <section class="microphone-source" aria-labelledby="microphoneHeading">
+        <div class="source-heading"><div><p class="source-kicker">MICROPHONE</p><h3 id="microphoneHeading">마이크 자막</h3></div></div>
+        <div class="microphone-entries">
+          <div class="local-caption-entry"><button id="openOnDevice" type="button"><span class="es-icon es-icon--mic" aria-hidden="true"></span>온디바이스 마이크 자막</button><p class="hint">Android 12 이상에서 지원되는 기기 음성 인식 엔진을 사용하며, OpenAI API 키가 필요하지 않습니다.</p></div>
+          <div class="local-caption-entry"><button id="openCloudLive" type="button"><span class="es-icon es-icon--mic" aria-hidden="true"></span>GPT 실시간 마이크 자막</button><p id="cloudLiveNotice" class="hint">마이크 음성을 선택한 연결을 통해 OpenAI로 전송합니다. 인식 시작 전 전송 대상과 비용 안내를 확인하세요.</p></div>
+        </div>
+      </section>
     </section>
 
     <section id="jobsView" aria-labelledby="jobsHeading">
       <div class="section-heading"><div><p class="page-kicker">02 / HISTORY</p><h2 id="jobsHeading">작업</h2></div><button id="refreshJobs" type="button"><span class="es-icon es-icon--refresh" aria-hidden="true"></span>새로고침</button></div>
-      <p class="page-description">진행 중인 작업과 저장된 자막을 확인합니다.</p>
-      <div id="jobList" class="job-list"><p class="empty">작업 목록을 불러오는 중입니다.</p></div>
+      <p class="page-description">진행 중인 작업과 저장된 자막을 관리합니다.</p>
+      <p id="jobsSummary" class="jobs-overview" role="status" aria-live="polite">작업 상태를 확인하는 중입니다.</p>
+      <div id="jobList" class="job-list" aria-label="작업 목록"><p class="empty">작업 목록을 불러오는 중입니다.</p></div>
       <nav class="pagination jobs-pagination" aria-label="작업 페이지"><button id="prevJobs" type="button">이전</button><span id="jobsPageInfo"></span><button id="nextJobs" type="button">다음</button></nav>
     </section>
 
     <section id="resultsView" aria-labelledby="resultsHeading" hidden>
       <div class="section-heading"><div><p class="page-kicker">03 / RESULTS</p><h2 id="resultsHeading">결과</h2></div></div>
-      <p class="page-description">완료된 자막을 미리 보고 파일로 저장할 수 있습니다.</p>
+      <p class="page-description">생성된 자막을 확인하고 편집하거나 파일로 저장합니다.</p>
       <label id="resultJobLabel" class="job-selector">작업 선택<select id="resultJobSelector"></select></label>
       <div id="resultEmpty" hidden><p class="empty">아직 확인할 결과가 없습니다.</p><div class="start-actions"><button id="openResultJobs" type="button">작업 확인</button><button id="openResultVideo" type="button">영상 추가</button></div></div>
       <div id="resultContent" hidden>
-        <h3 id="resultName" class="result-name"></h3><p id="resultMeta" class="hint"></p><p id="resultStatus" class="hint"></p>
-        <div class="result-actions"><button id="resultPreview" type="button"><span class="es-icon es-icon--play" aria-hidden="true"></span>영상 미리보기</button><button id="editResult" type="button"><span class="es-icon es-icon--edit" aria-hidden="true"></span>자막 편집</button></div>
+        <div class="result-overview">
+          <h3 id="resultName" class="result-name"></h3>
+          <p id="resultMeta" class="hint"></p>
+          <p id="resultStatus" class="hint" role="status"></p>
+        </div>
+        <div class="result-actions"><button id="resultPreview" type="button"><span class="es-icon es-icon--play" aria-hidden="true"></span>영상 미리보기</button><button id="editResult" type="button"><span class="es-icon es-icon--edit" aria-hidden="true"></span><span data-result-edit-label>자막 편집</span></button></div>
         <section id="exportSection" class="export-section" aria-labelledby="exportHeading" tabindex="-1"><h3 id="exportHeading">자막 내보내기</h3><p id="exportNote" class="hint">번역이 없는 자막은 원문으로 내보냅니다.</p><div class="export-actions"><button type="button" class="primary" data-export="srt"><span class="es-icon es-icon--download" aria-hidden="true"></span>SRT 저장</button><button type="button" data-export="vtt"><span class="es-icon es-icon--download" aria-hidden="true"></span>VTT 저장</button><button type="button" data-export="json"><span class="es-icon es-icon--download" aria-hidden="true"></span>JSON 저장</button></div><details><summary>파일 형식 안내</summary><p class="hint">SRT는 일반 영상 플레이어, VTT는 웹 영상에 사용합니다. JSON은 원문·번역·시간 정보를 보관하고 다시 편집할 때 사용합니다.</p></details></section>
       </div>
     </section>
