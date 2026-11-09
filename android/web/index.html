@@ -74,17 +74,22 @@
       <div class="section-heading"><div><p class="page-kicker">03 / REVIEW</p><h2 id="editorHeading">자막 편집</h2></div><span id="cueCount"></span></div>
       <p id="editorName" class="file-name"></p>
       <p id="readOnlyNote" class="hint" hidden>완료 전 작업은 조회와 부분 내보내기만 가능합니다. 생성이 완료되면 편집할 수 있습니다.</p>
-      <div class="editor-actions"><button id="preview" type="button">영상 미리보기</button><button id="jumpToExport" type="button">내보내기로 이동</button><button id="undo" type="button" disabled>실행 취소</button><button id="redo" type="button" disabled>다시 실행</button></div>
+      <div class="editor-actions"><button id="preview" type="button"><span class="es-icon es-icon--play" aria-hidden="true"></span>영상 미리보기</button><button id="jumpToExport" type="button"><span class="es-icon es-icon--download" aria-hidden="true"></span>내보내기로 이동</button><button id="undo" type="button" disabled><span class="es-icon es-icon--back" aria-hidden="true"></span>실행 취소</button><button id="redo" type="button" disabled><span class="es-icon es-icon--refresh" aria-hidden="true"></span>다시 실행</button></div>
       <details id="editorTools" class="editor-tools"><summary>검색 · 필터 · 위치 이동</summary><label class="search-label">자막 검색<input id="cueSearch" type="search" placeholder="원문 또는 번역 검색" /></label>
       <div class="review-controls"><label>검수 필터<select id="cueFilter"><option value="all">전체 자막</option><option value="untranslated">미번역 자막</option><option value="issues">확인이 필요한 자막</option></select></label><form id="jumpForm"><label for="cueJump">시간 또는 자막 번호로 이동</label><div class="jump-controls"><input id="cueJump" type="text" placeholder="01:20:00 또는 #245" aria-describedby="jumpHint" autocomplete="off" /><button type="submit">자막으로 이동</button></div></form></div><p id="jumpHint" class="hint" role="status">시:분:초 또는 #자막번호를 입력하세요.</p>
-      </details><div id="cueList" class="cue-list"></div>
+      </details>
       <div id="editorFeedback" class="editor-feedback"><div class="save-feedback"><p id="saveStatus" role="status">저장된 자막</p><button id="retrySave" type="button" hidden>저장 다시 시도</button></div><nav class="pagination" aria-label="자막 페이지"><button id="prevPage" type="button">이전</button><span id="pageInfo"></span><button id="nextPage" type="button">다음</button></nav></div>
+      <div id="cueList" class="cue-list"></div>
     </section>
 
     <section id="settingsView" aria-labelledby="settingsHeading" hidden>
       <div class="section-heading"><div><p class="page-kicker">04 / PREFERENCES</p><h2 id="settingsHeading">설정</h2></div></div>
-      <p class="page-description">API 키와 다음 작업에 적용할 기본값을 관리합니다.</p>
-      <details id="apiSettings" class="settings-group"><summary>OpenAI API 연결<span id="apiSettingsSummary"></span></summary>
+      <p class="page-description">연결 방식, 음성 인식·번역 기본값과 데이터 처리를 관리합니다.</p>
+      <div class="settings-overview" aria-label="현재 설정 요약">
+        <div><p class="settings-overview-label">현재 연결</p><p id="settingsConnectionSummary" role="status">연결 상태 확인 중</p></div>
+        <div><p class="settings-overview-label">다음 영상</p><p id="settingsDefaultsOverview">기본 설정 확인 중</p></div>
+      </div>
+      <details id="apiSettings" class="settings-group"><summary><span class="settings-index" aria-hidden="true">01 / CONNECTION</span>OpenAI API 연결<span id="apiSettingsSummary"></span></summary>
       <div class="settings-section"><label>클라우드 연결 방식<select id="cloudMode"><option value="personal">개인 OpenAI API</option><option value="relay">테스트 서버</option></select></label><p id="connectionModeStatus" class="hint" role="status"></p></div>
       <section id="personalApiSettings">
       <form id="keyForm" class="settings-section"><p id="keyStatus" role="status">API 키 상태 확인 중</p><label>본인의 OpenAI API 키<input id="apiKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="새 API 키 입력" required /></label><button class="primary" type="submit">API 키 암호화 저장</button><p class="hint">키는 이 기기의 Android Keystore로 암호화해 보관합니다. 저장된 키는 화면에 다시 표시하지 않습니다.</p></form>
@@ -98,7 +103,7 @@
       </section>
       <div class="connection-actions"><button id="checkConnection" type="button" disabled><span class="es-icon es-icon--settings" aria-hidden="true"></span>연결 확인</button></div><p id="connectionStatus" class="hint" role="status">연결 확인은 현재 연결의 인증과 선택 모델 접근만 검사합니다. 결제 상태나 잔액은 확인하지 않습니다.</p>
       </details>
-      <details id="defaultSettings" class="settings-group"><summary>다음 영상의 기본 설정<span id="defaultSettingsSummary"></span></summary>
+      <details id="defaultSettings" class="settings-group"><summary><span class="settings-index" aria-hidden="true">02 / DEFAULTS</span>다음 영상의 기본 설정<span id="defaultSettingsSummary"></span></summary>
       <form id="settingsForm" class="settings-section">
         <label>원본 언어<select id="sourceLanguage"><option value="auto">자동 감지</option><option value="ko">한국어</option><option value="en">영어</option><option value="ja">일본어</option><option value="zh">중국어</option><option value="es">스페인어</option><option value="fr">프랑스어</option><option value="de">독일어</option></select></label>
         <label class="check-label"><input id="translate" type="checkbox" checked />자막 번역하기</label>
@@ -109,8 +114,8 @@
           <option value="gpt-4o-transcribe-diarize">화자 자동 구분 (2027년 종료 예정)</option>
         </select></label><p class="hint">GPT Transcribe는 약 30초 단위로 작업하지만 자막 시각은 추정값입니다. 화자 자동 구분 모델의 인물 ID는 작업 구간별로 다를 수 있습니다.</p><label>번역 모델<input id="translationModel" type="text" value="gpt-6-luna" spellcheck="false" autocapitalize="off" maxlength="100" required /></label><p class="hint">기본 번역 모델은 gpt-6-luna입니다. 계정에서 사용할 수 있는 모델 이름을 입력하세요.</p></details><p id="settingsModel" class="hint">번역 모델: gpt-6-luna</p><p class="hint">Whisper와 화자 구분 모델은 2027년 2월 26일 지원 종료 예정입니다. 정확한 시간 싱크를 중시하면 기존 Whisper를 사용하고, 새 GPT 모델 결과는 영상과 비교해 시간을 수정하세요.</p><div class="settings-actions"><button type="submit">설정 저장</button><button id="discardSettings" type="button" disabled>변경 취소</button></div><p id="settingsStatus" role="status">저장한 설정은 새로 선택하는 영상에 적용됩니다.</p>
       </form></details>
-      <details id="dataSettings" class="settings-group"><summary>전송 데이터 · 비용 · 이어하기</summary><div class="settings-section"><p class="hint">음성 인식에는 추출된 오디오 구간이, 번역에는 자막 텍스트가 OpenAI로 전송됩니다. 개인 API는 본인 OpenAI 계정에 별도로 청구됩니다. 테스트 서버는 입력한 서버를 거쳐 전송하며 개인 API 계정 청구 없이 서버의 공유 사용량 한도를 적용합니다.</p><p class="hint">생성 중 앱을 닫아도 저장된 구간에서 이어할 수 있습니다. 강제 중지나 재부팅 후에는 앱을 열고 이어하기를 눌러 주세요.</p><p class="hint">원본 파일을 이동하거나 삭제하면 이어하기와 미리보기가 불가능할 수 있습니다.</p></div></details>
-      <section class="settings-section" aria-labelledby="privacyHeading"><h3 id="privacyHeading">개인정보</h3><p class="hint">처리 방식별 전송 데이터와 기기 내 저장·삭제 방법을 확인할 수 있습니다.</p><button id="openPrivacyPolicy" type="button">개인정보처리방침 · 브라우저에서 열기</button></section>
+      <details id="dataSettings" class="settings-group"><summary><span class="settings-index" aria-hidden="true">03 / DATA</span>전송 데이터 · 비용 · 이어하기</summary><div class="settings-section"><p class="hint">음성 인식에는 추출된 오디오 구간이, 번역에는 자막 텍스트가 OpenAI로 전송됩니다. 개인 API는 본인 OpenAI 계정에 별도로 청구됩니다. 테스트 서버는 입력한 서버를 거쳐 전송하며 개인 API 계정 청구 없이 서버의 공유 사용량 한도를 적용합니다.</p><p class="hint">생성 중 앱을 닫아도 저장된 구간에서 이어할 수 있습니다. 강제 중지나 재부팅 후에는 앱을 열고 이어하기를 눌러 주세요.</p><p class="hint">원본 파일을 이동하거나 삭제하면 이어하기와 미리보기가 불가능할 수 있습니다.</p></div></details>
+      <section class="settings-section settings-privacy" aria-labelledby="privacyHeading"><p class="settings-index" aria-hidden="true">04 / PRIVACY</p><h3 id="privacyHeading">개인정보</h3><p class="hint">처리 방식별 전송 데이터와 기기 내 저장·삭제 방법을 확인할 수 있습니다.</p><button id="openPrivacyPolicy" type="button">개인정보처리방침 · 브라우저에서 열기</button></section>
     </section>
   </main>
   <nav class="app-nav" aria-label="주 메뉴"><button id="navVideo" type="button"><span class="es-icon es-icon--video" aria-hidden="true"></span>영상 추가</button><button id="navJobs" type="button" aria-current="page"><span class="es-icon es-icon--jobs" aria-hidden="true"></span>작업</button><button id="navResults" type="button"><span class="es-icon es-icon--results" aria-hidden="true"></span>결과</button><button id="navSettings" type="button"><span class="es-icon es-icon--settings" aria-hidden="true"></span>설정</button></nav>

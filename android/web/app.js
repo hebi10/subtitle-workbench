@@ -624,7 +624,8 @@ function issueReasons(cue, index) {
 function cueClock(value) { return Number.isFinite(Number(value)) && Number(value) >= 0 ? formatTimestamp(Number(value), '.') : '시간 확인 필요'; }
 function updateFeedbackSpace() {
   const height = $('editorFeedback').getBoundingClientRect().height;
-  if (height) document.body.style.setProperty('--editor-feedback-height', `${Math.ceil(height)}px`);
+  if (height) document.body.style.setProperty('--editor-status-height', `${Math.ceil(height)}px`);
+  document.body.style.removeProperty('--editor-feedback-height');
 }
 function focusCue(index) {
   const row = $('cueList').querySelector(`[data-index="${index}"]`);
@@ -798,6 +799,8 @@ function syncConnection() {
   $('apiSettingsSummary').textContent = `${modeLabel} · ${connection.hasKey ? (matches ? '연결 확인됨' : '연결 저장됨') : '연결 필요'}`;
   $('defaultSettingsSummary').textContent = settingsSummary(savedSettings);
   $('videoSettingsSummary').textContent = `다음 영상: ${settingsSummary(savedSettings)}`;
+  $('settingsConnectionSummary').textContent = `${modeLabel} · ${connection.hasKey ? matches ? '인증·모델 확인됨' : '연결 저장됨' : '연결 필요'}`;
+  $('settingsDefaultsOverview').textContent = settingsSummary(savedSettings);
   $('cloudTransmissionNotice').hidden = !relay;
   $('cloudTransmissionNotice').textContent = relayTransmissionNotice(connection.reviewRelay.url);
   $('cloudLiveNotice').textContent = relay ? relayTransmissionNotice(connection.reviewRelay.url, true) : '개인 API 연결: 마이크 음성을 OpenAI로 전송합니다. 본인의 API 키와 별도 이용 요금이 필요하며 인식 시작 전 안내를 제공합니다.';
