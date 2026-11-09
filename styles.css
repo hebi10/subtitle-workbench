@@ -1598,3 +1598,126 @@ td { overflow-wrap: anywhere; }
   .edit-history-controls .ghost-button { min-width: 0; min-height: 48px; padding: 8px; width: 100%; font-size: 13px; white-space: nowrap; }
   .edit-history-controls span { grid-column: 1 / -1; }
 }
+
+
+/* Editorial Studio 1-A: semantic palette for light and system dark appearance. */
+:root {
+  color-scheme: light;
+  --es-canvas: #F5F5F5;
+  --es-surface: #FFFFFF;
+  --es-surface-alt: #F0F0F0;
+  --es-ink: #171717;
+  --es-muted: #626262;
+  --es-border: #D8D8D8;
+  --es-border-strong: #858585;
+  --es-on-action: #FFFFFF;
+  --es-disabled: #EAEAEA;
+  --es-disabled-text: #626262;
+  --es-danger-surface: #FFF1F2;
+  --es-danger-border: #DC9EAA;
+  --es-warning-surface: #FFF5E4;
+  --es-warning-border: #DEC39B;
+  --bg: var(--es-canvas);
+  --panel: var(--es-surface);
+  --soft: var(--es-surface-alt);
+  --soft-strong: var(--es-surface-alt);
+  --text: var(--es-ink);
+  --muted: var(--es-muted);
+  --line: var(--es-border);
+  --line-strong: var(--es-border-strong);
+  --focus: var(--es-ink);
+  --danger: #AA2432;
+  --warning: #87500A;
+  --notice: var(--es-muted);
+}
+
+.brand-symbol, .workspace-tab.is-active, .primary-button,
+.segmented-control input:checked + span,
+.status-badge[data-state='running'], .status-badge[data-state='done'],
+.step-list li[data-status='done'] { color: var(--es-on-action); }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --es-canvas: #141414;
+    --es-surface: #242424;
+    --es-surface-alt: #303030;
+    --es-ink: #F2F2F2;
+    --es-muted: #ADADAD;
+    --es-border: #414141;
+    --es-border-strong: #767676;
+    --es-on-action: #171717;
+    --es-disabled: #303030;
+    --es-disabled-text: #ADADAD;
+    --es-danger-surface: #3A242A;
+    --es-danger-border: #A65F6C;
+    --es-warning-surface: #3A3020;
+    --es-warning-border: #A88553;
+    --danger: #FFB1BF;
+    --warning: #F0C58A;
+  }
+  .topbar .eyebrow, .panel-head .eyebrow,
+  .status-head .eyebrow, .idle-guide .eyebrow { color: var(--muted); }
+  .workspace-tab, .ghost-button, .subtitle-file-button, .download-link,
+  .chunk-item, .table-wrap, .cue-more {
+    background: var(--panel);
+    color: var(--text);
+  }
+  .workspace-tab:not(.is-active) { color: var(--muted); }
+  .workspace-tab.is-active, .brand-symbol, .primary-button,
+  .segmented-control input:checked + span,
+  .status-badge[data-state='running'], .status-badge[data-state='done'],
+  .step-list li[data-status='done'] {
+    background: var(--text);
+    border-color: var(--text);
+    color: var(--es-on-action);
+  }
+  button:disabled, .primary-button:disabled, .ghost-button:disabled,
+  .download-placeholder {
+    background: var(--es-disabled);
+    border-color: var(--line);
+    color: var(--es-disabled-text);
+  }
+  input, select, textarea, .connection-field input,
+  .settings-grid input, .settings-grid select,
+  .editor-toolbar input, .editor-toolbar select,
+  .subtitle-mode-field select, .subtitle-textarea {
+    background: var(--panel);
+    border-color: var(--line-strong);
+    color: var(--text);
+  }
+  input::placeholder, textarea::placeholder { color: var(--muted); }
+  .file-drop, .file-drop.is-over, .privacy-note, .media-empty-state,
+  .idle-guide .form-help, .connection-guide, .advanced-settings,
+  .editor-toolbar, .edit-history-controls, .chunks-details, .log-panel,
+  .format-guide, .empty-actions, .translation-recovery, .quick-steps li,
+  .cue-more, .step-list li:not([data-status='done']):not([data-status='failed']) {
+    background: var(--soft);
+  }
+  .status-badge:not([data-state='running']):not([data-state='done']):not([data-state='failed']),
+  .duration-pill, .count-pill, .export-meta span, th {
+    background: var(--soft);
+    color: var(--text);
+    border-color: var(--line);
+  }
+  th { color: var(--muted); }
+  td:first-child { color: var(--text); }
+  .progress-track { background: var(--soft); }
+  .cue-warning, .translation-warning, .subtitle-warning {
+    background: var(--es-warning-surface);
+    border-color: var(--es-warning-border);
+    color: var(--warning);
+  }
+  .error-box, .credential-error, .translation-failure-summary,
+  .status-badge[data-state='failed'], .step-list li[data-status='failed'] {
+    background: var(--es-danger-surface);
+    border-color: var(--es-danger-border);
+    color: var(--danger);
+  }
+  .subtitle-panel[data-active='true'] {
+    background: #080808;
+    border-color: #414141;
+    color: #FFFFFF;
+  }
+  .subtitle-panel[data-active='true'] .subtitle-secondary { color: #D4D4D4; }
+}

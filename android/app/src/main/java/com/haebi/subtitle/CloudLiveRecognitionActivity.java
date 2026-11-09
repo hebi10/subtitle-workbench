@@ -5,8 +5,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -28,7 +26,6 @@ import java.util.concurrent.Executors;
 /** A foreground-only, user-initiated paid transcription session. */
 public final class CloudLiveRecognitionActivity extends Activity {
     private static final int MICROPHONE_PERMISSION = 509;
-    private static final int INK = Color.rgb(23, 23, 23);
     private static final String[] LANGUAGES = {"auto", "ko", "en", "ja", "zh"};
     private final ExecutorService storage = Executors.newSingleThreadExecutor();
     private final OnDeviceCueDraft draft = new OnDeviceCueDraft();
@@ -75,7 +72,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
 
     private void buildView() {
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(NativeDesignSystem.CANVAS);
+        scroll.setBackgroundColor(NativeDesignSystem.canvas(this));
         scroll.setFillViewport(true);
         scroll.setClipToPadding(false);
         scroll.setOnApplyWindowInsetsListener((view, insets) -> {

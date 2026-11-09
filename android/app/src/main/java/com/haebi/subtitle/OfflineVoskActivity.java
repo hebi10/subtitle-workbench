@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.database.Cursor;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
@@ -26,7 +25,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Fully app-managed Vosk model and file transcription, independent of Android SpeechRecognizer and OpenAI. */
 public final class OfflineVoskActivity extends Activity {
     private static final int PICK_MEDIA = 603;
-    private static final int INK = NativeDesignSystem.INK;
 
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final AtomicBoolean cancelled = new AtomicBoolean();
@@ -53,7 +51,7 @@ public final class OfflineVoskActivity extends Activity {
     private void createView() {
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
-        scroll.setBackgroundColor(NativeDesignSystem.CANVAS);
+        scroll.setBackgroundColor(NativeDesignSystem.canvas(this));
         scroll.setOnApplyWindowInsetsListener((view, insets) -> {
             if (android.os.Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets bars = insets.getInsets(
