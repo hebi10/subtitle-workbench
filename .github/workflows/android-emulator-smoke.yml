@@ -42,14 +42,18 @@ jobs:
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             mkdir -p ../output/editorial-native-3c
-            for mode in no yes; do
-              adb shell cmd uimode night "$mode"
-              adb shell am force-stop com.haebi.subtitle || true
-              output="$(adb shell am instrument -w -e class com.haebi.subtitle.EditorialNativeScreensDeviceTest com.haebi.subtitle.test/androidx.test.runner.AndroidJUnitRunner)"
-              echo "$output"
-              echo "$output" | grep -q 'OK (3 tests)'
-              adb pull /sdcard/Android/data/com.haebi.subtitle/files/editorial-3c/ ../output/editorial-native-3c/
-            done
+            adb shell cmd uimode night no
+            adb shell am force-stop com.haebi.subtitle
+            adb shell am instrument -w -e class com.haebi.subtitle.EditorialNativeScreensDeviceTest com.haebi.subtitle.test/androidx.test.runner.AndroidJUnitRunner > ../output/editorial-native-3c/light-test.log
+            cat ../output/editorial-native-3c/light-test.log
+            grep -q 'OK (3 tests)' ../output/editorial-native-3c/light-test.log
+            adb pull /sdcard/Android/data/com.haebi.subtitle/files/editorial-3c/ ../output/editorial-native-3c/
+            adb shell cmd uimode night yes
+            adb shell am force-stop com.haebi.subtitle
+            adb shell am instrument -w -e class com.haebi.subtitle.EditorialNativeScreensDeviceTest com.haebi.subtitle.test/androidx.test.runner.AndroidJUnitRunner > ../output/editorial-native-3c/dark-test.log
+            cat ../output/editorial-native-3c/dark-test.log
+            grep -q 'OK (3 tests)' ../output/editorial-native-3c/dark-test.log
+            adb pull /sdcard/Android/data/com.haebi.subtitle/files/editorial-3c/ ../output/editorial-native-3c/
             adb shell cmd uimode night no
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell am start -n com.haebi.subtitle/.MainActivity
