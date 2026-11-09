@@ -18,6 +18,18 @@
 
 기본 앱 버전은 `0.10.0 (11)`이다. 빌드 전용 versionCode는 수동 입력값을 사용한다. 배포에서는 입력 versionCode를 무시하고 Play의 모든 현재 bundles, apks와 모든 tracks의 releases(초안 포함)를 조회한 최댓값 + 1을 사용한다. 최소값은 10이다. Gradle은 `-PversionCode=...` 또는 `ANDROID_VERSION_CODE`로 이를 받는다. 업로드 직전 같은 버전이 사용되었는지 다시 조회하고, 충돌하면 업로드 전에 실패한다. 외부 Console 편집으로 경합이 생긴 경우 새 버전을 할당하여 다시 빌드한다.
 
+## GalliPick 방식의 비공개 테스트 자동 배포
+
+기본 `main` CI 성공 시 기존 `Play internal release`가 내부 테스트에 새 AAB를 제출한다. **비공개 테스트 자동 승격은 릴리스 병합 커밋의 제목에 `[deploy-closed]`가 명시된 경우에만** 수행한다. 이 경우 동일 CI·기기 테스트·기존 고정 서명·Play API 내부 테스트 업로드 및 별도 edit 재조회가 성공한 뒤, 방금 할당받은 정확한 `versionCode`를 기존 `alpha` 비공개 트랙으로 승격한다. 승격 후에도 별도 edit 재조회가 성공해야 완료로 판단한다.
+
+- `[deploy-closed]`: 내부 테스트 제출 성공 → 동일 버전의 비공개 테스트 승격
+- 표시가 없는 일반 `main` 변경 또는 `[deploy-internal]`: 내부 테스트만 제출
+- 두 마커 동시 사용: 오류 중단
+- 스크린샷 전용 커밋 `store: Editorial Studio 5-B trusted screenshot registration`: 기존처럼 이미지 전용 처리, APK/AAB 배포 없음
+- 수동 워크플로 실행: 기존 `check`·`build`·`deploy` 모드 유지; 비공개 수동 승격은 기존 `Play closed promotion` 사용
+
+예: `release: subtitle 0.10.1 [deploy-closed]`라는 **main 병합 커밋 제목**. 별도의 GitHub Actions 워크플로, WIF 신뢰 주체, 서명키를 만들지 않는다. 이미 업로드된 버전의 중복 업로드나 실패 시 무검증 재시도는 허용하지 않는다. API 커밋 성공은 스토어 심사·테스터 설치 가능 상태와 별개다.
+
 ## 인증 설정
 
 모든 Play 편집 워크플로는 `google-play` 환경을 사용한다. 이 환경의 배포 허용 브랜치를 `main`으로 제한한다. 저장소 및 환경의 변수·Secrets에는 아래 이름을 사용한다.
