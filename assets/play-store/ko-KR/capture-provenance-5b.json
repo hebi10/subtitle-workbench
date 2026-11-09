@@ -1,0 +1,125 @@
+{
+  "created": "2026-11-09",
+  "sourceStage": "Editorial Studio 5-A",
+  "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+  "sourceKind": "Android 15 / API35 emulator actual screenshot with deterministic fixture data for 5 WebView views; 3 real native initial UI views without paid API calls",
+  "canvas": [
+    1080,
+    1920
+  ],
+  "phoneScreenshots": [
+    {
+      "file": "01-video.png",
+      "heading": "영상과 음성 파일로 시작",
+      "tagline": "파일 선택부터 자막 생성 준비까지",
+      "category": "VIDEO / INPUT",
+      "mode": "light",
+      "sha256": "6f426c1bbc9f9b3b727e037ec798e930a464dad08f647430841673d5cf144e69",
+      "size": 220126,
+      "sourceZip": "5-A_최종_Android15_실화면_24종_네이티브6종_20261109.zip",
+      "sourcePath": "output/editorial-5a/webview-light-font100/video-light-font100.png",
+      "sourceSHA256": "5c9079ce7457f8b0d0a0019494e8ae6e78a2d0101124c021eb751668aa300d9c",
+      "rendering": "Unmodified Android emulator screenshot, uniformly scaled (full frame, no crop) within editorial caption layout; example test data; no AI-generated UI."
+    },
+    {
+      "file": "02-jobs.png",
+      "heading": "작업 기록을 한눈에",
+      "tagline": "저장된 자막과 작업 상태 관리",
+      "category": "JOBS / HISTORY",
+      "mode": "dark",
+      "sha256": "f76318093dd0236525b00015ee3bf1346d9dc6bdbad5ad15cbac021554b8814b",
+      "size": 145598,
+      "sourceZip": "5-A_최종_Android15_실화면_24종_네이티브6종_20261109.zip",
+      "sourcePath": "output/editorial-5a/webview-dark-font100/jobs-dark-font100.png",
+      "sourceSHA256": "7ef81465664add21336feab34431e44ec2c40817c9085d143780bde8a28549ee",
+      "rendering": "Unmodified Android emulator screenshot, uniformly scaled (full frame, no crop) within editorial caption layout; example test data; no AI-generated UI."
+    },
+    {
+      "file": "03-results.png",
+      "heading": "원하는 형식으로 저장",
+      "tagline": "SRT · VTT · JSON 내보내기",
+      "category": "RESULTS / EXPORT",
+      "mode": "light",
+      "sha256": "149659c8abc0009dea091af60a87a1b668827dfc1ab13d3644f9126ca654e7e9",
+      "size": 172394,
+      "sourceZip": "5-A_최종_Android15_실화면_24종_네이티브6종_20261109.zip",
+      "sourcePath": "output/editorial-5a/webview-light-font100/results-light-font100.png",
+      "sourceSHA256": "3018c9ab243269f178a442029dc4e07f1847d25f7a3a9e22fa28aef04941ee87",
+      "rendering": "Unmodified Android emulator screenshot, uniformly scaled (full frame, no crop) within editorial caption layout; example test data; no AI-generated UI."
+    },
+    {
+      "file": "04-editor.png",
+      "heading": "문장과 시간을 직접 편집",
+      "tagline": "원문 · 번역 · 시간 수정",
+      "category": "EDITOR / REVIEW",
+      "mode": "dark",
+      "sha256": "719bd1b2473ea9d1323e5e88912b20bed2ca2a1d3d754b53720f7bf84cf1cded",
+      "size": 177178,
+      "sourceZip": "5-A_최종_Android15_실화면_24종_네이티브6종_20261109.zip",
+      "sourcePath": "output/editorial-5a/webview-dark-font100/editor-dark-font100.png",
+      "sourceSHA256": "59024e31ff26795fce5dbfed35972d9421a68d657538bc1a3ecff528dd666265",
+      "rendering": "Unmodified Android emulator screenshot, uniformly scaled (full frame, no crop) within editorial caption layout; example test data; no AI-generated UI."
+    },
+    {
+      "file": "05-settings.png",
+      "heading": "연결과 언어 설정 관리",
+      "tagline": "개인 API 및 기본 설정 확인",
+      "category": "SETTINGS / CONTROL",
+      "mode": "light",
+      "sha256": "78b58fa8fc9b861dd24aeff8c8866b895637782f93dcd9efe6d3b7d9b3661a5e",
+      "size": 210432,
+      "sourceZip": "5-A_최종_Android15_실화면_24종_네이티브6종_20261109.zip",
+      "sourcePath": "output/editorial-5a/webview-light-font100/settings-expanded-light-font100.png",
+      "sourceSHA256": "92de157dcae0b3f09231664d7bca4afd32c9da7a1a441f6c2c989016935a691f",
+      "rendering": "Unmodified Android emulator screenshot, uniformly scaled (full frame, no crop) within editorial caption layout; example test data; no AI-generated UI."
+    },
+    {
+      "file": "06-on-device.png",
+      "heading": "온디바이스 마이크 자막",
+      "tagline": "기기에서 제공하는 음성 인식 사용",
+      "category": "MIC / ON-DEVICE",
+      "mode": "light",
+      "sha256": "edbd2035eb455b893229f164017d988383432f950a60f2a0baa10001f4d57f5d",
+      "size": 203688,
+      "sourceZip": "5-A_최종_Android15_실화면_24종_네이티브6종_20261109.zip",
+      "sourcePath": "output/editorial-native-3c/editorial-3c/on-device-light.png",
+      "sourceSHA256": "2eb03dc861bd57df00992eb0c71ad755cde9a844561b3c4db207bf9de29787bd",
+      "rendering": "Unmodified Android emulator screenshot, uniformly scaled (full frame, no crop) within editorial caption layout; example test data; no AI-generated UI."
+    },
+    {
+      "file": "07-cloud-live.png",
+      "heading": "GPT 실시간 마이크 자막",
+      "tagline": "별도 API 연결과 이용 요금이 필요합니다",
+      "category": "MIC / REALTIME",
+      "mode": "dark",
+      "sha256": "c6204eb592b429fcad4d4218686f826fcad0e2ee0ca4968747bda7863ab7093d",
+      "size": 223248,
+      "sourceZip": "5-A_최종_Android15_실화면_24종_네이티브6종_20261109.zip",
+      "sourcePath": "output/editorial-native-3c/editorial-3c/cloud-live-dark.png",
+      "sourceSHA256": "347fc74480d56d061b27ea608d63e0e5d12ddc470906357960139135fe07e642",
+      "rendering": "Unmodified Android emulator screenshot, uniformly scaled (full frame, no crop) within editorial caption layout; example test data; no AI-generated UI."
+    },
+    {
+      "file": "08-vosk-local.png",
+      "heading": "Vosk 오프라인 로컬 AI",
+      "tagline": "모델 설치 후 기기 내부에서 파일 전사",
+      "category": "OFFLINE / VOSK",
+      "mode": "light",
+      "sha256": "14639449604120f309a41b6848f868987ccb6c607baf97355f760e167988ee91",
+      "size": 230789,
+      "sourceZip": "5-A_최종_Android15_실화면_24종_네이티브6종_20261109.zip",
+      "sourcePath": "output/editorial-native-3c/editorial-3c/vosk-local-light.png",
+      "sourceSHA256": "a85e0b01c646edb58f50d82524eb46b2659686497bfd3119e65f25ecf61bdd70",
+      "rendering": "Unmodified Android emulator screenshot, uniformly scaled (full frame, no crop) within editorial caption layout; example test data; no AI-generated UI."
+    }
+  ],
+  "style": {
+    "bgLight": "#F5F5F5",
+    "bgDark": "#141414",
+    "textLight": "#171717",
+    "textDark": "#F2F2F2",
+    "shadow": false,
+    "roundedCorners": false,
+    "graphics": "No generative content or fabricated UI"
+  }
+}

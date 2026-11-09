@@ -12,7 +12,10 @@
       "02-jobs.png",
       "03-results.png",
       "04-editor.png",
-      "05-settings.png"
+      "05-settings.png",
+      "06-on-device.png",
+      "07-cloud-live.png",
+      "08-vosk-local.png"
     ]
   },
   "assets": [
@@ -44,107 +47,150 @@
     },
     {
       "file": "01-video.png",
-      "purpose": "영상 추가와 마이크 자막 진입",
+      "purpose": "영상과 음성 파일로 시작",
       "width": 1080,
       "height": 1920,
-      "sha256": "cf3a5af6cd6586268d395be87d84d50b3561544bbd05b22aea97e3ddc1676706",
+      "sha256": "6f426c1bbc9f9b3b727e037ec798e930a464dad08f647430841673d5cf144e69",
       "source": {
-        "type": "real-android-web-ui-with-native-bridge-fixture",
-        "provenanceFile": "capture-provenance.json",
-        "workflowRunId": "42468663330",
-        "checkedOutCommit": "8e151be15c7c77dcd38bc524ce6d1a8026689179",
-        "pullRequestHeadCommit": "25d6c2e69603c76d2337cc8a80f05a3be4ae304a",
-        "export": "Unchanged CI PNG; real source UI rendered by Chromium with native bridge fixture and illustrative seeded data",
-        "scrollY": 0
+        "type": "android-15-emulator-screenshot-with-editorial-caption",
+        "stage": "Editorial Studio 5-A",
+        "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+        "sourcePath": "output/editorial-5a/webview-light-font100/video-light-font100.png",
+        "sourceSHA256": "5c9079ce7457f8b0d0a0019494e8ae6e78a2d0101124c021eb751668aa300d9c",
+        "provenanceFile": "capture-provenance-5b.json",
+        "export": "Real Android API35 emulator screen (UI pixels preserved, uniformly scaled without crop); fixture data is illustrative; label/header is added."
       }
     },
     {
       "file": "02-jobs.png",
-      "purpose": "일시정지 작업과 완료 작업 관리",
+      "purpose": "작업 기록을 한눈에",
       "width": 1080,
       "height": 1920,
-      "sha256": "7cdcf839196feb8bcd79c47217123a2685e969b6d35476e82fdd1023ae8d82d7",
+      "sha256": "f76318093dd0236525b00015ee3bf1346d9dc6bdbad5ad15cbac021554b8814b",
       "source": {
-        "type": "real-android-web-ui-with-native-bridge-fixture",
-        "provenanceFile": "capture-provenance.json",
-        "workflowRunId": "42468663330",
-        "checkedOutCommit": "8e151be15c7c77dcd38bc524ce6d1a8026689179",
-        "pullRequestHeadCommit": "25d6c2e69603c76d2337cc8a80f05a3be4ae304a",
-        "export": "Unchanged CI PNG; real source UI rendered by Chromium with native bridge fixture and illustrative seeded data",
-        "scrollY": 0
+        "type": "android-15-emulator-screenshot-with-editorial-caption",
+        "stage": "Editorial Studio 5-A",
+        "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+        "sourcePath": "output/editorial-5a/webview-dark-font100/jobs-dark-font100.png",
+        "sourceSHA256": "7ef81465664add21336feab34431e44ec2c40817c9085d143780bde8a28549ee",
+        "provenanceFile": "capture-provenance-5b.json",
+        "export": "Real Android API35 emulator screen (UI pixels preserved, uniformly scaled without crop); fixture data is illustrative; label/header is added."
       }
     },
     {
       "file": "03-results.png",
-      "purpose": "SRT·VTT·JSON 내보내기",
+      "purpose": "원하는 형식으로 저장",
       "width": 1080,
       "height": 1920,
-      "sha256": "38e55ad2ece87531bda4171017868a9a5420fc7a786fb7adcb50a27994f7ac94",
+      "sha256": "149659c8abc0009dea091af60a87a1b668827dfc1ab13d3644f9126ca654e7e9",
       "source": {
-        "type": "real-android-web-ui-with-native-bridge-fixture",
-        "provenanceFile": "capture-provenance.json",
-        "workflowRunId": "42468663330",
-        "checkedOutCommit": "8e151be15c7c77dcd38bc524ce6d1a8026689179",
-        "pullRequestHeadCommit": "25d6c2e69603c76d2337cc8a80f05a3be4ae304a",
-        "export": "Unchanged CI PNG; real source UI rendered by Chromium with native bridge fixture and illustrative seeded data",
-        "scrollY": 0
+        "type": "android-15-emulator-screenshot-with-editorial-caption",
+        "stage": "Editorial Studio 5-A",
+        "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+        "sourcePath": "output/editorial-5a/webview-light-font100/results-light-font100.png",
+        "sourceSHA256": "3018c9ab243269f178a442029dc4e07f1847d25f7a3a9e22fa28aef04941ee87",
+        "provenanceFile": "capture-provenance-5b.json",
+        "export": "Real Android API35 emulator screen (UI pixels preserved, uniformly scaled without crop); fixture data is illustrative; label/header is added."
       }
     },
     {
       "file": "04-editor.png",
-      "purpose": "자막 시간·원문·화자 필드 편집",
+      "purpose": "문장과 시간을 직접 편집",
       "width": 1080,
       "height": 1920,
-      "sha256": "3c4e718fb7146e502e9b909f2f7cee1b6cb87f4876161be983b94c89f2ebec3b",
+      "sha256": "719bd1b2473ea9d1323e5e88912b20bed2ca2a1d3d754b53720f7bf84cf1cded",
       "source": {
-        "type": "real-android-web-ui-with-native-bridge-fixture",
-        "provenanceFile": "capture-provenance.json",
-        "workflowRunId": "42468663330",
-        "checkedOutCommit": "8e151be15c7c77dcd38bc524ce6d1a8026689179",
-        "pullRequestHeadCommit": "25d6c2e69603c76d2337cc8a80f05a3be4ae304a",
-        "export": "Unchanged CI PNG; real source UI rendered by Chromium with native bridge fixture and illustrative seeded data",
-        "scrollY": 350
+        "type": "android-15-emulator-screenshot-with-editorial-caption",
+        "stage": "Editorial Studio 5-A",
+        "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+        "sourcePath": "output/editorial-5a/webview-dark-font100/editor-dark-font100.png",
+        "sourceSHA256": "59024e31ff26795fce5dbfed35972d9421a68d657538bc1a3ecff528dd666265",
+        "provenanceFile": "capture-provenance-5b.json",
+        "export": "Real Android API35 emulator screen (UI pixels preserved, uniformly scaled without crop); fixture data is illustrative; label/header is added."
       }
     },
     {
       "file": "05-settings.png",
-      "purpose": "API 연결과 기본값 관리",
+      "purpose": "연결과 언어 설정 관리",
       "width": 1080,
       "height": 1920,
-      "sha256": "83043882c11ad0beef0ff7972672394ae91c26d952e1fac5dc62dac5c58a4d40",
+      "sha256": "78b58fa8fc9b861dd24aeff8c8866b895637782f93dcd9efe6d3b7d9b3661a5e",
       "source": {
-        "type": "real-android-web-ui-with-native-bridge-fixture",
-        "provenanceFile": "capture-provenance.json",
-        "workflowRunId": "42468663330",
-        "checkedOutCommit": "8e151be15c7c77dcd38bc524ce6d1a8026689179",
-        "pullRequestHeadCommit": "25d6c2e69603c76d2337cc8a80f05a3be4ae304a",
-        "export": "Unchanged CI PNG; real source UI rendered by Chromium with native bridge fixture and illustrative seeded data",
-        "scrollY": 0
+        "type": "android-15-emulator-screenshot-with-editorial-caption",
+        "stage": "Editorial Studio 5-A",
+        "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+        "sourcePath": "output/editorial-5a/webview-light-font100/settings-expanded-light-font100.png",
+        "sourceSHA256": "92de157dcae0b3f09231664d7bca4afd32c9da7a1a441f6c2c989016935a691f",
+        "provenanceFile": "capture-provenance-5b.json",
+        "export": "Real Android API35 emulator screen (UI pixels preserved, uniformly scaled without crop); fixture data is illustrative; label/header is added."
+      }
+    },
+    {
+      "file": "06-on-device.png",
+      "purpose": "온디바이스 마이크 자막",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "edbd2035eb455b893229f164017d988383432f950a60f2a0baa10001f4d57f5d",
+      "source": {
+        "type": "android-15-emulator-screenshot-with-editorial-caption",
+        "stage": "Editorial Studio 5-A",
+        "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+        "sourcePath": "output/editorial-native-3c/editorial-3c/on-device-light.png",
+        "sourceSHA256": "2eb03dc861bd57df00992eb0c71ad755cde9a844561b3c4db207bf9de29787bd",
+        "provenanceFile": "capture-provenance-5b.json",
+        "export": "Real Android API35 emulator screen (UI pixels preserved, uniformly scaled without crop); fixture data is illustrative; label/header is added."
+      }
+    },
+    {
+      "file": "07-cloud-live.png",
+      "purpose": "GPT 실시간 마이크 자막",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "c6204eb592b429fcad4d4218686f826fcad0e2ee0ca4968747bda7863ab7093d",
+      "source": {
+        "type": "android-15-emulator-screenshot-with-editorial-caption",
+        "stage": "Editorial Studio 5-A",
+        "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+        "sourcePath": "output/editorial-native-3c/editorial-3c/cloud-live-dark.png",
+        "sourceSHA256": "347fc74480d56d061b27ea608d63e0e5d12ddc470906357960139135fe07e642",
+        "provenanceFile": "capture-provenance-5b.json",
+        "export": "Real Android API35 emulator screen (UI pixels preserved, uniformly scaled without crop); fixture data is illustrative; label/header is added."
+      }
+    },
+    {
+      "file": "08-vosk-local.png",
+      "purpose": "Vosk 오프라인 로컬 AI",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "14639449604120f309a41b6848f868987ccb6c607baf97355f760e167988ee91",
+      "source": {
+        "type": "android-15-emulator-screenshot-with-editorial-caption",
+        "stage": "Editorial Studio 5-A",
+        "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+        "sourcePath": "output/editorial-native-3c/editorial-3c/vosk-local-light.png",
+        "sourceSHA256": "a85e0b01c646edb58f50d82524eb46b2659686497bfd3119e65f25ecf61bdd70",
+        "provenanceFile": "capture-provenance-5b.json",
+        "export": "Real Android API35 emulator screen (UI pixels preserved, uniformly scaled without crop); fixture data is illustrative; label/header is added."
       }
     }
   ],
   "screenshotCapture": {
-    "status": "complete",
-    "script": "scripts/capture-play-store.mjs",
-    "workflow": ".github/workflows/play-store-captures.yml",
-    "capturedAt": "2026-11-08T09:48:01.258Z",
-    "workflowRunId": "42468663330",
-    "workflowRunUrl": "https://github.com/hebi10/subtitle-workbench/actions/runs/42468663330",
-    "pullRequest": 9,
-    "pullRequestHeadCommit": "25d6c2e69603c76d2337cc8a80f05a3be4ae304a",
-    "checkedOutCommit": "8e151be15c7c77dcd38bc524ce6d1a8026689179",
-    "provenanceFile": "capture-provenance.json",
-    "provenanceSha256": "74a4d7182e65bc4b05944d94f5e0fb9e52e23e670789e948ef00662c84ee4dd6",
-    "viewport": {
-      "width": 432,
-      "height": 768,
-      "deviceScaleFactor": 2.5
-    },
-    "note": "Android WebView HTML/CSS/JavaScript source rendered in Chromium. The existing native bridge browser-verification fixture supplies illustrative filenames, subtitle text, saved-state and progress data. These images document the actual source UI with fixture data; native Android runtime behavior and transcription/translation quality are outside this capture evidence.",
+    "status": "prepared-for-5-B-Play-submission",
+    "created": "2026-11-09",
+    "count": 8,
+    "source": "Android 15 API35 emulator screenshots captured in Editorial Studio 5-A",
+    "originalSourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+    "provenanceFile": "capture-provenance-5b.json",
+    "note": "Screenshots 1-5 depict real application WebView backed by deterministic test jobs; 6-8 depict actual native activities prior to recording. No fabricated app UI or paid model inference claim.",
     "visualReview": {
-      "status": "passed",
-      "imageCount": 5,
-      "findings": "Korean text, navigation, action buttons and relevant content are readable. The editor image is an actual scrolled viewport showing cue timing, the manual speaker field and original text. The settings image includes the privacy-policy button. No image reconstruction, crop, stretch, compositing or pixel editing was applied."
+      "status": "verified",
+      "imageCount": 8,
+      "canvas": "1080x1920",
+      "unchangedCategories": [
+        "icon",
+        "featureGraphic"
+      ],
+      "notes": "Header copy plus uniformly scaled intact Android screenshot, no cropping or reconstruction."
     }
   }
 }
