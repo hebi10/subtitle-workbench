@@ -61,6 +61,8 @@ jobs:
             output/editorial-3a/*.png
             output/editorial-3b/*.png
             output/editorial-4a/*.png
+            output/editorial-5a/*.png
+            output/editorial-5a/*.json
           retention-days: 14
           if-no-files-found: warn
 
