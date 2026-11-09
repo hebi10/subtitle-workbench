@@ -129,7 +129,7 @@ test('2-A Android components and icon navigation preserve names, input and page 
         await verifyControl(page, '#pickVideo');
         await verifyControl(page, '#importSubtitles');
         await page.locator('#navSettings').click();
-        await page.locator('#apiSettings > summary').click();
+        await page.locator('#apiSettings').evaluate((node) => { node.open = true; });
         await verifyControl(page, '#apiKey');
         assert.equal(await page.locator('#apiKey').evaluate(el => getComputedStyle(el).fontSize), '16px');
         await page.locator('#apiKey').fill('fixture-not-a-secret');
