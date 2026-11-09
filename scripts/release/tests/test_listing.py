@@ -100,5 +100,41 @@ class ListingTests(unittest.TestCase):
             self.assertTrue(server.committed)
 
 
+    def test_phone_only_upload_never_overwrites_other_listing_content(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            original_text = inputs(root)
+            plan = listing.load_inputs(root / 'listing.json', root / 'manifest.json')
+            server = ListingServer()
+            server.text = dict(original_text)
+            server.images = {
+                'icon': [{'sha256': 'icon-unmodified'}],
+                'featureGraphic': [{'sha256': 'feature-unmodified'}],
+                'phoneScreenshots': [{'sha256': 'previous-screenshot'}],
+            }
+            result = listing.apply_phone_screenshots(publisher.Publisher(server), plan, changes_not_sent_for_review=False)
+            self.assertEqual(result['status'], 'api_committed_and_verified')
+            self.assertEqual(result['imageCounts'], {'phoneScreenshots': 2})
+            self.assertFalse(result['changesNotSentForReview'])
+            self.assertEqual(server.text, original_text)
+            self.assertEqual(server.images['icon'], [{'sha256': 'icon-unmodified'}])
+            self.assertEqual(server.images['featureGraphic'], [{'sha256': 'feature-unmodified'}])
+            self.assertEqual(len(server.images['phoneScreenshots']), 2)
+            self.assertFalse(any(method == 'PUT' for method, _ in server.calls))
+            self.assertFalse(any(method == 'DELETE' and path.endswith(('/icon', '/featureGraphic'))
+                                 for method, path in server.calls))
+            self.assertFalse(any('/tracks' in path or '/bundles' in path for _, path in server.calls))
+
+    def test_phone_only_reports_readback_mismatch_after_commit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            inputs(root)
+            plan = listing.load_inputs(root / 'listing.json', root / 'manifest.json')
+            server = ListingServer(readback=False)
+            with self.assertRaisesRegex(publisher.ReleaseError, 'committed.*readback'):
+                listing.apply_phone_screenshots(publisher.Publisher(server), plan)
+            self.assertTrue(server.committed)
+
+
 if __name__ == '__main__':
     unittest.main()

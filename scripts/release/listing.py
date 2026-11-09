@@ -75,6 +75,45 @@ def apply(client, plan, changes_not_sent_for_review=True):
             'imageCounts': {kind: len(items) for kind, items in plan['images'].items()}}
 
 
+
+
+def apply_phone_screenshots(client, plan, changes_not_sent_for_review=True):
+    """Replace only the reviewed phone screenshots; preserve all other Play listing fields."""
+    prepared = plan['images']['phoneScreenshots']
+    listing_path = '/listings/ko-KR'
+    protected = ('icon', 'featureGraphic')
+    with client.edit() as edit:
+        previous_listing = client.request('GET', edit + listing_path)
+        previous_protected = {
+            kind: [image.get('sha256', '').lower()
+                   for image in client.request('GET', edit + listing_path + '/' + kind).get('images', [])]
+            for kind in protected
+        }
+        target = edit + listing_path + '/phoneScreenshots'
+        client.request('DELETE', target)
+        for item in prepared:
+            client.request('POST', target + '?uploadType=media', item['data'], 'image/png')
+        client.commit(edit, changes_not_sent_for_review)
+    try:
+        with client.edit() as edit:
+            actual = client.request('GET', edit + listing_path + '/phoneScreenshots').get('images', [])
+            if [image.get('sha256', '').lower() for image in actual] != [item['sha256'] for item in prepared]:
+                raise ReleaseError('Phone screenshot image hash mismatch')
+            if client.request('GET', edit + listing_path) != previous_listing:
+                raise ReleaseError('Non-screenshot listing text changed')
+            for kind, before in previous_protected.items():
+                after = [image.get('sha256', '').lower()
+                         for image in client.request('GET', edit + listing_path + '/' + kind).get('images', [])]
+                if after != before:
+                    raise ReleaseError('Protected listing image category changed: ' + kind)
+    except ReleaseError:
+        raise ReleaseError('Phone screenshot edit committed but fresh readback failed; inspect Console before retrying') from None
+    return {'package': PACKAGE, 'language': 'ko-KR', 'status': 'api_committed_and_verified',
+            'availability': 'requires_console_check', 'changesNotSentForReview': changes_not_sent_for_review,
+            'imageCounts': {'phoneScreenshots': len(prepared)},
+            'preserved': ['title', 'shortDescription', 'fullDescription', 'icon', 'featureGraphic']}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['check', 'apply'])
@@ -82,6 +121,7 @@ def main():
     parser.add_argument('--manifest', type=Path, default=Path('assets/play-store/ko-KR/manifest.json'))
     parser.add_argument('--report', type=Path)
     parser.add_argument('--send-for-review', action='store_true')
+    parser.add_argument('--phone-only', action='store_true', help='Only upload phone screenshots, preserving text/icon/feature graphic')
     args = parser.parse_args()
     try:
         plan = load_inputs(args.listing, args.manifest)
@@ -89,7 +129,8 @@ def main():
                   'imageCounts': {kind: len(items) for kind, items in plan['images'].items()}}
         if args.mode == 'apply':
             client = Publisher(HttpTransport(os.environ.get('PLAY_ACCESS_TOKEN', '')))
-            result = apply(client, plan, changes_not_sent_for_review=not args.send_for_review)
+            result = (apply_phone_screenshots(client, plan, changes_not_sent_for_review=not args.send_for_review)
+                      if args.phone_only else apply(client, plan, changes_not_sent_for_review=not args.send_for_review))
         if args.report:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

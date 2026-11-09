@@ -1,0 +1,111 @@
+name: Editorial Studio 5-B phone screenshot registration
+
+on:
+  workflow_run:
+    workflows: ["Verify web and Android"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-com-haebi-subtitle
+  cancel-in-progress: false
+
+jobs:
+  source:
+    if: github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      matching: ${{ steps.scope.outputs.matching }}
+      sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Restrict automatic listing mutation to this 5-B release commit
+        id: scope
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          message="$(git log -1 --format=%s "$RELEASE_SHA")"
+          if [[ "$message" == "store: Editorial Studio 5-B Android screenshots" ]]; then
+            echo 'matching=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'matching=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Require exact current main and completed UI/Android CI
+        id: source
+        if: steps.scope.outputs.matching == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/release/source.py
+      - name: Validate exactly eight source-derived phone screenshots
+        if: steps.scope.outputs.matching == 'true'
+        run: |
+          python3 scripts/release/listing.py check --phone-only
+          python3 -m unittest discover -s scripts/release/tests -v
+
+  apply:
+    needs: source
+    if: needs.source.outputs.matching == 'true' && needs.source.result == 'success'
+    runs-on: ubuntu-latest
+    environment: google-play
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
+      - name: Authenticate Play publisher configuration
+        id: credentials
+        env:
+          PLAY_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
+          PLAY_SERVICE_ACCOUNT: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: python3 scripts/release/preflight.py auth
+      - name: Authenticate via Workload Identity Federation
+        id: wif
+        if: steps.credentials.outputs.auth_mode == 'wif'
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+      - name: Authenticate via existing service account JSON
+        id: json
+        if: steps.credentials.outputs.auth_mode == 'json'
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+      - name: Reject stale main before upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.source.outputs.sha }}
+        run: python3 scripts/release/source.py --assert-current "$SOURCE_SHA"
+      - name: Submit only ko-KR phone screenshots and verify fresh hashes
+        env:
+          PLAY_ACCESS_TOKEN: ${{ steps.wif.outputs.access_token || steps.json.outputs.access_token }}
+        run: python3 scripts/release/listing.py apply --phone-only --send-for-review --report output/play-listing-5b.json
+      - name: Preserve non-secret image submission report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: subtitle-5b-play-phone-screenshots-${{ github.run_id }}
+          path: output/play-listing-5b.json
+          if-no-files-found: warn
+          retention-days: 30
