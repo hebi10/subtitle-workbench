@@ -5,8 +5,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -35,8 +33,6 @@ import java.util.concurrent.Executors;
 /** Only the OS on-device recognizer is used. This activity never sends microphone audio to OpenAI. */
 public final class OnDeviceRecognitionActivity extends Activity {
     private static final int AUDIO_PERMISSION = 501;
-    private static final int INK = Color.rgb(23, 23, 23);
-    private static final int LINE = Color.rgb(195, 195, 195);
     private static final String[] LANGUAGES = {"ko-KR", "en-US", "ja-JP", "zh-CN"};
 
     private final ExecutorService storage = Executors.newSingleThreadExecutor();
@@ -74,7 +70,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
     private void buildView() {
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
-        scroll.setBackgroundColor(NativeDesignSystem.CANVAS);
+        scroll.setBackgroundColor(NativeDesignSystem.canvas(this));
         scroll.setClipToPadding(false);
         scroll.setOnApplyWindowInsetsListener((view, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {

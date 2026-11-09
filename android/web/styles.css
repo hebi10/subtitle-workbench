@@ -394,3 +394,97 @@ progress::-webkit-progress-value { background: var(--ink); }
 #videoView .local-caption-entry { margin-top: 8px; gap: 5px; padding: 12px 14px; }
 #videoView .local-caption-entry button { min-height: 46px; }
 #videoView .subsection-label { margin-top: 17px; }
+
+
+/* Editorial Studio 1-A: Android WebView semantic system palette. */
+:root {
+  color-scheme: light;
+  --es-canvas: #F5F5F5;
+  --es-surface: #FFFFFF;
+  --es-surface-alt: #F0F0F0;
+  --es-ink: #171717;
+  --es-muted: #626262;
+  --es-border: #D8D8D8;
+  --es-border-strong: #858585;
+  --es-on-action: #FFFFFF;
+  --paper: var(--es-surface);
+  --canvas: var(--es-canvas);
+  --soft: var(--es-surface-alt);
+  --ink: var(--es-ink);
+  --muted: var(--es-muted);
+  --line: var(--es-border);
+  --line-strong: var(--es-border-strong);
+  --error: #AA2432;
+  --warning-bg: #FFF4E4;
+  --warning-ink: #87500A;
+}
+.brand-symbol, button.primary, .app-nav button[aria-current='page'],
+.job[data-status='running'] .job-state > :first-child,
+#editResult:not(:disabled), .settings-actions button[type='submit'],
+#keyForm button[type='submit'] { color: var(--es-on-action); }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --es-canvas: #141414;
+    --es-surface: #242424;
+    --es-surface-alt: #303030;
+    --es-ink: #F2F2F2;
+    --es-muted: #ADADAD;
+    --es-border: #414141;
+    --es-border-strong: #767676;
+    --es-on-action: #171717;
+    --error: #FFB1BF;
+    --warning-bg: #3A3020;
+    --warning-ink: #F0C58A;
+  }
+  .brand-kicker, .page-kicker { color: var(--muted); }
+  button, input, select, textarea,
+  .settings-section input, .settings-section select {
+    background: var(--paper);
+    border-color: var(--line);
+    color: var(--ink);
+  }
+  ::placeholder { color: var(--muted); }
+  button.primary, .app-nav button[aria-current='page'],
+  .job[data-status='running'] .job-state > :first-child,
+  #editResult:not(:disabled), .settings-actions button[type='submit'],
+  #keyForm button[type='submit'] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--es-on-action);
+  }
+  .brand-symbol { color: var(--es-on-action); }
+  button:disabled, button.primary:disabled {
+    background: var(--soft);
+    border-color: var(--line);
+    color: var(--muted);
+  }
+  .default-summary, .job-state > :first-child, .job-details,
+  .job-ready-note, #resultStatus, .export-section, #cueCount,
+  .cue-summary[aria-expanded='true'], .cue details, .settings-section details,
+  .prepared-editor, .empty {
+    background: var(--soft);
+    border-color: var(--line);
+    color: var(--ink);
+  }
+  .job-details dt, .job-state, .hint { color: var(--muted); }
+  progress, progress::-webkit-progress-bar { background: var(--soft); }
+  .cue-issues {
+    background: var(--warning-bg);
+    border-color: #A88553;
+    color: var(--warning-ink);
+  }
+  .job[data-status='error'] .job-state > :first-child,
+  .delete-warning, .confirm-key, .prepared-cancel {
+    background: #3A242A;
+    border-color: #A65F6C;
+    color: var(--error);
+  }
+  .confirm-key p { color: var(--ink); }
+  #clearKey, .prepared-cancel button[data-danger] {
+    background: #A63A4C;
+    border-color: #A63A4C;
+    color: #FFFFFF;
+  }
+}
