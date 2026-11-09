@@ -1,10 +1,12 @@
 package com.haebi.subtitle;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -52,9 +54,18 @@ final class NativeDesignSystem {
         view.setAllCaps(false);
         view.setTextSize(15);
         view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        view.setTextColor(primary ? onAction(context) : ink(context));
-        view.setBackground(surface(primary ? ink(context) : paper(context),
-                primary ? ink(context) : line(context), density));
+        int activeInk = primary ? onAction(context) : ink(context);
+        ColorStateList textColors = new ColorStateList(
+                new int[][] { new int[] { -android.R.attr.state_enabled }, new int[] {} },
+                new int[] { muted(context), activeInk });
+        StateListDrawable backgrounds = new StateListDrawable();
+        backgrounds.addState(new int[] { -android.R.attr.state_enabled },
+                surface(isDark(context) ? Color.rgb(48, 48, 48) : Color.rgb(234, 234, 234), line(context), density));
+        backgrounds.addState(new int[] {},
+                surface(primary ? ink(context) : paper(context), primary ? ink(context) : line(context), density));
+        view.setBackgroundTintList(null);
+        view.setTextColor(textColors);
+        view.setBackground(backgrounds);
         view.setElevation(0f);
         view.setMinHeight(dp(density, 52));
         view.setPadding(dp(density, 12), dp(density, 10), dp(density, 12), dp(density, 10));
@@ -72,6 +83,7 @@ final class NativeDesignSystem {
     static void surfaceText(TextView view, float density) {
         Context context = view.getContext();
         view.setBackground(surface(paper(context), line(context), density));
+        view.setElevation(0f);
         view.setMinHeight(dp(density, 72));
         view.setPadding(dp(density, 14), dp(density, 12), dp(density, 14), dp(density, 12));
     }
@@ -79,5 +91,6 @@ final class NativeDesignSystem {
     static void language(Spinner spinner, float density) {
         spinner.setMinimumHeight(dp(density, 52));
         spinner.setPadding(dp(density, 12), 0, dp(density, 12), 0);
+        spinner.setBackgroundTintList(ColorStateList.valueOf(ink(spinner.getContext())));
     }
 }
