@@ -65,6 +65,7 @@ jobs:
             output/editorial-2-2d/*.png
             output/editorial-2-2e/*.png
             output/editorial-3b/*.png
+            output/editorial-3c/*.png
             output/editorial-4a/*.png
             output/editorial-5a/*.png
             output/editorial-5a/*.json
