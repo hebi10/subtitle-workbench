@@ -125,7 +125,9 @@ public final class CloudLiveRecognitionActivity extends Activity {
         NativeDesignSystem.transcriptPanel(completed, density);
         save = button(result, "자막 작업 기록 저장 및 편집", true, this::saveCues);
         save.setEnabled(false);
-        label(result, "한 번에 최대 5분 동안 인식할 수 있습니다. 말하는 도중 텍스트가 표시되고 종료 후 최종 문장이 저장됩니다. 정확한 단어별 시간은 제공하지 않아 구간 시간은 추정값입니다. 화면을 벗어나면 마이크 전송을 중지합니다.", 13, false);
+        label(result, "최대 5분 인식할 수 있으며 자막 구간 시간은 추정값입니다.", 13, false);
+        NativeDesignSystem.helpDisclosure(result, "시간·전송 안내",
+                "한 번에 최대 5분 동안 인식할 수 있습니다. 말하는 도중 텍스트가 표시되고 종료 후 최종 문장이 저장됩니다. 정확한 단어별 시간은 제공하지 않아 구간 시간은 추정값입니다. 화면을 벗어나면 마이크 전송을 중지합니다.", density);
         button(root, "닫기", false, this::closeRequested);
     }
 
