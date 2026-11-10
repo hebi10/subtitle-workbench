@@ -1688,3 +1688,18 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
   #settingsView .settings-overview > .settings-overview-card { padding: var(--es2-space-3); }
   #settingsView .settings-group { padding-inline: var(--es2-space-3); }
 }
+
+
+/* Editorial Studio 2.0 · 4-B — readable bottom navigation at enlarged system text. */
+@media (max-width: 480px) {
+  .app-nav button {
+    min-height: 52px;
+    white-space: normal;
+    word-break: keep-all;
+    overflow-wrap: normal;
+    line-height: 1.35;
+  }
+  main { padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
+  body.is-editor main { padding-bottom: calc(140px + env(safe-area-inset-bottom)); }
+  html { scroll-padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
+}
