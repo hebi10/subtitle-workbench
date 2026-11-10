@@ -6,6 +6,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.test.core.app.ActivityScenario;
@@ -31,6 +32,7 @@ public final class EditorialNativeScreensDeviceTest {
                 assertSection(root, "01 / PREPARE");
                 assertSection(root, "02 / CAPTURE");
                 assertSection(root, "03 / RESULT");
+                assertWorkflow(root, "언어 준비", "마이크 인식", "자막 저장");
                 assertText(root, "OpenAI API 키나 API 이용 요금은 필요하지 않습니다");
                 assertButton(root, "마이크 인식 시작");
                 Button stop = button(root, "인식 종료");
@@ -53,6 +55,7 @@ public final class EditorialNativeScreensDeviceTest {
                 assertSection(root, "01 / CONNECTION");
                 assertSection(root, "02 / LIVE");
                 assertSection(root, "03 / RESULT");
+                assertWorkflow(root, "연결 확인", "실시간 인식", "자막 저장");
                 assertText(root, "GPT 실시간 마이크 자막");
                 assertText(root, "API 이용 요금");
                 assertButton(root, "인식 종료 및 결과 확정");
@@ -73,6 +76,7 @@ public final class EditorialNativeScreensDeviceTest {
                 assertSection(root, "01 / MODEL");
                 assertSection(root, "02 / FILE");
                 assertSection(root, "03 / TRANSCRIPTION");
+                assertWorkflow(root, "모델 설치", "파일 선택", "전사·저장");
                 assertText(root, "인터넷과 OpenAI API 키 없이");
                 assertText(root, "오프라인 인식은 최대 60분");
                 assertButton(root, "선택 모델 다운로드·설치");
@@ -83,6 +87,27 @@ public final class EditorialNativeScreensDeviceTest {
             });
             screenshot("vosk-local-" + theme[0]);
         }
+    }
+
+    private static void assertWorkflow(View root, String first, String second, String third) {
+        View found = findTag(root, "editorial-native-workflow");
+        assertNotNull("Native workflow summary", found);
+        assertTrue(found instanceof LinearLayout);
+        LinearLayout row = (LinearLayout) found;
+        assertEquals(3, row.getChildCount());
+        String[] labels = {first, second, third};
+        int activeCount = 0;
+        for (int index = 0; index < labels.length; index++) {
+            View item = findTag(row, "editorial-native-step-" + index);
+            assertTrue(item instanceof TextView);
+            TextView label = (TextView) item;
+            assertTrue(label.getText().toString().contains(labels[index]));
+            assertNotNull(label.getBackground());
+            assertEquals(0f, label.getElevation(), 0f);
+            assertTrue("Stage status must be announced", label.getContentDescription().length() > 0);
+            if (label.getContentDescription().toString().contains("현재 단계")) activeCount++;
+        }
+        assertEquals("Exactly one current step", 1, activeCount);
     }
 
     private static void verifyBackground(Activity activity, View root) {
