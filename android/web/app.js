@@ -575,14 +575,46 @@ function renderResults() {
   $('resultJobLabel').hidden = !candidates.length;
   $('resultEmpty').hidden = Boolean(current);
   $('resultContent').hidden = !current;
-  if (!current) return;
+  const exportStatus = $('resultExportStatus');
+  if (exportStatus.dataset.jobId !== (current?.id || '')) {
+    exportStatus.dataset.jobId = current?.id || '';
+    exportStatus.textContent = '';
+    exportStatus.hidden = true;
+    exportStatus.classList.remove('error-text');
+    $('resultCueDetails').open = false;
+  }
+  if (!current) {
+    $('resultCueDetails').hidden = true;
+    $('resultCuePreview').replaceChildren();
+    return;
+  }
   const loading = changingJob || refreshingResultId === current.id;
   $('resultName').textContent = current.name;
+  $('resultStateBadge').textContent = statusNames[current.status] || current.status;
+  $('resultStateBadge').dataset.state = current.status;
   $('resultMeta').textContent = `${statusNames[current.status] || current.status} · 자막 ${history.present.length}개 · ${formatDuration(current.durationMs)}`;
   $('resultStatus').textContent = loading ? '자막을 불러오는 중입니다…' : !history.present.length ? '아직 저장된 자막이 없습니다. 작업 화면에서 진행 상태를 확인해 주세요.' : !editable() ? '현재까지 저장된 부분 결과입니다. 생성이 완료되면 편집할 수 있습니다.' : !current.uri ? '불러온 자막입니다. 연결된 영상이 없어 미리보기는 사용할 수 없습니다.' : '자막을 확인하고 파일로 저장하세요.';
   $('resultPreview').disabled = !current.uri || loading;
   $('editResult').querySelector('[data-result-edit-label]').textContent = editable() ? '자막 편집' : '자막 보기';
   $('editResult').disabled = !history.present.length || loading;
+
+  const preview = $('resultCuePreview');
+  const sample = history.present.slice(0, 3);
+  $('resultCueDetails').hidden = loading || !sample.length;
+  $('resultCueDetails').querySelector('summary').textContent = `자막 일부 보기 (${sample.length} / ${history.present.length}개)`;
+  const previewKey = JSON.stringify(sample.map((cue) => [cue.start, cue.end, cue.original, cue.translated, cue.speaker]));
+  if (preview.dataset.renderKey !== previewKey) {
+    const rows = sample.map((cue, index) => {
+      const row = el('div', undefined, 'result-cue-row');
+      row.append(
+        el('span', `${cueClock(cue.start)} – ${cueClock(cue.end)}`, 'es2-timecode result-cue-time'),
+        el('p', speakerMarkedText(cue, history.present[index - 1]) || '내용이 없는 자막', 'result-cue-text')
+      );
+      return row;
+    });
+    preview.replaceChildren(...rows);
+    preview.dataset.renderKey = previewKey;
+  }
   syncEditorButtons();
 }
 function setLoadedJob({ job, cues }) {
@@ -1002,7 +1034,9 @@ async function exportCues(job, cues, format) {
   const text = format === 'json' ? toSubtitleJson(cues) : format === 'vtt' ? formatVtt(cues) : formatSrt(cues);
   const mime = { srt: 'application/x-subrip', vtt: 'text/vtt', json: 'application/json' }[format];
   const result = await nativeCall('export', { name: `${sanitizeFileBase(job.name)}.${format}`, mime, text });
-  message(result === null || result === false || result?.saved === false ? '자막 저장을 취소했습니다.' : `${format.toUpperCase()} 자막 파일을 저장했습니다.`);
+  const saved = result !== null && result !== false && result?.saved !== false;
+  message(saved ? `${format.toUpperCase()} 자막 파일을 저장했습니다.` : '자막 저장을 취소했습니다.');
+  return saved;
 }
 async function deleteCompletedJob(jobId) {
   await runJobAction(jobId, async () => {
@@ -1036,7 +1070,22 @@ async function exportJob(jobId) {
 document.querySelectorAll('[data-export]').forEach((node) => node.addEventListener('click', () => run(node, async () => {
   await flushSave();
   if (changingJob || refreshingResultId === current?.id || !current || !history.present.length) return;
-  await exportCues(current, history.present, node.dataset.export);
+  const job = current;
+  const format = node.dataset.export;
+  const status = $('resultExportStatus');
+  status.hidden = false;
+  status.classList.remove('error-text');
+  status.textContent = `${format.toUpperCase()} 파일 저장 중…`;
+  try {
+    const saved = await exportCues(job, history.present, format);
+    if (current?.id === job.id) status.textContent = saved ? `${format.toUpperCase()} 파일을 저장했습니다.` : '파일 저장을 취소했습니다.';
+  } catch (error) {
+    if (current?.id === job.id) {
+      status.textContent = `파일을 저장하지 못했습니다. 다시 시도해 주세요. ${error.message}`;
+      status.classList.add('error-text');
+    }
+    throw error;
+  }
 })));
 document.addEventListener('visibilitychange', () => { if (!document.hidden) void refresh(); else void flushSave().catch(() => {}); });
 setInterval(() => { if (!document.hidden) void refresh(); }, 3500);
