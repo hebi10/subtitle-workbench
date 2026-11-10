@@ -75,6 +75,7 @@ test('2-B real WebView layout exposes safe next actions and accurate progress', 
     assert.equal(await paused.locator('.job-progress-label strong').innerText(), '12.5%');
     assert.equal(await paused.locator('progress').getAttribute('value'), '12.5');
     assert.equal(await paused.getByRole('button', { name: '이어하기', exact: true }).evaluate(x => x.classList.contains('primary')), true);
+    assert.equal(await paused.locator('.job-actions button').first().textContent(), '이어하기');
     assert.equal(await complete.getByRole('button', { name: '자막 편집', exact: true }).evaluate(x => x.classList.contains('primary')), true);
     await page.locator('#startNewJob').click();
     assert.equal(await page.locator('#videoView').isVisible(), true);
@@ -97,10 +98,12 @@ test('2-B real WebView layout exposes safe next actions and accurate progress', 
     const running = page.locator('#jobList .job[data-job-id="running-2"]');
     assert.equal(await running.locator('.job-status-badge').innerText(), '생성 중');
     assert.equal(await running.getByRole('button', { name: '일시정지', exact: true }).evaluate(x => x.classList.contains('primary')), true);
+    assert.equal(await running.locator('.job-actions button').first().textContent(), '일시정지');
     const failed = page.locator('#jobList .job[data-job-id="error-2"]');
     assert.equal(await failed.locator('.job-status-badge').innerText(), '처리 오류');
     assert.match(await failed.locator('.job-error').innerText(), /통신 실패/);
     assert.equal(await failed.getByRole('button', { name: '이어하기', exact: true }).evaluate(x => x.classList.contains('primary')), true);
+    assert.equal(await failed.locator('.job-actions button').first().textContent(), '이어하기');
     await mkdir(output, { recursive: true });
     for (const width of [320, 390, 800]) {
       for (const theme of ['light', 'dark']) {
