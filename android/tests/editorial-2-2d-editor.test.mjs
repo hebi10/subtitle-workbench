@@ -23,8 +23,8 @@ test('2-D retains existing editing IDs, Native bridge, feedback toolbar and new 
     'preview', 'undo', 'redo', 'saveStatus', 'retrySave', 'prevPage', 'nextPage']) {
     assert.equal((html.match(new RegExp('id="' + id + '"', 'g')) || []).length, 1, id);
   }
-  assert.ok(html.indexOf('id="editorCueContext"') < html.indexOf('id="editorFeedback"'));
-  assert.ok(html.indexOf('id="editorFeedback"') < html.indexOf('id="cueList"'));
+  assert.ok(html.indexOf('id="editorFeedback"') < html.indexOf('id="editorCueContext"'));
+  assert.ok(html.indexOf('id="editorCueContext"') < html.indexOf('id="cueList"'));
   assert.match(js, /prevCue: \(\) => moveSelectedCue\(-1\)/);
   assert.match(js, /nextCue: \(\) => moveSelectedCue\(1\)/);
   assert.match(js, /previewSelectedCue: \(\) => previewAt\(Math\.round\(history\.present\[selectedIndex\]\.start \* 1000\)\)/);
