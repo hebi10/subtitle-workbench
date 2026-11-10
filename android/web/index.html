@@ -22,6 +22,15 @@
     <section id="videoView" aria-labelledby="videoHeading" hidden>
       <div class="section-heading"><div><p class="page-kicker">01 / INPUT</p><h2 id="videoHeading">영상 추가</h2></div></div>
       <p class="page-description">파일이나 마이크를 선택해 자막 작업을 시작합니다.</p>
+      <section id="firstRunGuide" class="es2-state-panel first-run-guide" aria-labelledby="firstRunGuideHeading" hidden>
+        <div class="first-run-heading"><h3 id="firstRunGuideHeading" class="es2-section-title">처음 시작하시나요?</h3><button id="dismissFirstRunGuide" type="button" aria-label="처음 사용 안내 닫기">닫기</button></div>
+        <p class="es2-supporting-text">원하는 작업 방식부터 선택하세요. 파일 자막과 GPT 실시간 인식에는 개인 API 또는 테스트 서버 연결이 필요합니다. 기기 마이크와 설치된 오프라인 모델은 개인 API 없이 사용할 수 있습니다.</p>
+        <div class="es2-action-row first-run-actions">
+          <button id="guideFile" type="button">영상·음성 파일</button>
+          <button id="guideMic" type="button">마이크 인식</button>
+          <button id="guideOffline" type="button">오프라인 AI</button>
+        </div>
+      </section>
       <section class="file-source" aria-labelledby="fileSourceHeading">
         <div class="source-heading"><div><p class="source-kicker">FILE / TRANSCRIPTION</p><h3 id="fileSourceHeading">파일에서 자막 만들기</h3></div><span class="source-capacity">영상 최대 3시간</span></div>
         <div class="start-actions"><button id="pickVideo" class="primary" type="button" disabled><span class="es-icon es-icon--video" aria-hidden="true"></span>영상 선택</button><button id="importSubtitles" type="button"><span class="es-icon es-icon--add" aria-hidden="true"></span>자막 불러오기</button></div>
@@ -118,7 +127,7 @@
       <section class="settings-section settings-privacy" aria-labelledby="privacyHeading"><p class="settings-index" aria-hidden="true">04 / PRIVACY</p><h3 id="privacyHeading">개인정보</h3><p class="hint">처리 방식별 전송 데이터와 기기 내 저장·삭제 방법을 확인할 수 있습니다.</p><button id="openPrivacyPolicy" type="button">개인정보처리방침 · 브라우저에서 열기</button></section>
     </section>
   </main>
-  <nav class="app-nav" aria-label="주 메뉴"><button id="navVideo" type="button"><span class="es-icon es-icon--video" aria-hidden="true"></span>영상 추가</button><button id="navJobs" type="button" aria-current="page"><span class="es-icon es-icon--jobs" aria-hidden="true"></span>작업</button><button id="navResults" type="button"><span class="es-icon es-icon--results" aria-hidden="true"></span>결과</button><button id="navSettings" type="button"><span class="es-icon es-icon--settings" aria-hidden="true"></span>설정</button></nav>
+  <nav class="app-nav" aria-label="주 메뉴"><button id="navVideo" type="button" aria-controls="videoView"><span class="es-icon es-icon--video" aria-hidden="true"></span>영상 추가</button><button id="navJobs" type="button" aria-controls="jobsView" aria-current="page"><span class="es-icon es-icon--jobs" aria-hidden="true"></span>작업</button><button id="navResults" type="button" aria-controls="resultsView"><span class="es-icon es-icon--results" aria-hidden="true"></span>결과</button><button id="navSettings" type="button" aria-controls="settingsView"><span class="es-icon es-icon--settings" aria-hidden="true"></span>설정</button></nav>
   <script type="module" src="app.js"></script>
 </body>
 </html>
