@@ -2303,3 +2303,165 @@ summary:focus-visible, a:focus-visible, .workspace-tab:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+
+/* Editorial Studio 2.0 · 3-C web export hierarchy and download states. */
+#panel-export .export-overview {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 14px 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: var(--soft);
+  border-radius: 0;
+  box-shadow: none;
+}
+#panel-export .export-result-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+#panel-export #exportResultSelect {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  border: 1px solid var(--line-strong);
+  border-radius: 0;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  padding: 10px;
+}
+#panel-export #exportResultSelect:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+#panel-export .export-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+#panel-export .export-summary-grid > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+#panel-export .export-summary-grid dt {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+#panel-export .export-summary-grid dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+#panel-export #exportResultStatus[data-state="partial"],
+#panel-export #exportResultStatus[data-state="error"] {
+  color: var(--warning);
+}
+#panel-export .export-session-note {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  color: var(--text);
+  background: var(--panel);
+  font-size: 13px;
+  line-height: 1.55;
+}
+#panel-export .studio-export-layout {
+  grid-template-columns: minmax(0, 1.45fr) minmax(260px, .75fr);
+}
+#panel-export .downloads .download-link--primary,
+#panel-export .downloads .download-placeholder:first-child {
+  grid-column: 1 / -1;
+}
+#panel-export .downloads .download-link--primary {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--es-on-action);
+  font-weight: 700;
+}
+#panel-export .downloads .download-link--secondary {
+  background: var(--panel);
+  color: var(--text);
+}
+#panel-export .downloads .download-link--log {
+  grid-column: 1 / -1;
+}
+#panel-export .downloads .download-sync-meta {
+  grid-column: 1 / -1;
+  min-height: 28px;
+}
+#panel-export .export-download-status {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+#panel-export .export-build-error {
+  display: grid;
+  gap: 10px;
+  margin: 10px 0 0;
+  padding: 12px;
+  border: 1px solid var(--es-danger-border);
+  background: var(--es-danger-surface);
+  color: var(--danger);
+}
+#panel-export .export-build-error p {
+  margin: 0;
+  line-height: 1.5;
+}
+#panel-export .export-build-error button {
+  min-height: 48px;
+  justify-self: start;
+}
+#panel-export .export-format-details {
+  border: 1px solid var(--line);
+  background: var(--soft);
+}
+#panel-export .export-format-details > summary {
+  min-height: 48px;
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text);
+}
+#panel-export .export-format-details > summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+#panel-export .export-format-details .format-guide {
+  padding: 0 12px 12px;
+}
+#panel-export .studio-export-formats > .studio-panel-description {
+  margin-top: 12px;
+}
+@media (min-width: 761px) and (max-width: 1180px) {
+  #panel-export .export-summary-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  #panel-export .export-overview {
+    padding: 12px;
+  }
+  #panel-export .export-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #panel-export .studio-export-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
