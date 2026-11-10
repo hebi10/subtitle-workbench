@@ -106,7 +106,9 @@ public final class EditorialFullWebViewDeviceTest {
                 " const visible=document.getElementById(" + JSONObject.quote(section) + ");" +
                 " const navBox=nav.getBoundingClientRect();" +
                 " return !!active && !!visible && !visible.hidden && navBox.bottom>0 && navBox.top<innerHeight" +
-                " && root.scrollWidth<=innerWidth+1;})()";
+                " && root.scrollWidth<=innerWidth+1" +
+                " && Array.from(nav.querySelectorAll('button')).every(b => b.getBoundingClientRect().height >= 48" +
+                " && b.scrollWidth<=b.clientWidth+1 && b.scrollHeight<=b.clientHeight+1);})()";
         assertEquals("No horizontal overflow or hidden bottom menu expected in " + section,
                 "true", evaluate(web, js));
     }
