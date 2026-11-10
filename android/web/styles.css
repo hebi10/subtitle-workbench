@@ -1699,7 +1699,7 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
     overflow-wrap: normal;
     line-height: 1.35;
   }
-  main { padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
-  body.is-editor main { padding-bottom: calc(140px + env(safe-area-inset-bottom)); }
+  main { padding-bottom: calc(106px + env(safe-area-inset-bottom)); }
+  body.is-editor main { padding-bottom: calc(116px + env(safe-area-inset-bottom)); }
   html { scroll-padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
 }
