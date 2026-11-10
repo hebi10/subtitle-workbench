@@ -43,6 +43,7 @@ test('3-B web editor supports cue selection, filter reset, retained edits, media
     await page.waitForFunction(() => window.__workflowDone === true, null, { timeout: 90000 });
     const report = JSON.parse(await page.locator('#workflowResults').textContent());
     assert.equal(report.failed, 0, JSON.stringify(report.results.filter(item => !item.passed)));
+    await page.locator('#workflowResults').evaluate(node => { node.hidden = true; });
 
     await page.locator('#editorSearch').fill('');
     await page.locator('#editorStatusFilter').selectOption('all');
@@ -76,6 +77,8 @@ test('3-B web editor supports cue selection, filter reset, retained edits, media
     assert.equal(await page.locator('#editorNextCue').isDisabled(), true);
     await page.locator('#editorSearch').fill('');
     assert.equal(await page.locator('#editorCueContext').isVisible(), true);
+    assert.match(await page.locator('#editorCuePosition').innerText(), /자막 1 \/ 2개/);
+    await page.locator('#editorNextCue').click();
     await page.locator('#editorPrevCue').click();
     assert.match(await page.locator('#editorCuePosition').innerText(), /자막 1 \/ 2개/);
     assert.deepEqual(errors, []);
