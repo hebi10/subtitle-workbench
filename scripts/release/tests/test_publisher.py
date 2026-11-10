@@ -1,4 +1,5 @@
 import importlib.util
+import re
 import pathlib
 import tempfile
 import unittest
@@ -54,6 +55,12 @@ def track(name, code, status='completed'):
 
 
 class PublisherTests(unittest.TestCase):
+    def test_track_label_matches_android_version_name(self):
+        gradle = (SCRIPT.parents[2] / 'android' / 'app' / 'build.gradle').read_text(encoding='utf-8')
+        match = re.search(r"\\bversionName\\s+'([^']+)'", gradle)
+        self.assertIsNotNone(match, 'Android versionName must remain readable')
+        self.assertEqual(publisher.RELEASE_VERSION_NAME, match.group(1))
+
     def test_allocation_includes_unassigned_bundles_apks_and_draft_tracks(self):
         server = PlayServer(bundles=[9, 32], apks=[34], tracks=[track('internal', 20), track('alpha', 33, 'draft')])
         self.assertEqual(publisher.Publisher(server).allocate_version(), 35)
@@ -75,6 +82,7 @@ class PublisherTests(unittest.TestCase):
         with tempfile.NamedTemporaryFile() as bundle:
             result = publisher.Publisher(server).deploy(bundle.name, 35)
         self.assertEqual(result['versionCode'], 35)
+        self.assertEqual(server.pending['releases'][0]['name'], '0.10.0 (35)')
         self.assertEqual(result['status'], 'api_committed_and_verified')
         self.assertEqual(result['availability'], 'requires_console_check')
         self.assertEqual(sum(method == 'POST' and path == '/edits' for method, path, _ in server.calls), 2)
