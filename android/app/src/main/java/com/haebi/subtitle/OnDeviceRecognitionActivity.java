@@ -39,6 +39,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
     private final OnDeviceCueDraft draft = new OnDeviceCueDraft();
     private SpeechRecognizer recognizer;
     private Spinner language;
+    private LinearLayout workflow;
     private Button startButton, stopButton, saveButton, downloadButton, checkButton;
     private TextView status, partial, completed;
     private long recordingOriginMs = -1, utteranceStartMs;
@@ -90,6 +91,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
         float density = getResources().getDisplayMetrics().density;
         NativeDesignSystem.header(root, "ON-DEVICE / MICROPHONE", "온디바이스 마이크 자막",
                 "기기의 음성 인식 서비스로 말하는 동안 자막을 만듭니다. OpenAI API 키나 API 이용 요금은 필요하지 않습니다. 인식 품질과 지원 언어는 기기마다 다릅니다.", density);
+        workflow = NativeDesignSystem.workflow(root, density, "언어 준비", "마이크 인식", "자막 저장");
 
         LinearLayout preparation = NativeDesignSystem.section(root, "01 / PREPARE", "인식 언어·모델", density);
         addText(preparation, "인식 언어", 14, true);
@@ -221,6 +223,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
     private void startListening() {
         if (recognizer == null || recognizing || saving) return;
         recognizing = true;
+        NativeDesignSystem.setWorkflowStep(workflow, 1, getResources().getDisplayMetrics().density);
         startButton.setEnabled(false);
         stopButton.setEnabled(true);
         saveButton.setEnabled(false);
@@ -244,6 +247,8 @@ public final class OnDeviceRecognitionActivity extends Activity {
 
     private void endListening() {
         recognizing = false;
+        NativeDesignSystem.setWorkflowStep(workflow, draft.size() > 0 ? 2 : 0,
+                getResources().getDisplayMetrics().density);
         startButton.setEnabled(recognizer != null && !saving);
         stopButton.setEnabled(false);
         saveButton.setEnabled(draft.size() > 0 && !saving);
@@ -293,6 +298,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
     private void save() {
         if (recognizing || saving || draft.size() == 0) return;
         saving = true;
+        NativeDesignSystem.setWorkflowStep(workflow, 2, getResources().getDisplayMetrics().density);
         saveButton.setEnabled(false);
         startButton.setEnabled(false);
         showStatus("자막을 저장하고 있습니다…");
