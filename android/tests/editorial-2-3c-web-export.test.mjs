@@ -14,7 +14,8 @@ const require = createRequire(import.meta.url);
 test('3-C export keeps selected job, file formats, partial failure, real download request, and retry', { skip: !enabled }, async () => {
   const server = createServer(async (request, response) => {
     const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-    const assetPath = pathname.startsWith('/tests/assets/') ? pathname.slice('/tests'.length) : pathname;
+    const requestedPath = pathname === '/' ? '/index.html' : pathname;
+    const assetPath = requestedPath.startsWith('/tests/assets/') ? requestedPath.slice('/tests'.length) : requestedPath;
     const filePath = resolve(root, '.' + assetPath);
     if (!filePath.startsWith(root + '/') || pathname.includes('..')) {
       response.writeHead(404).end();
