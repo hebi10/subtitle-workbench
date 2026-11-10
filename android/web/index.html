@@ -80,18 +80,35 @@
     </section>
 
     <section id="resultsView" aria-labelledby="resultsHeading" hidden>
-      <div class="section-heading"><div><p class="page-kicker">03 / RESULTS</p><h2 id="resultsHeading">결과</h2></div></div>
-      <p class="page-description">생성된 자막을 확인하고 편집하거나 파일로 저장합니다.</p>
+      <div class="section-heading"><div><p class="page-kicker">03 / RESULTS</p><h2 id="resultsHeading">결과 확인</h2></div></div>
+      <p class="page-description">자막을 확인한 다음 편집하거나 원하는 형식으로 저장합니다.</p>
       <label id="resultJobLabel" class="job-selector">작업 선택<select id="resultJobSelector"></select></label>
       <div id="resultEmpty" hidden><p class="empty">아직 확인할 결과가 없습니다.</p><div class="start-actions"><button id="openResultJobs" type="button">작업 확인</button><button id="openResultVideo" type="button">영상 추가</button></div></div>
       <div id="resultContent" hidden>
-        <div class="result-overview">
-          <h3 id="resultName" class="result-name"></h3>
+        <section class="result-overview" aria-label="현재 결과 요약">
+          <div class="result-heading"><h3 id="resultName" class="result-name"></h3><span id="resultStateBadge" class="result-state-badge" data-state="ready"></span></div>
           <p id="resultMeta" class="hint"></p>
           <p id="resultStatus" class="hint" role="status"></p>
+        </section>
+        <div class="result-actions">
+          <button id="resultPreview" type="button"><span class="es-icon es-icon--play" aria-hidden="true"></span>영상 미리보기</button>
+          <button id="editResult" type="button"><span class="es-icon es-icon--edit" aria-hidden="true"></span><span data-result-edit-label>자막 편집</span></button>
         </div>
-        <div class="result-actions"><button id="resultPreview" type="button"><span class="es-icon es-icon--play" aria-hidden="true"></span>영상 미리보기</button><button id="editResult" type="button"><span class="es-icon es-icon--edit" aria-hidden="true"></span><span data-result-edit-label>자막 편집</span></button></div>
-        <section id="exportSection" class="export-section" aria-labelledby="exportHeading" tabindex="-1"><h3 id="exportHeading">자막 내보내기</h3><p id="exportNote" class="hint">번역이 없는 자막은 원문으로 내보냅니다.</p><div class="export-actions"><button type="button" class="primary" data-export="srt"><span class="es-icon es-icon--download" aria-hidden="true"></span>SRT 저장</button><button type="button" data-export="vtt"><span class="es-icon es-icon--download" aria-hidden="true"></span>VTT 저장</button><button type="button" data-export="json"><span class="es-icon es-icon--download" aria-hidden="true"></span>JSON 저장</button></div><details><summary>파일 형식 안내</summary><p class="hint">SRT는 일반 영상 플레이어, VTT는 웹 영상에 사용합니다. JSON은 원문·번역·시간 정보를 보관하고 다시 편집할 때 사용합니다.</p></details></section>
+        <details id="resultCueDetails" class="result-cue-details" hidden>
+          <summary>자막 내용 미리보기</summary>
+          <div id="resultCuePreview" class="result-cue-preview"></div>
+        </details>
+        <section id="exportSection" class="export-section" aria-labelledby="exportHeading" tabindex="-1">
+          <h3 id="exportHeading">자막 파일 저장</h3>
+          <p id="exportNote" class="hint">번역이 없는 자막은 원문으로 내보냅니다.</p>
+          <div class="export-actions">
+            <button type="button" class="primary" data-export="srt"><span class="es-icon es-icon--download" aria-hidden="true"></span>SRT 저장</button>
+            <button type="button" data-export="vtt"><span class="es-icon es-icon--download" aria-hidden="true"></span>VTT 저장</button>
+            <button type="button" data-export="json"><span class="es-icon es-icon--download" aria-hidden="true"></span>JSON 저장</button>
+          </div>
+          <p id="resultExportStatus" class="result-export-status" role="status" hidden></p>
+          <details><summary>파일 형식 안내</summary><p class="hint">SRT는 일반 영상 플레이어, VTT는 웹 영상에 사용합니다. JSON은 원문·번역·시간 정보를 보관하고 다시 편집할 때 사용합니다.</p></details>
+        </section>
       </div>
     </section>
 
