@@ -103,9 +103,11 @@ window.handleNativeBack = () => {
 };
 
 function message(text, error = false) {
-  $('appMessage').textContent = text;
-  $('appMessage').classList.toggle('error', error);
-  $('appMessage').hidden = !text;
+  const notice = $('appMessage');
+  notice.setAttribute('role', error ? 'alert' : 'status');
+  notice.textContent = text;
+  notice.classList.toggle('error', error);
+  notice.hidden = !text;
   $('messageBar').hidden = !text;
 }
 function el(tag, text, className) {
@@ -334,9 +336,17 @@ function renderJobs() {
         article.append(confirmation);
         const remove = button('삭제 확인', () => deleteCompletedJob(job.id), jobActionsInFlight.has(job.id));
         remove.classList.add('danger'); actions.append(remove);
-        actions.append(button('취소', () => { pendingDeletionId = ''; renderJobs(); }));
+        actions.append(button('취소', () => {
+          pendingDeletionId = '';
+          renderJobs();
+          focusJobAction(job.id, '기록 삭제');
+        }));
       } else {
-        actions.append(button('기록 삭제', () => { pendingDeletionId = job.id; renderJobs(); }));
+        actions.append(button('기록 삭제', () => {
+          pendingDeletionId = job.id;
+          renderJobs();
+          focusJobAction(job.id, '삭제 확인');
+        }));
       }
     }
     if (['running', 'queued'].includes(job.status)) {
@@ -433,6 +443,11 @@ function settingsSummary(settings) {
 function focusJob(jobId) {
   const node = Array.from(document.querySelectorAll('.job')).find((row) => row.dataset.jobId === jobId && !row.closest('[hidden]'));
   node?.focus({ preventScroll: true }); node?.scrollIntoView({ block: 'start' });
+}
+function focusJobAction(jobId, label) {
+  const card = jobCards.get(jobId);
+  const action = [...(card?.querySelectorAll('button') || [])].find((node) => node.textContent.trim() === label);
+  if (action && action.isConnected && !action.disabled) action.focus({ preventScroll: true });
 }
 async function openPrepared(jobId) {
   preparedJobId = jobId; renderJobs(); await show('video');
