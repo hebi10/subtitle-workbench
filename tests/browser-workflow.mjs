@@ -203,6 +203,9 @@ try {
     await runBatch(['survives.mp4', 'fails.mp4'], 'fail-second');
     assert(resultOptions().length === before + 1, 'completed first result must remain after second failure');
     assert($('#runPanel').dataset.runState === 'failed', '401 must mark run failed');
+    assert($('#statusBadge').dataset.state === 'failed', 'failure must have a textual and semantic state');
+    assert(!$('#errorBox').hidden && $('#errorBox').getAttribute('role') === 'alert', 'failed request must announce an alert');
+    assert($('#errorBox').textContent.includes('API 키가 거부되었습니다'), '401 must show actionable guidance');
     assert(!$('#jobResultSelect').disabled && !$('#startButton').disabled, 'failure must release controls');
     const survived = resultOptions().find((option) => option.textContent.includes('survives.mp4'));
     assert(survived, 'successful first result missing');
@@ -218,7 +221,10 @@ try {
     $('#startButton').click();
     await waitFor(() => io.pending > 0, 'pending API request');
     $('#cancelButton').click();
+    assert($('#progressText').textContent === '중단 요청됨', 'cancellation request should be visible immediately');
     await waitFor(() => $('#cancelButton').disabled && !$('#videoFile').disabled, 'cancellation lock release');
+    assert($('#statusBadge').dataset.state === 'cancelled' && $('#statusBadge').textContent === '중단', 'cancelled status must remain explicit');
+    assert($('#errorBox').hidden, 'normal cancellation must not be represented as a failure alert');
     const requests = io.requests;
     await delay(150);
     assert(io.aborted > 0 && io.terminated > 0, 'cancel must abort request and terminate FFmpeg');
