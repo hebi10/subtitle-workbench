@@ -36,7 +36,7 @@
 
 재빌드 및 중복 업로드를 방지하기 위해 이미 WIF 승인이 완료된 **Play internal release**에서 수동 `mode=promote`, `version_code=21`을 제공한다. 이 경로는 원본 서명키 복원·새 version 할당·AAB 빌드·bundle upload·internal PUT을 실행하지 않으며, 완료된 `internal` 릴리스의 정확한 코드만 `alpha`에 승격한다. 별도 `Play closed promotion` 워크플로는 WIF 허용 조건이 다를 수 있으므로 오류 복구에는 기존 신뢰된 경로를 사용한다.
 
-`main` 병합 커밋 제목에 `[skip-play]`를 포함하면 자동 Play 내부 배포는 수행하지 않고 전체 CI/배포 게이트 검사만 실행한다. **오류 진단 PR 병합 시 이 마커를 사용해야 하며**, 기존 코드 21의 출시 상태를 확인하지 않고 이전 `deploy` 전체를 다시 실행하지 않는다. 재승격 실패 시 새로 출력되는 `create_edit`/`validate_edit`/`commit_edit` 등의 단계와 안전한 오류 식별자를 바탕으로 Play Console 심사·설정 문제를 조사한다. 토큰·API 상세 메시지는 로그에 공개하지 않는다.
+`main` 병합 커밋 제목에 `[skip-play]`를 포함하면 자동 Play 내부 배포는 수행하지 않고 전체 CI/배포 게이트 검사만 실행한다. **오류 진단 PR 병합 시 이 마커를 사용해야 하며**, 기존 코드 21의 출시 상태를 확인하지 않고 이전 `deploy` 전체를 다시 실행하지 않는다. 이번 1회 복구를 위한 정확한 main 커밋 제목 `fix(play): resume existing internal 21 to closed [promote-existing-21]`도 기존 승인된 Play internal release 워크플로에서 versionCode 21을 승격하는 작업만 수행한다. 신규 AAB 업로드가 없고 원래 상태를 재조회한다. 임의 제목의 재사용은 허용하지 않는다. 재승격 실패 시 새로 출력되는 `create_edit`/`validate_edit`/`commit_edit` 등의 단계와 안전한 오류 식별자를 바탕으로 Play Console 심사·설정 문제를 조사한다. 토큰·API 상세 메시지는 로그에 공개하지 않는다.
 
 ## 인증 설정
 
