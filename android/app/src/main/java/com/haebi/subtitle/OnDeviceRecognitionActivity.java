@@ -91,7 +91,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
         float density = getResources().getDisplayMetrics().density;
         NativeDesignSystem.header(root, "ON-DEVICE / MICROPHONE", "온디바이스 마이크 자막",
                 "기기의 음성 인식 서비스로 말하는 동안 자막을 만듭니다. OpenAI API 키나 API 이용 요금은 필요하지 않습니다. 인식 품질과 지원 언어는 기기마다 다릅니다.", density);
-        workflow = NativeDesignSystem.workflow(root, density, "언어 준비", "마이크 인식", "자막 저장");
+        workflow = NativeDesignSystem.workflow(root, density, "언어", "인식", "저장");
 
         LinearLayout preparation = NativeDesignSystem.section(root, "01 / PREPARE", "인식 언어·모델", density);
         addText(preparation, "인식 언어", 14, true);
