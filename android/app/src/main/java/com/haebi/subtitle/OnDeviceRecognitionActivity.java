@@ -39,6 +39,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
     private final OnDeviceCueDraft draft = new OnDeviceCueDraft();
     private SpeechRecognizer recognizer;
     private Spinner language;
+    private LinearLayout workflow;
     private Button startButton, stopButton, saveButton, downloadButton, checkButton;
     private TextView status, partial, completed;
     private long recordingOriginMs = -1, utteranceStartMs;
@@ -90,6 +91,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
         float density = getResources().getDisplayMetrics().density;
         NativeDesignSystem.header(root, "ON-DEVICE / MICROPHONE", "온디바이스 마이크 자막",
                 "기기의 음성 인식 서비스로 말하는 동안 자막을 만듭니다. OpenAI API 키나 API 이용 요금은 필요하지 않습니다. 인식 품질과 지원 언어는 기기마다 다릅니다.", density);
+        workflow = NativeDesignSystem.workflow(root, density, "언어", "인식", "저장");
 
         LinearLayout preparation = NativeDesignSystem.section(root, "01 / PREPARE", "인식 언어·모델", density);
         addText(preparation, "인식 언어", 14, true);
@@ -101,7 +103,8 @@ public final class OnDeviceRecognitionActivity extends Activity {
         preparation.addView(language, new LinearLayout.LayoutParams(-1, -2));
         checkButton = addButton(preparation, "언어 지원 확인", false, this::checkSupport);
         downloadButton = addButton(preparation, "온디바이스 언어 모델 다운로드 요청", false, this::downloadModel);
-        addText(preparation, "모델은 Android 시스템 인식 서비스가 설치·관리합니다. Android 13 이상에서만 다운로드 요청을 지원합니다.", 13, false);
+        NativeDesignSystem.helpDisclosure(preparation, "언어 모델 도움말",
+                "모델은 Android 시스템 인식 서비스가 설치·관리합니다. Android 13 이상에서만 다운로드 요청을 지원합니다.", density);
 
         LinearLayout capture = NativeDesignSystem.section(root, "02 / CAPTURE", "마이크 인식", density);
         startButton = addButton(capture, "마이크 인식 시작", true, this::requestStart);
@@ -118,7 +121,9 @@ public final class OnDeviceRecognitionActivity extends Activity {
         NativeDesignSystem.transcriptPanel(completed, density);
         saveButton = addButton(result, "완료 자막 저장 및 편집", true, this::save);
         saveButton.setEnabled(false);
-        addText(result, "말을 마친 후 다음 문장은 인식을 다시 시작하세요. 자막 시간은 마이크 호출 시점을 기준으로 계산된 추정값이며, 확정되지 않은 임시 문장은 저장되지 않습니다.", 13, false);
+        addText(result, "자막 시간은 추정값이며 확정되지 않은 임시 문장은 저장되지 않습니다.", 13, false);
+        NativeDesignSystem.helpDisclosure(result, "인식·저장 안내",
+                "말을 마친 후 다음 문장은 인식을 다시 시작하세요. 자막 시간은 마이크 호출 시점을 기준으로 계산된 추정값이며, 확정되지 않은 임시 문장은 저장되지 않습니다.", density);
         addButton(root, "닫기", false, this::closeRequested);
     }
 
@@ -221,6 +226,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
     private void startListening() {
         if (recognizer == null || recognizing || saving) return;
         recognizing = true;
+        NativeDesignSystem.setWorkflowStep(workflow, 1, getResources().getDisplayMetrics().density);
         startButton.setEnabled(false);
         stopButton.setEnabled(true);
         saveButton.setEnabled(false);
@@ -244,6 +250,8 @@ public final class OnDeviceRecognitionActivity extends Activity {
 
     private void endListening() {
         recognizing = false;
+        NativeDesignSystem.setWorkflowStep(workflow, draft.size() > 0 ? 2 : 0,
+                getResources().getDisplayMetrics().density);
         startButton.setEnabled(recognizer != null && !saving);
         stopButton.setEnabled(false);
         saveButton.setEnabled(draft.size() > 0 && !saving);
@@ -293,6 +301,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
     private void save() {
         if (recognizing || saving || draft.size() == 0) return;
         saving = true;
+        NativeDesignSystem.setWorkflowStep(workflow, 2, getResources().getDisplayMetrics().density);
         saveButton.setEnabled(false);
         startButton.setEnabled(false);
         showStatus("자막을 저장하고 있습니다…");

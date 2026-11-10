@@ -1,11 +1,14 @@
 package com.haebi.subtitle;
 
 import android.app.Activity;
+import android.app.UiAutomation;
 import android.graphics.Bitmap;
 import android.graphics.drawable.ColorDrawable;
 import android.view.View;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.test.core.app.ActivityScenario;
@@ -31,6 +34,16 @@ public final class EditorialNativeScreensDeviceTest {
                 assertSection(root, "01 / PREPARE");
                 assertSection(root, "02 / CAPTURE");
                 assertSection(root, "03 / RESULT");
+                assertWorkflow(root, "언어", "인식", "저장");
+                assertHelp(root, "언어 모델 도움말");
+                assertHelp(root, "인식·저장 안내");
+                LinearLayout steps = (LinearLayout) findTag(root, "editorial-native-workflow");
+                NativeDesignSystem.setWorkflowStep(steps, 1,
+                        activity.getResources().getDisplayMetrics().density);
+                assertTrue(((TextView) steps.getChildAt(1)).getContentDescription().toString()
+                        .contains("현재 단계"));
+                NativeDesignSystem.setWorkflowStep(steps, 0,
+                        activity.getResources().getDisplayMetrics().density);
                 assertText(root, "OpenAI API 키나 API 이용 요금은 필요하지 않습니다");
                 assertButton(root, "마이크 인식 시작");
                 Button stop = button(root, "인식 종료");
@@ -53,6 +66,8 @@ public final class EditorialNativeScreensDeviceTest {
                 assertSection(root, "01 / CONNECTION");
                 assertSection(root, "02 / LIVE");
                 assertSection(root, "03 / RESULT");
+                assertWorkflow(root, "연결", "인식", "저장");
+                assertHelp(root, "시간·전송 안내");
                 assertText(root, "GPT 실시간 마이크 자막");
                 assertText(root, "API 이용 요금");
                 assertButton(root, "인식 종료 및 결과 확정");
@@ -73,6 +88,8 @@ public final class EditorialNativeScreensDeviceTest {
                 assertSection(root, "01 / MODEL");
                 assertSection(root, "02 / FILE");
                 assertSection(root, "03 / TRANSCRIPTION");
+                assertWorkflow(root, "모델", "파일", "전사");
+                assertHelp(root, "인식 품질·라이선스");
                 assertText(root, "인터넷과 OpenAI API 키 없이");
                 assertText(root, "오프라인 인식은 최대 60분");
                 assertButton(root, "선택 모델 다운로드·설치");
@@ -83,6 +100,41 @@ public final class EditorialNativeScreensDeviceTest {
             });
             screenshot("vosk-local-" + theme[0]);
         }
+    }
+
+    private static void assertWorkflow(View root, String first, String second, String third) {
+        View found = findTag(root, "editorial-native-workflow");
+        assertNotNull("Native workflow summary", found);
+        assertTrue(found instanceof LinearLayout);
+        LinearLayout row = (LinearLayout) found;
+        assertEquals(3, row.getChildCount());
+        String[] labels = {first, second, third};
+        int activeCount = 0;
+        for (int index = 0; index < labels.length; index++) {
+            View item = findTag(row, "editorial-native-step-" + index);
+            assertTrue(item instanceof TextView);
+            TextView label = (TextView) item;
+            assertTrue(label.getText().toString().contains(labels[index]));
+            assertNotNull(label.getBackground());
+            assertEquals(0f, label.getElevation(), 0f);
+            assertTrue("Stage status must be announced", label.getContentDescription().length() > 0);
+            if (label.getContentDescription().toString().contains("현재 단계")) activeCount++;
+        }
+        assertEquals("Exactly one current step", 1, activeCount);
+    }
+
+    private static void assertHelp(View root, String label) {
+        View details = findTag(root, "editorial-native-help:" + label);
+        assertNotNull("Disclosure content: " + label, details);
+        assertEquals(View.GONE, details.getVisibility());
+        Button toggle = button(root, label + " 보기");
+        assertNotNull("Disclosure toggle: " + label, toggle);
+        toggle.performClick();
+        assertEquals(View.VISIBLE, details.getVisibility());
+        assertTrue(toggle.getText().toString().contains("접기"));
+        toggle.performClick();
+        assertEquals(View.GONE, details.getVisibility());
+        assertTrue(toggle.getText().toString().contains("보기"));
     }
 
     private static void verifyBackground(Activity activity, View root) {
@@ -158,8 +210,44 @@ public final class EditorialNativeScreensDeviceTest {
         return null;
     }
 
+    /**
+     * Android emulator system UI can show an unrelated Pixel Launcher ANR over a healthy
+     * activity. Dismiss only that exact system dialog; never dismiss or conceal app ANRs.
+     */
+    private static void dismissLauncherAnrIfPresent() throws Exception {
+        UiAutomation automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
+        for (int attempt = 0; attempt < 3; attempt++) {
+            AccessibilityNodeInfo root = automation.getRootInActiveWindow();
+            if (!containsAccessibleText(root, "Pixel Launcher isn't responding")) return;
+            AccessibilityNodeInfo dismiss = findAccessibleText(root, "Close app");
+            while (dismiss != null && !dismiss.isClickable()) dismiss = dismiss.getParent();
+            assertNotNull("Unrelated Pixel Launcher ANR needs an explicit close button", dismiss);
+            assertTrue("Cannot close unrelated Pixel Launcher ANR", dismiss.performAction(
+                    AccessibilityNodeInfo.ACTION_CLICK));
+            Thread.sleep(550);
+        }
+        assertFalse("Pixel Launcher ANR obscures the native screenshot",
+                containsAccessibleText(automation.getRootInActiveWindow(), "Pixel Launcher isn't responding"));
+    }
+
+    private static boolean containsAccessibleText(AccessibilityNodeInfo node, String text) {
+        return findAccessibleText(node, text) != null;
+    }
+
+    private static AccessibilityNodeInfo findAccessibleText(AccessibilityNodeInfo node, String text) {
+        if (node == null) return null;
+        CharSequence value = node.getText();
+        if (value != null && value.toString().contains(text)) return node;
+        for (int index = 0; index < node.getChildCount(); index++) {
+            AccessibilityNodeInfo found = findAccessibleText(node.getChild(index), text);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
     private static void screenshot(String title) throws Exception {
         Thread.sleep(300);
+        dismissLauncherAnrIfPresent();
         Bitmap bitmap = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
         assertNotNull("Native Android screenshot: " + title, bitmap);
         File folder = ApplicationProvider.getApplicationContext().getExternalFilesDir("editorial-3c");

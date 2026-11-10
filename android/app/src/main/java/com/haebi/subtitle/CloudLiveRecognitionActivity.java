@@ -31,6 +31,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
     private final OnDeviceCueDraft draft = new OnDeviceCueDraft();
     private LiveTranscriptionClient client;
     private Spinner language;
+    private LinearLayout workflow;
     private Button start, stop, save;
     private TextView status, partial, completed, disclosure;
     private final StringBuilder liveText = new StringBuilder();
@@ -94,6 +95,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
         float density = getResources().getDisplayMetrics().density;
         NativeDesignSystem.header(root, "CLOUD / REALTIME", "GPT 실시간 마이크 자막",
                 "사용자가 인식을 시작한 동안에만 마이크 음성을 선택한 연결을 통해 전송합니다. 비용과 연결 대상을 먼저 확인하세요.", density);
+        workflow = NativeDesignSystem.workflow(root, density, "연결", "인식", "저장");
 
         LinearLayout connection = NativeDesignSystem.section(root, "01 / CONNECTION", "연결·인식 언어", density);
         disclosure = label(connection,
@@ -123,7 +125,9 @@ public final class CloudLiveRecognitionActivity extends Activity {
         NativeDesignSystem.transcriptPanel(completed, density);
         save = button(result, "자막 작업 기록 저장 및 편집", true, this::saveCues);
         save.setEnabled(false);
-        label(result, "한 번에 최대 5분 동안 인식할 수 있습니다. 말하는 도중 텍스트가 표시되고 종료 후 최종 문장이 저장됩니다. 정확한 단어별 시간은 제공하지 않아 구간 시간은 추정값입니다. 화면을 벗어나면 마이크 전송을 중지합니다.", 13, false);
+        label(result, "최대 5분 인식할 수 있으며 자막 구간 시간은 추정값입니다.", 13, false);
+        NativeDesignSystem.helpDisclosure(result, "시간·전송 안내",
+                "한 번에 최대 5분 동안 인식할 수 있습니다. 말하는 도중 텍스트가 표시되고 종료 후 최종 문장이 저장됩니다. 정확한 단어별 시간은 제공하지 않아 구간 시간은 추정값입니다. 화면을 벗어나면 마이크 전송을 중지합니다.", density);
         button(root, "닫기", false, this::closeRequested);
     }
 
@@ -168,6 +172,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
         stop.setEnabled(true);
         save.setEnabled(false);
         language.setEnabled(false);
+        NativeDesignSystem.setWorkflowStep(workflow, 1, getResources().getDisplayMetrics().density);
         client = new LiveTranscriptionClient(chosenLanguage(), new LiveTranscriptionClient.Listener() {
             @Override public void onStatus(String value) { if (!destroyed) status.setText(value); }
             @Override public void onDelta(String value) {
@@ -222,6 +227,8 @@ public final class CloudLiveRecognitionActivity extends Activity {
     }
 
     private void resetActions() {
+        NativeDesignSystem.setWorkflowStep(workflow, draft.size() > 0 ? 2 : 0,
+                getResources().getDisplayMetrics().density);
         start.setEnabled(!saving);
         stop.setEnabled(false);
         save.setEnabled(!saving && draft.size() > 0);
@@ -231,6 +238,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
     private void saveCues() {
         if (client != null || saving || draft.size() == 0) return;
         saving = true;
+        NativeDesignSystem.setWorkflowStep(workflow, 2, getResources().getDisplayMetrics().density);
         start.setEnabled(false);
         save.setEnabled(false);
         status.setText("자막 작업 기록을 저장하는 중…");
