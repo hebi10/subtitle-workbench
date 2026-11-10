@@ -1308,6 +1308,7 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
   white-space: normal;
 }
 #jobsView .job-actions button.primary { font-weight: 700; }
+#jobsView .job-actions > :last-child:nth-child(odd) { grid-column: 1 / -1; }
 #jobsView .job-inspection { margin-top: var(--es2-space-3); }
 #jobsView .job-inspection > summary {
   min-height: 44px;
@@ -1322,6 +1323,7 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
 #jobsView .job.prepared-link .job-card-heading { gap: var(--es2-space-2); }
 @media (min-width: 620px) {
   #jobsView .job-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #jobsView .job-actions > :last-child:nth-child(odd) { grid-column: auto; }
 }
 @media (max-width: 360px) {
   #jobsView .section-heading { align-items: start; }
