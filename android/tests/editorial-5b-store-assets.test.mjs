@@ -48,10 +48,13 @@ test('5-B trusted Play release route cannot sign a new AAB in screenshot-only mo
   assert.match(workflow, /if: needs\.source\.outputs\.mode != 'listing'\n\s*env:\n\s*ANDROID_UPLOAD_KEYSTORE_B64/);
   for (const step of ['Install SDK 36', 'Build signed release with the allocated versionCode',
     'Verify AAB signature against original upload certificate', 'Preserve signed AAB']) {
-    assert.ok(workflow.includes('name: ' + step + "\n        if: needs.source.outputs.mode != 'listing'"),
+    assert.ok(workflow.includes('name: ' + step + "\n        if: needs.source.outputs.mode == 'build' || needs.source.outputs.mode == 'deploy'"),
       step + ' must be skipped for screenshot registration');
   }
   assert.match(workflow, /apply --phone-only --send-for-review --report output\/play-listing-5b\.json/);
   assert.match(workflow, /echo 'mode=deploy' >> "\$GITHUB_OUTPUT"/);
+  assert.match(workflow, /echo 'mode=promote' >> "\$GITHUB_OUTPUT"/);
+  assert.match(workflow, /echo 'promotion_code=21' >> "\$GITHUB_OUTPUT"/);
+  assert.match(workflow, /echo 'mode=check' >> "\$GITHUB_OUTPUT"/);
   assert.match(workflow, /check\|build\|deploy\)/);
 });
