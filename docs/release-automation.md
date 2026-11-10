@@ -30,6 +30,14 @@
 
 예: `release: subtitle 0.10.1 [deploy-closed]`라는 **main 병합 커밋 제목**. 별도의 GitHub Actions 워크플로, WIF 신뢰 주체, 서명키를 만들지 않는다. 이미 업로드된 버전의 중복 업로드나 실패 시 무검증 재시도는 허용하지 않는다. API 커밋 성공은 스토어 심사·테스터 설치 가능 상태와 별개다.
 
+## 기존 버전의 비공개 승격 오류 복구
+
+2026-11-09 [Play internal release #42591561473](https://github.com/hebi10/subtitle-workbench/actions/runs/42591561473)은 `internal`의 `versionCode=21` 업로드와 API readback에 성공했지만, `alpha` 승격 시 HTTP 400으로 실패했다. 오류 단계의 상세 원인은 기존 로깅에서 표시되지 않았다.
+
+재빌드 및 중복 업로드를 방지하기 위해 이미 WIF 승인이 완료된 **Play internal release**에서 수동 `mode=promote`, `version_code=21`을 제공한다. 이 경로는 원본 서명키 복원·새 version 할당·AAB 빌드·bundle upload·internal PUT을 실행하지 않으며, 완료된 `internal` 릴리스의 정확한 코드만 `alpha`에 승격한다. 별도 `Play closed promotion` 워크플로는 WIF 허용 조건이 다를 수 있으므로 오류 복구에는 기존 신뢰된 경로를 사용한다.
+
+`main` 병합 커밋 제목에 `[skip-play]`를 포함하면 자동 Play 내부 배포는 수행하지 않고 전체 CI/배포 게이트 검사만 실행한다. **오류 진단 PR 병합 시 이 마커를 사용해야 하며**, 기존 코드 21의 출시 상태를 확인하지 않고 이전 `deploy` 전체를 다시 실행하지 않는다. 재승격 실패 시 새로 출력되는 `create_edit`/`validate_edit`/`commit_edit` 등의 단계와 안전한 오류 식별자를 바탕으로 Play Console 심사·설정 문제를 조사한다. 토큰·API 상세 메시지는 로그에 공개하지 않는다.
+
 ## 인증 설정
 
 모든 Play 편집 워크플로는 `google-play` 환경을 사용한다. 이 환경의 배포 허용 브랜치를 `main`으로 제한한다. 저장소 및 환경의 변수·Secrets에는 아래 이름을 사용한다.
