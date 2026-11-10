@@ -45,7 +45,7 @@ test('5-B trusted Play release route cannot sign a new AAB in screenshot-only mo
   const workflow = await readFile(join(root, '.github/workflows/play-internal.yml'), 'utf8');
   assert.match(workflow, /title.*store: Editorial Studio 5-B trusted screenshot registration/);
   assert.match(workflow, /echo 'mode=listing' >> "\$GITHUB_OUTPUT"/);
-  assert.match(workflow, /if: needs\.source\.outputs\.mode != 'listing'\n\s*env:\n\s*ANDROID_UPLOAD_KEYSTORE_B64/);
+  assert.match(workflow, /if: needs\.source\.outputs\.mode == 'build' \|\| needs\.source\.outputs\.mode == 'deploy'\n\s*env:\n\s*ANDROID_UPLOAD_KEYSTORE_B64/);
   for (const step of ['Install SDK 36', 'Build signed release with the allocated versionCode',
     'Verify AAB signature against original upload certificate', 'Preserve signed AAB']) {
     assert.ok(workflow.includes('name: ' + step + "\n        if: needs.source.outputs.mode == 'build' || needs.source.outputs.mode == 'deploy'"),
