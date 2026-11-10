@@ -602,7 +602,7 @@ function renderResults() {
   const sample = history.present.slice(0, 3);
   $('resultCueDetails').hidden = loading || !sample.length;
   $('resultCueDetails').querySelector('summary').textContent = `자막 일부 보기 (${sample.length} / ${history.present.length}개)`;
-  const previewKey = JSON.stringify(sample.map((cue) => [cue.start, cue.end, cue.original, cue.translated, cue.speaker]));
+  const previewKey = JSON.stringify([current.id, sample.map((cue) => [cue.start, cue.end, cue.original, cue.translated, cue.speaker, cue.speakerScope])]);
   if (preview.dataset.renderKey !== previewKey) {
     const rows = sample.map((cue, index) => {
       const row = el('div', undefined, 'result-cue-row');
