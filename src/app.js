@@ -21,6 +21,7 @@ import { createCredentialController } from './credential-controller.js';
 import { getStartRequirement } from './credential-ui-state.js';
 import {
   canStartSubtitleJob,
+  getExportSummary,
   getGeneratePreparationStatus,
   previewLimitLabel,
   visibleSubtitlePreview,
@@ -95,6 +96,15 @@ const refs = {
   editPlayerMount: document.querySelector('#editPlayerMount'),
   jobResults: document.querySelector('#jobResults'),
   jobResultSelect: document.querySelector('#jobResultSelect'),
+  exportResultSelect: document.querySelector('#exportResultSelect'),
+  exportFileName: document.querySelector('#exportFileName'),
+  exportResultStatus: document.querySelector('#exportResultStatus'),
+  exportLanguage: document.querySelector('#exportLanguage'),
+  exportSyncSummary: document.querySelector('#exportSyncSummary'),
+  exportDownloadStatus: document.querySelector('#exportDownloadStatus'),
+  exportBuildError: document.querySelector('#exportBuildError'),
+  exportBuildErrorText: document.querySelector('#exportBuildErrorText'),
+  retryExportButton: document.querySelector('#retryExportButton'),
   batchSummary: document.querySelector('#batchSummary'),
   undoEdit: document.querySelector('#undoEdit'),
   redoEdit: document.querySelector('#redoEdit'),
@@ -284,6 +294,13 @@ function bindEvents() {
     field.addEventListener('input', renderEditor);
   });
   refs.jobResultSelect.addEventListener('change', () => restoreResult(refs.jobResultSelect.value));
+  refs.exportResultSelect.addEventListener('change', () => restoreResult(refs.exportResultSelect.value));
+  refs.retryExportButton.addEventListener('click', refreshDownloadsForCurrentOffset);
+  refs.downloads.addEventListener('click', (event) => {
+    const link = event.target.closest('a.download-link[download]');
+    if (!link) return;
+    refs.exportDownloadStatus.textContent = `${link.download} 다운로드 요청됨 · 실제 저장 여부는 브라우저 다운로드 내역에서 확인하세요.`;
+  });
   refs.undoEdit.addEventListener('click', () => restoreEdit('undo'));
   refs.redoEdit.addEventListener('click', () => restoreEdit('redo'));
   refs.translationEnabled.addEventListener('change', updateTranslationControls);
@@ -988,14 +1005,20 @@ function renderResultSelector() {
   placeholder.value = '';
   placeholder.textContent = '확인할 결과 선택';
   placeholder.disabled = true;
-  refs.jobResultSelect.replaceChildren(placeholder, ...state.results.map((entry, index) => {
+  const options = state.results.map((entry, index) => {
     const option = document.createElement('option');
     option.value = entry.id;
     option.textContent = `${index + 1}. ${entry.fileName} · 자막 ${entry.subtitleCount}개${entry.translationPending ? ' · 번역 대기' : ''}`;
     return option;
-  }));
+  });
+  refs.jobResultSelect.replaceChildren(placeholder, ...options);
+  const exportPlaceholder = placeholder.cloneNode(true);
+  exportPlaceholder.textContent = '선택할 작업 없음';
+  refs.exportResultSelect.replaceChildren(exportPlaceholder, ...options.map((option) => option.cloneNode(true)));
   refs.jobResultSelect.value = state.activeResultId ?? '';
+  refs.exportResultSelect.value = state.activeResultId ?? '';
   refs.jobResultSelect.disabled = state.isBusy;
+  refs.exportResultSelect.disabled = state.isBusy || state.results.length === 0;
 }
 
 async function restoreResult(id) {
@@ -1617,17 +1640,45 @@ function renderSubtitlePlayer() {
   refs.subtitleSecondary.hidden = true;
 }
 
+function renderExportOverview() {
+  const entry = state.results.find((item) => item.id === state.activeResultId);
+  const summary = getExportSummary({
+    fileName: entry?.fileName || state.outputFileName,
+    subtitleCount: state.subtitles.length,
+    failedCount: getTranslationFailures(state.subtitles).length,
+    language: entry?.outputLanguage,
+    offsetSeconds: state.subtitleOffsetSeconds,
+  });
+  refs.exportFileName.textContent = summary.fileName;
+  refs.exportResultStatus.textContent = summary.status.label;
+  refs.exportResultStatus.dataset.state = summary.status.state;
+  refs.exportLanguage.textContent = summary.language;
+  refs.exportSyncSummary.textContent = summary.sync;
+}
+
 function renderDownloads(subtitles) {
   state.downloadUrls.forEach((url) => URL.revokeObjectURL(url));
   state.downloadUrls = [];
+  refs.exportBuildError.hidden = true;
+  refs.exportDownloadStatus.textContent = '';
 
-  const files = createExportFiles(subtitles);
-
-  refs.downloads.replaceChildren(
-    ...files.map((file) => createDownloadLink(file)),
-    createDownloadSyncMeta(),
-  );
+  try {
+    const files = createExportFiles(subtitles);
+    refs.downloads.replaceChildren(
+      ...files.map((file) => createDownloadLink(file)),
+      createDownloadSyncMeta(),
+    );
+    refs.exportDownloadStatus.textContent = '파일 준비 완료 · 다운로드 버튼을 눌러 기기에 저장하세요.';
+  } catch {
+    state.downloadUrls.forEach((url) => URL.revokeObjectURL(url));
+    state.downloadUrls = [];
+    refs.downloads.replaceChildren(...createDownloadPlaceholders(), createDownloadSyncMeta());
+    refs.exportBuildError.hidden = false;
+    refs.exportBuildErrorText.textContent = '자막 파일을 준비하지 못했습니다. 자막과 수정 내용은 유지됩니다. 파일을 다시 준비해 주세요.';
+    refs.exportDownloadStatus.textContent = '파일 준비 오류 · 아직 다운로드를 요청할 수 없습니다.';
+  }
   renderTranslationFailureSummary(subtitles);
+  renderExportOverview();
 }
 
 function createExportFiles(subtitles) {
@@ -1643,22 +1694,25 @@ function createExportFiles(subtitles) {
   return files;
 }
 
+function createDownloadPlaceholders() {
+  return ['SRT 다운로드', 'VTT 다운로드', 'JSON 다운로드'].map((label) => {
+    const button = document.createElement('button');
+    button.className = 'download-placeholder';
+    button.type = 'button';
+    button.disabled = true;
+    button.textContent = label;
+    return button;
+  });
+}
+
 function renderDownloadPlaceholders() {
   state.downloadUrls.forEach((url) => URL.revokeObjectURL(url));
   state.downloadUrls = [];
-
-  refs.downloads.replaceChildren(
-    ...['SRT 다운로드', 'VTT 다운로드', 'JSON 다운로드'].map((label) => {
-      const button = document.createElement('button');
-      button.className = 'download-placeholder';
-      button.type = 'button';
-      button.disabled = true;
-      button.textContent = label;
-      return button;
-    }),
-    createDownloadSyncMeta(),
-  );
+  refs.downloads.replaceChildren(...createDownloadPlaceholders(), createDownloadSyncMeta());
+  refs.exportBuildError.hidden = true;
+  refs.exportDownloadStatus.textContent = '저장할 자막이 생기면 다운로드 버튼이 활성화됩니다.';
   renderTranslationFailureSummary([]);
+  renderExportOverview();
 }
 
 function createDownloadLink(file) {
@@ -1666,6 +1720,8 @@ function createDownloadLink(file) {
   state.downloadUrls.push(url);
   const link = document.createElement('a');
   link.className = 'download-link';
+  link.classList.add(file.name.toLowerCase().endsWith('.srt') ? 'download-link--primary' :
+    file.name.endsWith('.translation-failures.json') ? 'download-link--log' : 'download-link--secondary');
   link.href = url;
   link.download = file.name;
   link.role = 'button';
@@ -1800,6 +1856,7 @@ function setBusy(isBusy) {
     document.getElementById(id).disabled = isBusy;
   });
   refs.jobResultSelect.disabled = isBusy;
+  refs.exportResultSelect.disabled = isBusy || state.results.length === 0;
   refs.dropzone.setAttribute('aria-disabled', String(isBusy));
   document.querySelectorAll('[data-sync-adjust], #subtitleSyncReset').forEach((button) => {
     button.disabled = isBusy;
