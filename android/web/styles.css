@@ -1204,3 +1204,129 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
   #videoView .offline-source .local-offline-entry > summary { padding: var(--es2-space-2); }
   #videoView .offline-source .local-offline-entry > div { padding: 0 var(--es2-space-2) var(--es2-space-2); }
 }
+
+
+/* Editorial Studio 2.0 · 2-B jobs: real status, one clear next action, compact details. */
+#jobsView .jobs-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--es2-space-2);
+  align-items: center;
+}
+#jobsView .jobs-heading-actions button {
+  min-height: 48px;
+  padding: var(--es2-space-2);
+  font-size: 13px;
+  white-space: normal;
+}
+#jobsView .jobs-overview {
+  background: var(--es-surface-alt);
+  border: 1px solid var(--es-border);
+  padding: var(--es2-space-3);
+  margin-bottom: var(--es2-space-3);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+#jobsView .job-list { gap: var(--es2-space-3); }
+#jobsView .job {
+  background: var(--es-surface);
+  border: 1px solid var(--es-border);
+  padding: var(--es2-space-3) var(--es2-space-4);
+  min-width: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+#jobsView .job-card-heading { gap: var(--es2-space-2); }
+#jobsView .job-card-heading h3 {
+  font-size: 17px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+#jobsView .job-card-heading .job-state {
+  gap: var(--es2-space-2);
+  align-items: center;
+}
+#jobsView .job-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: var(--es2-space-1) var(--es2-space-2);
+  border: 1px solid var(--es-border);
+  background: var(--es-surface-alt);
+  color: var(--es-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+#jobsView .job-meta-text {
+  color: var(--es-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+#jobsView .job-progress-label {
+  margin: var(--es2-space-3) 0 var(--es2-space-2);
+  font-size: 13px;
+  align-items: baseline;
+}
+#jobsView .job-progress-label strong { font-size: 17px; }
+#jobsView .job progress { height: 8px; width: 100%; }
+#jobsView .job-processed-note {
+  color: var(--es-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+#jobsView .job-live-stage {
+  background: var(--es-surface-alt);
+  border: 1px solid var(--es-border);
+  padding: var(--es2-space-2) var(--es2-space-3);
+  overflow-wrap: anywhere;
+}
+#jobsView .job-error,
+#jobsView .job-destination-warning:not([hidden]) {
+  background: var(--es-status-danger);
+  border: 1px solid var(--es-status-danger-border);
+  padding: var(--es2-space-3);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+#jobsView .job-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--es2-space-2);
+  margin-top: var(--es2-space-3);
+}
+#jobsView .job-actions button {
+  min-height: 48px;
+  width: 100%;
+  min-width: 0;
+  padding: var(--es2-space-2);
+  font-size: 13px;
+  line-height: 1.35;
+  word-break: keep-all;
+  white-space: normal;
+}
+#jobsView .job-actions button.primary { font-weight: 700; }
+#jobsView .job-inspection { margin-top: var(--es2-space-3); }
+#jobsView .job-inspection > summary {
+  min-height: 44px;
+  padding: var(--es2-space-2);
+  color: var(--es-muted);
+  font-size: 13px;
+}
+#jobsView .job-details {
+  background: var(--es-surface-alt);
+  border: 1px solid var(--es-border);
+}
+#jobsView .job.prepared-link .job-card-heading { gap: var(--es2-space-2); }
+@media (min-width: 620px) {
+  #jobsView .job-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 360px) {
+  #jobsView .section-heading { align-items: start; }
+  #jobsView .jobs-heading-actions { gap: var(--es2-space-1); }
+  #jobsView .jobs-heading-actions button { font-size: 12px; padding: var(--es2-space-2); }
+  #jobsView .job { padding: var(--es2-space-3); }
+  #jobsView .job-actions button { font-size: 12px; }
+}
