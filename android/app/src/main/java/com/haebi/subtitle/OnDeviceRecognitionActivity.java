@@ -103,7 +103,8 @@ public final class OnDeviceRecognitionActivity extends Activity {
         preparation.addView(language, new LinearLayout.LayoutParams(-1, -2));
         checkButton = addButton(preparation, "언어 지원 확인", false, this::checkSupport);
         downloadButton = addButton(preparation, "온디바이스 언어 모델 다운로드 요청", false, this::downloadModel);
-        addText(preparation, "모델은 Android 시스템 인식 서비스가 설치·관리합니다. Android 13 이상에서만 다운로드 요청을 지원합니다.", 13, false);
+        NativeDesignSystem.helpDisclosure(preparation, "언어 모델 도움말",
+                "모델은 Android 시스템 인식 서비스가 설치·관리합니다. Android 13 이상에서만 다운로드 요청을 지원합니다.", density);
 
         LinearLayout capture = NativeDesignSystem.section(root, "02 / CAPTURE", "마이크 인식", density);
         startButton = addButton(capture, "마이크 인식 시작", true, this::requestStart);
@@ -120,7 +121,9 @@ public final class OnDeviceRecognitionActivity extends Activity {
         NativeDesignSystem.transcriptPanel(completed, density);
         saveButton = addButton(result, "완료 자막 저장 및 편집", true, this::save);
         saveButton.setEnabled(false);
-        addText(result, "말을 마친 후 다음 문장은 인식을 다시 시작하세요. 자막 시간은 마이크 호출 시점을 기준으로 계산된 추정값이며, 확정되지 않은 임시 문장은 저장되지 않습니다.", 13, false);
+        addText(result, "자막 시간은 추정값이며 확정되지 않은 임시 문장은 저장되지 않습니다.", 13, false);
+        NativeDesignSystem.helpDisclosure(result, "인식·저장 안내",
+                "말을 마친 후 다음 문장은 인식을 다시 시작하세요. 자막 시간은 마이크 호출 시점을 기준으로 계산된 추정값이며, 확정되지 않은 임시 문장은 저장되지 않습니다.", density);
         addButton(root, "닫기", false, this::closeRequested);
     }
 
