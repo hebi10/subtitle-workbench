@@ -1191,3 +1191,16 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
   #videoView .file-source .start-actions { grid-template-columns: minmax(0, 1fr); }
   #videoView .file-source .connection-summary button { flex: 1 1 100%; }
 }
+
+
+@media (max-width: 420px) {
+  #videoView .microphone-source > .source-description,
+  #videoView .offline-source > .source-description { display: none; }
+  #videoView .es2-input-primary { padding: var(--es2-space-3); }
+  #videoView .file-source .connection-summary { padding: var(--es2-space-2); margin: var(--es2-space-2) 0; }
+  #videoView .es2-input-options { gap: var(--es2-space-2); margin-top: var(--es2-space-2); }
+  #videoView .microphone-source .local-caption-entry { padding: var(--es2-space-2); }
+  #videoView .offline-source { padding: var(--es2-space-2); }
+  #videoView .offline-source .local-offline-entry > summary { padding: var(--es2-space-2); }
+  #videoView .offline-source .local-offline-entry > div { padding: 0 var(--es2-space-2) var(--es2-space-2); }
+}
