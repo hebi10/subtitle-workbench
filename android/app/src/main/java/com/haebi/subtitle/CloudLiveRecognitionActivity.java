@@ -95,7 +95,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
         float density = getResources().getDisplayMetrics().density;
         NativeDesignSystem.header(root, "CLOUD / REALTIME", "GPT 실시간 마이크 자막",
                 "사용자가 인식을 시작한 동안에만 마이크 음성을 선택한 연결을 통해 전송합니다. 비용과 연결 대상을 먼저 확인하세요.", density);
-        workflow = NativeDesignSystem.workflow(root, density, "연결 확인", "실시간 인식", "자막 저장");
+        workflow = NativeDesignSystem.workflow(root, density, "연결", "인식", "저장");
 
         LinearLayout connection = NativeDesignSystem.section(root, "01 / CONNECTION", "연결·인식 언어", density);
         disclosure = label(connection,
