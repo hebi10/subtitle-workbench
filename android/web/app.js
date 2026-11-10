@@ -272,7 +272,10 @@ function renderJobs() {
     const settings = job.settings || {};
     const detail = job.progress || {};
     const durationMs = nonnegative(job.durationMs);
-    state.append(el('span', ready ? '준비됨' : statusNames[job.status] || job.status), el('span', `${formatDuration(durationMs)} · ${total}구간`));
+    const badge = el('span', ready ? '준비됨' : statusNames[job.status] || job.status, 'job-status-badge');
+    badge.dataset.phase = ready ? 'ready' : job.status;
+    const meta = el('span', `${formatDuration(durationMs)} · ${total}구간`, 'job-meta-text');
+    state.append(badge, meta);
     cardHeading.append(state);
     article.append(cardHeading);
     const measured = typeof detail.percent === 'number' && Number.isFinite(detail.percent);
@@ -284,7 +287,7 @@ function renderJobs() {
       label.append(el('span', measured ? '저장된 결과 기준' : '저장 완료 구간 기준'), el('strong', `${Number(percent.toFixed(1))}%`));
       article.append(label, progress);
       const processedMs = nonnegative(detail.processedMs);
-      article.append(el('p', typeof detail.processedMs === 'number' ? `처리 완료 ${formatDuration(processedMs)} / ${formatDuration(durationMs)}` : `${done} / ${total}구간 저장 완료`, 'hint'));
+      article.append(el('p', typeof detail.processedMs === 'number' ? `처리 완료 ${formatDuration(processedMs)} / ${formatDuration(durationMs)}` : `${done} / ${total}구간 저장 완료`, 'job-processed-note hint'));
     }
     const details = el('dl', undefined, 'job-details');
     const row = (label, value) => { const line = el('div'); line.append(el('dt', label), el('dd', value)); details.append(line); };
@@ -304,7 +307,7 @@ function renderJobs() {
     const inspection = el('details', undefined, 'job-inspection');
     inspection.append(el('summary', ready ? '처리 설정 · 비용 안내' : '처리 상세'), details);
     inspection.open = Boolean(old?.querySelector('.job-inspection')?.open);
-    if (job.stage && job.status === 'running') article.append(el('p', detail.message || stageLabel(job.stage), 'hint'));
+    if (job.stage && job.status === 'running') article.append(el('p', detail.message || stageLabel(job.stage), 'job-live-stage hint'));
     if (ready) {
       article.append(el('p', settingsSummary(settings), 'prepared-summary hint'));
       article.append(el('p', jobTransmissionNotice(job), 'job-ready-note'));
@@ -336,18 +339,26 @@ function renderJobs() {
         actions.append(button('기록 삭제', () => { pendingDeletionId = job.id; renderJobs(); }));
       }
     }
-    if (['running', 'queued'].includes(job.status)) actions.append(actionIcon(button('일시정지', () => runJobAction(job.id, async () => { await nativeCall('pause', { jobId: job.id }); await refresh(); }), jobActionsInFlight.has(job.id)), 'stop'));
+    if (['running', 'queued'].includes(job.status)) {
+      const pause = button('일시정지', () => runJobAction(job.id, async () => { await nativeCall('pause', { jobId: job.id }); await refresh(); }), jobActionsInFlight.has(job.id));
+      pause.classList.add('primary');
+      actions.append(actionIcon(pause, 'stop'));
+    }
     if (['paused', 'error'].includes(job.status)) {
       const start = button(ready ? '생성 시작' : '이어하기', () => resumeJob(job.id), !connection.hasKey || !sameDestination || jobActionsInFlight.has(job.id));
       start.dataset.needsKey = 'true';
-      if (ready || job.status === 'paused') start.classList.add('primary');
+      if (ready || job.status === 'paused' || (job.status === 'error' && connection.hasKey && sameDestination)) start.classList.add('primary');
       actions.append(actionIcon(start, 'play'));
       const selectedModel = savedSettings.translationModel;
       if (!ready && settings.translate !== false && settings.translationModel && selectedModel !== settings.translationModel) {
         inspection.append(el('p', `저장된 모델: ${selectedModel}. 이 모델로 이어하면 남은 번역에만 적용됩니다.`, 'hint job-model-note'));
         inspection.append(button('현재 모델로 이어하기', () => resumeJob(job.id, selectedModel), !connection.hasKey || !sameDestination || jobActionsInFlight.has(job.id)));
       }
-      if (!connection.hasKey || !sameDestination || job.status === 'error') actions.append(button('API 설정 확인', () => openSettings()));
+      if (!connection.hasKey || !sameDestination || job.status === 'error') {
+        const settingsButton = button('API 설정 확인', () => openSettings());
+        if (!connection.hasKey || !sameDestination) settingsButton.classList.add('primary');
+        actions.append(settingsButton);
+      }
     }
     article.append(actions);
     if (ready) article.append(preparationEditor(job));
@@ -366,7 +377,14 @@ function renderJobs() {
   const visibleNodes = visibleJobs.map((job) => {
     if (!isPrepared(job)) return jobCards.get(job.id);
     const summary = el('article', undefined, 'job prepared-link'); summary.dataset.jobId = job.id; summary.tabIndex = -1;
-    summary.append(el('h3', job.name), el('p', `준비됨 · ${formatDuration(job.durationMs)}`, 'hint'));
+    const heading = el('div', undefined, 'job-card-heading');
+    heading.append(el('h3', job.name));
+    const preparedState = el('div', undefined, 'job-state');
+    const preparedBadge = el('span', '준비됨', 'job-status-badge');
+    preparedBadge.dataset.phase = 'ready';
+    preparedState.append(preparedBadge, el('span', formatDuration(job.durationMs), 'job-meta-text'));
+    heading.append(preparedState);
+    summary.append(heading);
     const actions = el('div', undefined, 'job-actions'); actions.append(actionIcon(button('준비 확인', () => openPrepared(job.id)), 'play')); summary.append(actions);
     return summary;
   });
@@ -926,6 +944,7 @@ $('guideOffline').addEventListener('click', () => {
   $('openOfflineModel').scrollIntoView({ block: 'center' });
 });
 for (const [id, action] of Object.entries({
+  startNewJob: () => show('video'),
   navVideo: () => show('video'), navJobs: () => show('jobs'), navResults: () => show('results'), navSettings: () => show('settings'),
   openConnection: () => openSettings(), openDefaultSettings: () => openSettings('defaultSettings'), backToJobs: () => show('results'), refreshJobs: refresh,
   openResultJobs: () => show('jobs'), openResultVideo: () => show('video'),
