@@ -71,7 +71,7 @@ test('3-C export keeps selected job, file formats, partial failure, real downloa
 
     const firstLinks = page.locator('#downloads a[download]');
     assert.equal(await firstLinks.count(), 3);
-    assert.equal(await firstLinks.nth(0).getAttribute('class')?.then(value => value.includes('download-link--primary')), true);
+    assert.match(await firstLinks.nth(0).getAttribute('class'), /download-link--primary/);
     assert.match(await firstLinks.nth(0).getAttribute('download'), /first.*\.srt$/);
     assert.match(await firstLinks.nth(1).getAttribute('download'), /\.vtt$/);
     assert.match(await firstLinks.nth(2).getAttribute('download'), /\.subtitles\.json$/);
