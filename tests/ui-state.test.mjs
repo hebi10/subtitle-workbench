@@ -231,4 +231,8 @@ test('getExportSummary reports empty, ready, and partial translation accurately'
   assert.match(partial.status.label, /원문 보존/);
   assert.equal(partial.language, '원문');
   assert.equal(partial.sync, '-0.5초');
+  const pending = getExportSummary({ fileName: 'cancelled.mp4', subtitleCount: 2, failedCount: 0, translationPending: true });
+  assert.equal(pending.status.state, 'pending');
+  assert.match(pending.status.label, /번역 완료 전/);
+  assert.match(pending.status.label, /원문 보존/);
 });
