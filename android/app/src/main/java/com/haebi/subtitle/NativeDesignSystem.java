@@ -143,6 +143,55 @@ final class NativeDesignSystem {
         if (Build.VERSION.SDK_INT >= 28) heading.setAccessibilityHeading(true);
         return group;
     }
+    /**
+     * Native recognition activities share the same preparation → recognition → result
+     * hierarchy. These are informative labels, not action buttons.
+     */
+    static LinearLayout workflow(LinearLayout parent, float density, String first, String second, String third) {
+        LinearLayout row = new LinearLayout(parent.getContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setTag("editorial-native-workflow");
+        LinearLayout.LayoutParams placement = new LinearLayout.LayoutParams(-1, -2);
+        placement.topMargin = dp(density, 6);
+        placement.bottomMargin = dp(density, 8);
+        parent.addView(row, placement);
+        String[] labels = { first, second, third };
+        for (int index = 0; index < labels.length; index++) {
+            TextView stage = new TextView(parent.getContext());
+            stage.setText((index + 1) + " · " + labels[index]);
+            stage.setTag("editorial-native-step-" + index);
+            stage.setTextSize(12);
+            stage.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            stage.setGravity(android.view.Gravity.CENTER);
+            stage.setMinHeight(dp(density, 48));
+            stage.setPadding(dp(density, 6), dp(density, 8), dp(density, 6), dp(density, 8));
+            LinearLayout.LayoutParams item = new LinearLayout.LayoutParams(0, -2, 1f);
+            if (index > 0) item.leftMargin = dp(density, 6);
+            row.addView(stage, item);
+        }
+        setWorkflowStep(row, 0, density);
+        return row;
+    }
+
+    static void setWorkflowStep(LinearLayout workflow, int selected, float density) {
+        if (workflow == null) return;
+        Context context = workflow.getContext();
+        int current = Math.min(2, Math.max(0, selected));
+        for (int index = 0; index < workflow.getChildCount(); index++) {
+            View child = workflow.getChildAt(index);
+            if (!(child instanceof TextView)) continue;
+            TextView stage = (TextView) child;
+            boolean active = index == current;
+            boolean passed = index < current;
+            int fill = active ? ink(context) : passed ? soft(context) : paper(context);
+            stage.setBackground(surface(fill, line(context), density));
+            stage.setTextColor(active ? onAction(context) : passed ? ink(context) : muted(context));
+            stage.setContentDescription((index + 1) + "단계 " +
+                    stage.getText().toString().substring(4) + " · " +
+                    (active ? "현재 단계" : passed ? "지난 단계" : "다음 단계"));
+        }
+    }
+
     static void statusPanel(TextView view, float density) {
         Context context = view.getContext();
         surfaceText(view, density);
