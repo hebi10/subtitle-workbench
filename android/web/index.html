@@ -143,8 +143,19 @@
       <div class="section-heading"><div><p class="page-kicker">04 / PREFERENCES</p><h2 id="settingsHeading">설정</h2></div></div>
       <p class="page-description">연결 방식, 음성 인식·번역 기본값과 데이터 처리를 관리합니다.</p>
       <div class="settings-overview" aria-label="현재 설정 요약">
-        <div><p class="settings-overview-label">현재 연결</p><p id="settingsConnectionSummary" role="status">연결 상태 확인 중</p></div>
-        <div><p class="settings-overview-label">다음 영상</p><p id="settingsDefaultsOverview">기본 설정 확인 중</p></div>
+        <div class="settings-overview-card">
+          <p class="settings-overview-label">현재 연결</p>
+          <p id="settingsConnectionSummary" role="status">연결 상태 확인 중</p>
+          <p id="settingsConnectionHealth" class="settings-health-badge" data-state="checking">확인 중</p>
+          <p id="settingsConnectionHelp" class="settings-overview-help">저장한 연결을 확인하고 있습니다.</p>
+          <button id="settingsOpenConnection" class="settings-overview-action" type="button" aria-controls="apiSettings">연결 설정</button>
+        </div>
+        <div class="settings-overview-card">
+          <p class="settings-overview-label">다음 영상</p>
+          <p id="settingsDefaultsOverview">기본 설정 확인 중</p>
+          <p id="settingsDefaultsHelp" class="settings-overview-help">저장된 기본값이 새 영상에 적용됩니다.</p>
+          <button id="settingsOpenDefaults" class="settings-overview-action" type="button" aria-controls="defaultSettings">기본값 수정</button>
+        </div>
       </div>
       <details id="apiSettings" class="settings-group"><summary><span class="settings-index" aria-hidden="true">01 / CONNECTION</span>OpenAI API 연결<span id="apiSettingsSummary"></span></summary>
       <div class="settings-section"><label>클라우드 연결 방식<select id="cloudMode"><option value="personal">개인 OpenAI API</option><option value="relay">테스트 서버</option></select></label><p id="connectionModeStatus" class="hint" role="status"></p></div>
@@ -171,7 +182,14 @@
           <option value="gpt-4o-transcribe-diarize">화자 자동 구분 (2027년 종료 예정)</option>
         </select></label><p class="hint">GPT Transcribe는 약 30초 단위로 작업하지만 자막 시각은 추정값입니다. 화자 자동 구분 모델의 인물 ID는 작업 구간별로 다를 수 있습니다.</p><label>번역 모델<input id="translationModel" type="text" value="gpt-6-luna" spellcheck="false" autocapitalize="off" maxlength="100" required /></label><p class="hint">기본 번역 모델은 gpt-6-luna입니다. 계정에서 사용할 수 있는 모델 이름을 입력하세요.</p></details><p id="settingsModel" class="hint">번역 모델: gpt-6-luna</p><p class="hint">Whisper와 화자 구분 모델은 2027년 2월 26일 지원 종료 예정입니다. 정확한 시간 싱크를 중시하면 기존 Whisper를 사용하고, 새 GPT 모델 결과는 영상과 비교해 시간을 수정하세요.</p><div class="settings-actions"><button type="submit">설정 저장</button><button id="discardSettings" type="button" disabled>변경 취소</button></div><p id="settingsStatus" role="status">저장한 설정은 새로 선택하는 영상에 적용됩니다.</p>
       </form></details>
-      <details id="dataSettings" class="settings-group"><summary><span class="settings-index" aria-hidden="true">03 / DATA</span>전송 데이터 · 비용 · 이어하기</summary><div class="settings-section"><p class="hint">음성 인식에는 추출된 오디오 구간이, 번역에는 자막 텍스트가 OpenAI로 전송됩니다. 개인 API는 본인 OpenAI 계정에 별도로 청구됩니다. 테스트 서버는 입력한 서버를 거쳐 전송하며 개인 API 계정 청구 없이 서버의 공유 사용량 한도를 적용합니다.</p><p class="hint">생성 중 앱을 닫아도 저장된 구간에서 이어할 수 있습니다. 강제 중지나 재부팅 후에는 앱을 열고 이어하기를 눌러 주세요.</p><p class="hint">원본 파일을 이동하거나 삭제하면 이어하기와 미리보기가 불가능할 수 있습니다.</p></div></details>
+      <details id="dataSettings" class="settings-group"><summary><span class="settings-index" aria-hidden="true">03 / DATA</span>전송 데이터 · 비용 · 이어하기</summary>
+        <div class="settings-section settings-data-guide">
+          <section><h4>전송 데이터</h4><p class="hint">음성 인식에는 추출된 오디오 구간이, 번역에는 자막 텍스트가 OpenAI로 전송됩니다.</p></section>
+          <section><h4>요금 및 사용량</h4><p class="hint">개인 API는 본인 OpenAI 계정에 별도로 청구됩니다. 테스트 서버는 입력한 서버를 거쳐 전송하며 개인 API 계정 청구 없이 서버의 공유 사용량 한도를 적용합니다.</p></section>
+          <section><h4>작업 이어하기</h4><p class="hint">생성 중 앱을 닫아도 저장된 구간에서 이어할 수 있습니다. 강제 중지나 재부팅 후에는 앱을 열고 이어하기를 눌러 주세요.</p></section>
+          <section><h4>원본 파일</h4><p class="hint">원본 파일을 이동하거나 삭제하면 이어하기와 미리보기가 불가능할 수 있습니다.</p></section>
+        </div>
+      </details>
       <section class="settings-section settings-privacy" aria-labelledby="privacyHeading"><p class="settings-index" aria-hidden="true">04 / PRIVACY</p><h3 id="privacyHeading">개인정보</h3><p class="hint">처리 방식별 전송 데이터와 기기 내 저장·삭제 방법을 확인할 수 있습니다.</p><button id="openPrivacyPolicy" type="button">개인정보처리방침 · 브라우저에서 열기</button></section>
     </section>
   </main>
