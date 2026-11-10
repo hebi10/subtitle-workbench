@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   canStartSubtitleJob,
+  getGeneratePreparationStatus,
   previewLimitLabel,
   visibleSubtitlePreview,
 } from '../src/ui-state.js';
@@ -166,4 +167,43 @@ test('visibleSubtitlePreview limits preview to the first twenty subtitles', () =
   assert.equal(visibleSubtitlePreview(subtitles)[19].start, 19);
   assert.equal(previewLimitLabel(25, 20), '처음 20개만 표시합니다. 전체 자막은 다운로드 파일에서 확인하세요.');
   assert.equal(previewLimitLabel(12, 20), '전체 12개 표시');
+});
+
+test('generation preparation distinguishes selected file, verified duration, and unverified API inputs', () => {
+  const initial = getGeneratePreparationStatus({
+    hasFile: false, hasDuration: false, hasApiKey: false, connectionMode: 'worker',
+    proxyUrl: '', sourceLanguage: '자동 감지', translationEnabled: true,
+    targetLanguage: '한국어', isCustomTarget: false, customTargetLanguage: '',
+  });
+  assert.deepEqual(initial, {
+    file: '파일 선택 필요',
+    connection: 'API 키 입력 필요',
+    language: '자동 감지 → 한국어',
+  });
+  const incomplete = getGeneratePreparationStatus({
+    hasFile: true, hasDuration: false, hasApiKey: true, connectionMode: 'worker',
+    proxyUrl: '  ', sourceLanguage: '일본어', translationEnabled: false,
+    targetLanguage: '한국어', isCustomTarget: false, customTargetLanguage: '',
+  });
+  assert.equal(incomplete.file, '파일 길이 확인 필요');
+  assert.equal(incomplete.connection, 'Worker URL 입력 필요');
+  assert.equal(incomplete.language, '일본어 · 번역 사용 안 함');
+  const filled = getGeneratePreparationStatus({
+    hasFile: true, hasDuration: true, hasApiKey: true, connectionMode: 'browser',
+    proxyUrl: '', sourceLanguage: '영어', translationEnabled: true,
+    targetLanguage: '다른 언어 직접 입력', isCustomTarget: true, customTargetLanguage: '독일어',
+  });
+  assert.equal(filled.file, '길이 확인됨');
+  assert.equal(filled.connection, '정보 입력됨 · 실제 연결 미검증');
+  assert.equal(filled.language, '영어 → 독일어');
+});
+
+test('custom translation language status never claims a blank custom language is configured', () => {
+  const status = getGeneratePreparationStatus({
+    hasFile: true, hasDuration: true, hasApiKey: true, connectionMode: 'worker',
+    proxyUrl: 'https://worker.example', sourceLanguage: '자동 감지', translationEnabled: true,
+    targetLanguage: '다른 언어 직접 입력', isCustomTarget: true, customTargetLanguage: ' ',
+  });
+  assert.equal(status.language, '자동 감지 → 번역 언어 입력 필요');
+  assert.match(status.connection, /미검증/);
 });
