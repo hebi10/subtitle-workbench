@@ -63,6 +63,7 @@ jobs:
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
           EVENT_TYPE: ${{ github.event_name }}
           REQUESTED_MODE: ${{ inputs.mode }}
+          PROMOTE_VERSION_CODE: ${{ inputs.version_code }}
         shell: bash
         run: |
           set -euo pipefail
@@ -90,7 +91,7 @@ jobs:
             case "$REQUESTED_MODE" in
               check|build|deploy) echo "mode=$REQUESTED_MODE" >> "$GITHUB_OUTPUT"; echo 'target=internal' >> "$GITHUB_OUTPUT" ;;
               promote)
-                if [[ ! "${{ inputs.version_code }}" =~ ^[1-9][0-9]*$ ]]; then
+                if [[ ! "$PROMOTE_VERSION_CODE" =~ ^[1-9][0-9]*$ ]]; then
                   echo 'An exact existing internal versionCode is required for promote' >&2
                   exit 1
                 fi
