@@ -35,6 +35,13 @@ public final class EditorialNativeScreensDeviceTest {
                 assertWorkflow(root, "언어 준비", "마이크 인식", "자막 저장");
                 assertHelp(root, "언어 모델 도움말");
                 assertHelp(root, "인식·저장 안내");
+                LinearLayout steps = (LinearLayout) findTag(root, "editorial-native-workflow");
+                NativeDesignSystem.setWorkflowStep(steps, 1,
+                        activity.getResources().getDisplayMetrics().density);
+                assertTrue(((TextView) steps.getChildAt(1)).getContentDescription().toString()
+                        .contains("현재 단계"));
+                NativeDesignSystem.setWorkflowStep(steps, 0,
+                        activity.getResources().getDisplayMetrics().density);
                 assertText(root, "OpenAI API 키나 API 이용 요금은 필요하지 않습니다");
                 assertButton(root, "마이크 인식 시작");
                 Button stop = button(root, "인식 종료");
