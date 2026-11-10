@@ -1,9 +1,11 @@
 package com.haebi.subtitle;
 
 import android.app.Activity;
+import android.app.UiAutomation;
 import android.graphics.Bitmap;
 import android.graphics.drawable.ColorDrawable;
 import android.view.View;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -208,8 +210,44 @@ public final class EditorialNativeScreensDeviceTest {
         return null;
     }
 
+    /**
+     * Android emulator system UI can show an unrelated Pixel Launcher ANR over a healthy
+     * activity. Dismiss only that exact system dialog; never dismiss or conceal app ANRs.
+     */
+    private static void dismissLauncherAnrIfPresent() throws Exception {
+        UiAutomation automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
+        for (int attempt = 0; attempt < 3; attempt++) {
+            AccessibilityNodeInfo root = automation.getRootInActiveWindow();
+            if (!containsAccessibleText(root, "Pixel Launcher isn't responding")) return;
+            AccessibilityNodeInfo dismiss = findAccessibleText(root, "Close app");
+            while (dismiss != null && !dismiss.isClickable()) dismiss = dismiss.getParent();
+            assertNotNull("Unrelated Pixel Launcher ANR needs an explicit close button", dismiss);
+            assertTrue("Cannot close unrelated Pixel Launcher ANR", dismiss.performAction(
+                    AccessibilityNodeInfo.ACTION_CLICK));
+            Thread.sleep(550);
+        }
+        assertFalse("Pixel Launcher ANR obscures the native screenshot",
+                containsAccessibleText(automation.getRootInActiveWindow(), "Pixel Launcher isn't responding"));
+    }
+
+    private static boolean containsAccessibleText(AccessibilityNodeInfo node, String text) {
+        return findAccessibleText(node, text) != null;
+    }
+
+    private static AccessibilityNodeInfo findAccessibleText(AccessibilityNodeInfo node, String text) {
+        if (node == null) return null;
+        CharSequence value = node.getText();
+        if (value != null && value.toString().contains(text)) return node;
+        for (int index = 0; index < node.getChildCount(); index++) {
+            AccessibilityNodeInfo found = findAccessibleText(node.getChild(index), text);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
     private static void screenshot(String title) throws Exception {
         Thread.sleep(300);
+        dismissLauncherAnrIfPresent();
         Bitmap bitmap = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
         assertNotNull("Native Android screenshot: " + title, bitmap);
         File folder = ApplicationProvider.getApplicationContext().getExternalFilesDir("editorial-3c");
