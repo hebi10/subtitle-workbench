@@ -389,14 +389,80 @@
 
         <section id="panel-edit" class="workspace-panel" role="tabpanel" aria-labelledby="tab-edit" tabindex="0" data-tab-panel="edit">
           <section class="editor-layout">
+            <aside class="panel-card player-card" aria-labelledby="studioEditorPlayerTitle">
+              <div class="studio-preview-heading"><div>
+                <p class="eyebrow">MEDIA / REFERENCE</p>
+                <h2 id="studioEditorPlayerTitle">영상·자막 대조</h2>
+              </div></div>
+              <label class="subtitle-file-button" for="attachMediaFile">
+                영상·오디오 연결
+                <input id="attachMediaFile" class="visually-hidden-file" type="file" accept="video/*,audio/*" />
+              </label>
+              <p class="form-help">현재 자막을 유지한 채 재생할 파일을 연결합니다.</p>
+              <div id="editPlayerMount"></div>
+              <div class="section-title">
+                <h3 id="subtitlePlayerTitle">자막 플레이어</h3>
+                <span id="subtitleFileMeta">SRT, VTT, JSON 자막 파일을 불러올 수 있습니다.</span>
+              </div>
+
+              <div class="subtitle-player-controls">
+                <label class="subtitle-file-button" for="subtitleFile">
+                  자막 파일 선택
+                  <input id="subtitleFile" class="visually-hidden-file" type="file" accept=".srt,.vtt,.json,text/vtt,application/json" />
+                </label>
+
+                <label class="subtitle-mode-field">
+                  표시 모드
+                  <select id="subtitleDisplayMode">
+                    <option value="translated">번역만</option>
+                    <option value="original">원문만</option>
+                    <option value="both">원문 + 번역</option>
+                  </select>
+                </label>
+
+                <div class="subtitle-sync-controls" aria-label="자막 싱크 조절">
+                  <button class="ghost-button" type="button" data-sync-adjust="-0.5">-0.5초</button>
+                  <button class="ghost-button" type="button" data-sync-adjust="0.5">+0.5초</button>
+                  <button id="subtitleSyncReset" class="ghost-button" type="button">초기화</button>
+                  <span id="subtitleOffsetValue">0.0초</span>
+                </div>
+              </div>
+
+              <p class="subtitle-player-note">현재 영상 재생 시간에 맞는 자막만 영상 아래 패널에 표시됩니다.</p>
+            </aside>
+
             <div class="editor-main panel-card">
               <div class="panel-head panel-head-row">
                 <div>
                   <p class="eyebrow">03 / REVIEW</p>
                   <h2>자막 편집</h2>
+                  <p class="studio-panel-description">수정 내용은 현재 페이지에서 유지됩니다. 페이지를 닫기 전에 내보내기에서 저장하세요.</p>
                 </div>
                 <span id="editorCount" class="count-pill">0개</span>
               </div>
+
+              <section id="editorCueContext" class="editor-cue-context" aria-labelledby="editorCueHeading" hidden>
+                <div class="editor-cue-context-head">
+                  <div class="editor-cue-context-title">
+                    <p class="studio-toolgroup-label">CURRENT CUE / REVIEW</p>
+                    <h3 id="editorCueHeading">선택한 자막</h3>
+                    <p id="editorCuePosition" aria-live="polite">선택된 자막이 없습니다.</p>
+                  </div>
+                  <div class="editor-cue-navigation" role="group" aria-label="필터에 표시된 자막 탐색">
+                    <button id="editorPrevCue" class="ghost-button" type="button" disabled>이전 자막</button>
+                    <button id="editorNextCue" class="ghost-button" type="button" disabled>다음 자막</button>
+                  </div>
+                </div>
+                <dl class="editor-cue-meta">
+                  <div><dt>시작 · 종료</dt><dd id="editorCueTiming">—</dd></div>
+                  <div><dt>화자</dt><dd id="editorCueSpeaker">미지정</dd></div>
+                </dl>
+                <div class="editor-cue-comparison">
+                  <div><h4>원문</h4><p id="editorCueOriginal">—</p></div>
+                  <div><h4>번역</h4><p id="editorCueTranslated">—</p></div>
+                </div>
+                <button id="editorFocusCue" class="ghost-button" type="button" disabled>선택한 자막 입력란으로 이동</button>
+              </section>
 
               <div id="editorEmptyActions" class="empty-actions">
                 <p>이미 자막 파일이 있으신가요? 불러와 바로 편집하거나 새 자막을 생성하세요.</p>
@@ -452,47 +518,7 @@
               </div>
             </div>
 
-            <aside class="panel-card player-card" aria-labelledby="studioEditorPlayerTitle">
-              <div class="studio-preview-heading"><div>
-                <p class="eyebrow">MEDIA / REFERENCE</p>
-                <h2 id="studioEditorPlayerTitle">영상·자막 대조</h2>
-              </div></div>
-              <label class="subtitle-file-button" for="attachMediaFile">
-                영상·오디오 연결
-                <input id="attachMediaFile" class="visually-hidden-file" type="file" accept="video/*,audio/*" />
-              </label>
-              <p class="form-help">현재 자막을 유지한 채 재생할 파일을 연결합니다.</p>
-              <div id="editPlayerMount"></div>
-              <div class="section-title">
-                <h3 id="subtitlePlayerTitle">자막 플레이어</h3>
-                <span id="subtitleFileMeta">SRT, VTT, JSON 자막 파일을 불러올 수 있습니다.</span>
-              </div>
 
-              <div class="subtitle-player-controls">
-                <label class="subtitle-file-button" for="subtitleFile">
-                  자막 파일 선택
-                  <input id="subtitleFile" class="visually-hidden-file" type="file" accept=".srt,.vtt,.json,text/vtt,application/json" />
-                </label>
-
-                <label class="subtitle-mode-field">
-                  표시 모드
-                  <select id="subtitleDisplayMode">
-                    <option value="translated">번역만</option>
-                    <option value="original">원문만</option>
-                    <option value="both">원문 + 번역</option>
-                  </select>
-                </label>
-
-                <div class="subtitle-sync-controls" aria-label="자막 싱크 조절">
-                  <button class="ghost-button" type="button" data-sync-adjust="-0.5">-0.5초</button>
-                  <button class="ghost-button" type="button" data-sync-adjust="0.5">+0.5초</button>
-                  <button id="subtitleSyncReset" class="ghost-button" type="button">초기화</button>
-                  <span id="subtitleOffsetValue">0.0초</span>
-                </div>
-              </div>
-
-              <p class="subtitle-player-note">현재 영상 재생 시간에 맞는 자막만 영상 아래 패널에 표시됩니다.</p>
-            </aside>
           </section>
         </section>
 
