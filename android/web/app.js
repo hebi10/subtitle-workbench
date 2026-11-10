@@ -806,6 +806,7 @@ function syncConnection() {
   $('keyStatus').textContent = connection.hasPersonalKey ? `API 키가 암호화되어 저장되어 있습니다.${running ? ' 키를 바꾸거나 삭제하려면 작업을 일시정지해 주세요.' : ''}` : '저장된 API 키가 없습니다. 본인의 키를 입력해 주세요.';
   $('connectionSummary').textContent = `${modeLabel} · ${!connection.hasKey ? '연결 정보 저장 필요' : connectionError ? '연결 확인 실패 · 설정을 확인해 주세요.' : matches ? '인증 · 모델 접근 확인됨' : '저장됨 · 연결 미확인'}`;
   $('connectionCard').classList.toggle('connected', connection.hasKey);
+  $('connectionCard').dataset.state = !connection.hasKey ? 'missing' : connectionError ? 'error' : matches ? 'verified' : 'saved';
   $('connectionHeading').hidden = connection.hasKey;
   $('activeModel').hidden = connection.hasKey;
   $('activeModel').textContent = `음성 인식: ${savedSettings.sttModel || DEFAULT_STT_MODEL} · ${savedSettings.translate ? `번역: ${savedSettings.translationModel}` : '번역 안 함'}`;
