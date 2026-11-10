@@ -133,7 +133,7 @@ async function run(node, action) {
   node.disabled = true;
   try { await action(); }
   catch (error) { message(error.message || String(error), true); }
-  finally { busyNodes.delete(node); if (node.isConnected) node.disabled = wasDisabled; syncEditorButtons(); syncJobsPagination(); syncConnection(); }
+  finally { busyNodes.delete(node); if (node.isConnected) node.disabled = wasDisabled; syncEditorButtons(); syncJobsPagination(); syncConnection(); if (node.closest('#editorCueContext')) updateEditorCueContext(); }
 }
 const editable = () => current?.status === 'completed';
 const dirty = () => revision !== savedRevision;
@@ -638,7 +638,7 @@ function changed(cues, render = true) {
   history = commitEdit(history, cues);
   revision += 1;
   scheduleSave();
-  if (render) renderCues(); else syncEditorButtons();
+  if (render) renderCues(); else { syncEditorButtons(); updateEditorCueContext(); }
 }
 function scheduleSave() {
   clearTimeout(saveTimer);
@@ -693,6 +693,48 @@ function updateFeedbackSpace() {
   if (height) document.body.style.setProperty('--editor-status-height', `${Math.ceil(height)}px`);
   document.body.style.removeProperty('--editor-feedback-height');
 }
+function updateEditorCueContext() {
+  const cue = history.present[selectedIndex];
+  const filtered = filteredIndices();
+  const position = filtered.indexOf(selectedIndex);
+  const context = $('editorCueContext');
+  context.hidden = !cue;
+  if (!cue) {
+    $('prevCue').disabled = true;
+    $('nextCue').disabled = true;
+    $('previewSelectedCue').disabled = true;
+    return;
+  }
+  const setText = (id, value) => {
+    if ($(id).textContent !== value) $(id).textContent = value;
+  };
+  setText('editorCuePosition', `자막 ${selectedIndex + 1} / ${history.present.length}개`);
+  setText('editorCueTiming', `${cueClock(cue.start)} → ${cueClock(cue.end)}${cue.speaker ? ` · 화자 ${cue.speaker}` : ''}`);
+  setText('editorCueText', speakerMarkedText(cue, history.present[selectedIndex - 1]) || '내용이 없는 자막');
+  const original = (cue.original || '').trim();
+  const translated = (cue.translated || '').trim();
+  const showOriginal = Boolean(original && translated && original !== translated);
+  $('editorCueOriginal').hidden = !showOriginal;
+  if (showOriginal) setText('editorCueOriginal', `원문: ${original}`);
+  setText('editorVideoNote', current?.uri
+    ? '여기부터 재생하면 선택한 자막 시점의 영상을 Android 미리보기에서 엽니다.'
+    : '연결된 영상이 없어 미리보기를 사용할 수 없습니다. 자막 편집과 저장은 계속 가능합니다.');
+  $('prevCue').disabled = position <= 0;
+  $('nextCue').disabled = position < 0 || position >= filtered.length - 1;
+  if (!busyNodes.has($('previewSelectedCue'))) $('previewSelectedCue').disabled = !current?.uri;
+}
+
+function moveSelectedCue(delta) {
+  const filtered = filteredIndices();
+  const from = filtered.indexOf(selectedIndex);
+  const target = from + delta;
+  if (from < 0 || target < 0 || target >= filtered.length) return;
+  selectedIndex = filtered[target];
+  page = Math.floor(target / PAGE_SIZE);
+  renderCues();
+  focusCue(selectedIndex);
+}
+
 function focusCue(index) {
   const row = $('cueList').querySelector(`[data-index="${index}"]`);
   row?.focus({ preventScroll: true }); row?.scrollIntoView({ block: 'start' });
@@ -793,6 +835,7 @@ function renderCues() {
   }
   $('cueList').replaceChildren(fragment);
   syncEditorButtons();
+  updateEditorCueContext();
   document.querySelectorAll('[data-last]').forEach((node) => { node.disabled = true; });
   updateFeedbackSpace();
 }
@@ -1013,6 +1056,9 @@ for (const [id, action] of Object.entries({
   cancelClearReviewRelay: () => { $('confirmClearReviewRelay').hidden = true; $('requestClearReviewRelay').focus(); },
   clearReviewRelay: () => changeConnection(async () => { await nativeCall('clearReviewRelay'); $('reviewRelayCode').value = ''; relayDraftTouched = false; connectionModeDraft = null; connectionError = ''; $('confirmClearReviewRelay').hidden = true; await refresh(); message('이 기기에 저장된 테스트 서버 주소와 접근 코드를 삭제했습니다.'); }),
   jumpToExport: async () => { await show('results'); if (view === 'results') $('exportSection').focus({ preventScroll: true }); },
+  prevCue: () => moveSelectedCue(-1),
+  nextCue: () => moveSelectedCue(1),
+  previewSelectedCue: () => previewAt(Math.round(history.present[selectedIndex].start * 1000)),
   openOnDevice: async () => { await flushSave(); await nativeCall('openOnDevice'); },
   openCloudLive: async () => { await flushSave(); await nativeCall('openCloudLive'); },
   openOfflineModel: async () => { await flushSave(); await nativeCall('openOfflineModel'); },
