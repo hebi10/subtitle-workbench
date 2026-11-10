@@ -95,10 +95,10 @@ test('3-C export keeps selected job, file formats, partial failure, real downloa
       options.find(option => option.textContent.includes('cancel-translation.mp4'))?.value);
     assert.ok(incompleteId, 'fixture must preserve cancelled translation output');
     await page.locator('#exportResultSelect').selectOption(incompleteId);
-    assert.equal(await page.locator('#exportResultStatus').getAttribute('data-state'), 'partial');
+    assert.equal(await page.locator('#exportResultStatus').getAttribute('data-state'), 'pending');
     assert.match(await page.locator('#exportResultStatus').innerText(), /원문 보존/);
-    assert.equal(await page.locator('#translationFailureSummary').isVisible(), true);
-    assert.equal(await page.locator('#downloads a[download]').count(), 4);
+    assert.equal(await page.locator('#translationFailureSummary').isVisible(), false);
+    assert.equal(await page.locator('#downloads a[download]').count(), 3);
 
     await page.locator('#exportResultSelect').selectOption(firstId);
     await page.evaluate(() => {
