@@ -30,6 +30,7 @@ public final class OfflineVoskActivity extends Activity {
     private final AtomicBoolean cancelled = new AtomicBoolean();
     private OfflineModelInstaller installer;
     private Spinner selection;
+    private LinearLayout workflow;
     private TextView modelStatus, sourceStatus, status, captionPreview;
     private Button download, delete, pick, run, cancel, save;
     private Uri sourceUri;
@@ -72,6 +73,7 @@ public final class OfflineVoskActivity extends Activity {
         float density = getResources().getDisplayMetrics().density;
         NativeDesignSystem.header(root, "OFFLINE / LOCAL AI", "독립 로컬 AI 자막",
                 "앱이 직접 다운로드한 Vosk 언어 모델로 영상·음성 파일을 전사합니다. 모델 설치 후에는 인터넷과 OpenAI API 키 없이 사용할 수 있습니다.", density);
+        workflow = NativeDesignSystem.workflow(root, density, "모델 설치", "파일 선택", "전사·저장");
 
         LinearLayout models = NativeDesignSystem.section(root, "01 / MODEL", "언어 모델 준비", density);
         selection = new Spinner(this);
@@ -142,6 +144,8 @@ public final class OfflineVoskActivity extends Activity {
         OfflineModelCatalog.Spec model = selected();
         File installed = installer.installedModel(model);
         boolean damaged = installed == null && installer.hasLocalData(model);
+        NativeDesignSystem.setWorkflowStep(workflow, installed == null ? 0 : sourceUri == null ? 1 : 2,
+                getResources().getDisplayMetrics().density);
         modelStatus.setText(installed != null
                 ? model.title + " 설치됨 · 저장 공간 "
                     + (installer.installedSize(model) / (1024 * 1024)) + "MB 사용\n"
