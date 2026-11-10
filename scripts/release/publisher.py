@@ -5,6 +5,7 @@ import contextlib
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import sys
 import urllib.error
@@ -53,8 +54,39 @@ class HttpTransport:
                 raw = response.read()
                 return json.loads(raw) if raw else {}
         except urllib.error.HTTPError as error:
-            # Response bodies can contain supplied credentials or private listing data.
-            raise ReleaseError(f'Play API {method} failed with HTTP {error.code}; inspect Console permissions and validation') from None
+            # Never print raw Play messages, request URLs, or credentials.
+            if path == '/edits':
+                stage = 'create_edit'
+            elif path.endswith(':validate'):
+                stage = 'validate_edit'
+            elif ':commit' in path:
+                stage = 'commit_edit'
+            elif '/tracks/' in path and method == 'PUT':
+                stage = 'update_track'
+            elif '/tracks/' in path:
+                stage = 'read_track'
+            elif '/bundles' in path:
+                stage = 'bundle_request'
+            else:
+                stage = 'other_edit_request'
+            detail = []
+            try:
+                payload = json.loads(error.read(32768))
+                problem = payload.get('error', {})
+                if isinstance(problem, dict):
+                    status = problem.get('status')
+                    if isinstance(status, str) and re.fullmatch(r'[A-Z_]{1,64}', status):
+                        detail.append('status=' + status)
+                    errors = problem.get('errors', [])
+                    if isinstance(errors, list):
+                        for item in errors[:3]:
+                            reason = item.get('reason') if isinstance(item, dict) else None
+                            if isinstance(reason, str) and re.fullmatch(r'[A-Za-z0-9_]{1,64}', reason):
+                                detail.append('reason=' + reason)
+            except (ValueError, TypeError, AttributeError, OSError):
+                pass
+            suffix = (' (' + ', '.join(dict.fromkeys(detail)) + ')') if detail else ''
+            raise ReleaseError(f'Play API {stage} HTTP {error.code}{suffix}; inspect Console for full validation details') from None
         except (urllib.error.URLError, TimeoutError, ValueError):
             raise ReleaseError('Play API request or response failed; no successful deployment can be claimed') from None
 

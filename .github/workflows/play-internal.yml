@@ -8,13 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'check = verify only; build = signed AAB only; deploy = upload to internal'
+        description: 'check, build, deploy, or promote an existing internal version to closed alpha'
         required: true
         type: choice
         default: check
-        options: [check, build, deploy]
+        options: [check, build, deploy, promote]
       version_code:
-        description: 'Build-only versionCode (default 11); deploy always allocates from Play'
+        description: 'Existing internal versionCode for promote; build-only versionCode otherwise'
         required: false
         type: string
         default: '11'
@@ -46,6 +46,7 @@ jobs:
       sha: ${{ steps.source.outputs.sha }}
       mode: ${{ steps.route.outputs.mode }}
       target: ${{ steps.route.outputs.target }}
+      promotion_code: ${{ steps.route.outputs.promotion_code }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -63,6 +64,7 @@ jobs:
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
           EVENT_TYPE: ${{ github.event_name }}
           REQUESTED_MODE: ${{ inputs.mode }}
+          PROMOTE_VERSION_CODE: ${{ inputs.version_code }}
         shell: bash
         run: |
           set -euo pipefail
@@ -71,6 +73,17 @@ jobs:
             echo 'mode=listing' >> "$GITHUB_OUTPUT"
             echo 'target=none' >> "$GITHUB_OUTPUT"
           elif [[ "$EVENT_TYPE" == 'workflow_run' ]]; then
+            if [[ "$title" == 'fix(play): resume existing internal 21 to closed [promote-existing-21]' ]]; then
+              echo 'mode=promote' >> "$GITHUB_OUTPUT"
+              echo 'target=alpha' >> "$GITHUB_OUTPUT"
+              echo 'promotion_code=21' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            if [[ "$title" == *'[skip-play]'* ]]; then
+              echo 'mode=check' >> "$GITHUB_OUTPUT"
+              echo 'target=none' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             if [[ "$title" == *'[deploy-internal]'* && "$title" == *'[deploy-closed]'* ]]; then
               echo 'Conflicting Play target markers' >&2
               exit 1
@@ -84,6 +97,14 @@ jobs:
           else
             case "$REQUESTED_MODE" in
               check|build|deploy) echo "mode=$REQUESTED_MODE" >> "$GITHUB_OUTPUT"; echo 'target=internal' >> "$GITHUB_OUTPUT" ;;
+              promote)
+                if [[ ! "$PROMOTE_VERSION_CODE" =~ ^[1-9][0-9]*$ ]]; then
+                  echo 'An exact existing internal versionCode is required for promote' >&2
+                  exit 1
+                fi
+                echo 'mode=promote' >> "$GITHUB_OUTPUT"
+                echo 'target=alpha' >> "$GITHUB_OUTPUT"
+                echo "promotion_code=$PROMOTE_VERSION_CODE" >> "$GITHUB_OUTPUT" ;;
               *) echo 'Unsupported release mode' >&2; exit 1 ;;
             esac
           fi
@@ -120,7 +141,7 @@ jobs:
           SOURCE_SHA: ${{ needs.source.outputs.sha }}
         run: python3 scripts/release/source.py --assert-current "$SOURCE_SHA"
       - name: Verify original upload key and prepare private signing file
-        if: needs.source.outputs.mode != 'listing'
+        if: needs.source.outputs.mode == 'build' || needs.source.outputs.mode == 'deploy'
         env:
           ANDROID_UPLOAD_KEYSTORE_B64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_B64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -129,7 +150,7 @@ jobs:
         run: python3 scripts/release/preflight.py signing
       - name: Check Play authentication configuration
         id: credentials
-        if: needs.source.outputs.mode == 'deploy' || needs.source.outputs.mode == 'listing'
+        if: needs.source.outputs.mode == 'deploy' || needs.source.outputs.mode == 'listing' || needs.source.outputs.mode == 'promote'
         env:
           PLAY_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
           PLAY_SERVICE_ACCOUNT: ${{ vars.PLAY_SERVICE_ACCOUNT }}
@@ -137,7 +158,7 @@ jobs:
         run: python3 scripts/release/preflight.py auth
       - name: Authenticate with Workload Identity Federation
         id: wif
-        if: (needs.source.outputs.mode == 'deploy' || needs.source.outputs.mode == 'listing') && steps.credentials.outputs.auth_mode == 'wif'
+        if: (needs.source.outputs.mode == 'deploy' || needs.source.outputs.mode == 'listing' || needs.source.outputs.mode == 'promote') && steps.credentials.outputs.auth_mode == 'wif'
         uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
@@ -147,7 +168,7 @@ jobs:
           create_credentials_file: false
       - name: Authenticate with legacy service-account JSON
         id: json
-        if: (needs.source.outputs.mode == 'deploy' || needs.source.outputs.mode == 'listing') && steps.credentials.outputs.auth_mode == 'json'
+        if: (needs.source.outputs.mode == 'deploy' || needs.source.outputs.mode == 'listing' || needs.source.outputs.mode == 'promote') && steps.credentials.outputs.auth_mode == 'json'
         uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
@@ -161,14 +182,14 @@ jobs:
           PLAY_ACCESS_TOKEN: ${{ steps.wif.outputs.access_token || steps.json.outputs.access_token }}
         run: python3 scripts/release/publisher.py --report output/play-allocation.json allocate
       - name: Install SDK 36
-        if: needs.source.outputs.mode != 'listing'
+        if: needs.source.outputs.mode == 'build' || needs.source.outputs.mode == 'deploy'
         shell: bash
         run: |
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | sort -V | tail -n 1)"
           test -n "$SDKMANAGER"
           "$SDKMANAGER" --install 'platforms;android-36' 'build-tools;35.0.0'
       - name: Build signed release with the allocated versionCode
-        if: needs.source.outputs.mode != 'listing'
+        if: needs.source.outputs.mode == 'build' || needs.source.outputs.mode == 'deploy'
         working-directory: android
         env:
           ANDROID_VERSION_CODE: ${{ steps.version.outputs.version_code || inputs.version_code || '11' }}
@@ -179,10 +200,10 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon bundleRelease
       - name: Verify AAB signature against original upload certificate
-        if: needs.source.outputs.mode != 'listing'
+        if: needs.source.outputs.mode == 'build' || needs.source.outputs.mode == 'deploy'
         run: python3 scripts/release/preflight.py verify-bundle --bundle android/app/build/outputs/bundle/release/app-release.aab
       - name: Preserve signed AAB
-        if: needs.source.outputs.mode != 'listing'
+        if: needs.source.outputs.mode == 'build' || needs.source.outputs.mode == 'deploy'
         uses: actions/upload-artifact@v4
         with:
           name: subtitle-signed-aab-${{ steps.version.outputs.version_code || inputs.version_code || '11' }}
@@ -208,10 +229,10 @@ jobs:
           if [[ "$KEEP_FOR_REVIEW" == 'true' ]]; then args+=(--changes-not-sent-for-review); fi
           python3 scripts/release/publisher.py --report output/play-release.json deploy --bundle android/app/build/outputs/bundle/release/app-release.aab --version-code "$VERSION_CODE" --status "$RELEASE_STATUS" "${args[@]}"
       - name: Promote verified internal version to closed alpha on explicit release marker
-        if: needs.source.outputs.mode == 'deploy' && needs.source.outputs.target == 'alpha'
+        if: (needs.source.outputs.mode == 'deploy' && needs.source.outputs.target == 'alpha') || needs.source.outputs.mode == 'promote'
         env:
           PLAY_ACCESS_TOKEN: ${{ steps.wif.outputs.access_token || steps.json.outputs.access_token }}
-          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+          VERSION_CODE: ${{ needs.source.outputs.mode == 'promote' && needs.source.outputs.promotion_code || steps.version.outputs.version_code }}
         run: python3 scripts/release/publisher.py --report output/play-promotion.json promote --version-code "$VERSION_CODE" --track alpha
       - name: Submit only the reviewed 5-B phone screenshots and check fresh Play hashes
         if: needs.source.outputs.mode == 'listing'
