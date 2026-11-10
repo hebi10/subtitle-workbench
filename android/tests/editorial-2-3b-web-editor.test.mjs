@@ -14,7 +14,8 @@ const output = join(root, 'output/editorial-3b');
 test('3-B web editor supports cue selection, filter reset, retained edits, media-first layout and responsive themes', { skip: !enabled }, async () => {
   const server = createServer(async (request, response) => {
     const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-    const filePath = resolve(root, '.' + pathname);
+    const assetPath = pathname.startsWith('/tests/assets/') ? pathname.slice('/tests'.length) : pathname;
+    const filePath = resolve(root, '.' + assetPath);
     if (!filePath.startsWith(root + '/') || pathname.includes('..')) {
       response.writeHead(404).end();
       return;
