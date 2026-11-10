@@ -118,6 +118,20 @@
       <p id="editorName" class="file-name"></p>
       <p id="readOnlyNote" class="hint" hidden>완료 전 작업은 조회와 부분 내보내기만 가능합니다. 생성이 완료되면 편집할 수 있습니다.</p>
       <div class="editor-actions"><button id="preview" type="button"><span class="es-icon es-icon--play" aria-hidden="true"></span>영상 미리보기</button><button id="jumpToExport" type="button"><span class="es-icon es-icon--download" aria-hidden="true"></span>내보내기로 이동</button><button id="undo" type="button" disabled><span class="es-icon es-icon--back" aria-hidden="true"></span>실행 취소</button><button id="redo" type="button" disabled><span class="es-icon es-icon--refresh" aria-hidden="true"></span>다시 실행</button></div>
+      <details id="editorCueContext" class="editor-cue-context" open>
+        <summary><span>현재 자막</span><span id="editorCuePosition" role="status">선택한 자막 없음</span></summary>
+        <div class="editor-cue-context-body">
+          <p id="editorCueTiming" class="editor-cue-timing es2-timecode">선택한 자막의 시간을 확인합니다.</p>
+          <p id="editorCueText" class="editor-cue-text">편집할 자막을 선택해 주세요.</p>
+          <p id="editorCueOriginal" class="editor-cue-original" hidden></p>
+          <p id="editorVideoNote" class="editor-cue-note">영상은 Android 미리보기에서 별도로 열립니다.</p>
+          <div class="editor-cue-context-actions">
+            <button id="prevCue" type="button" disabled>이전 자막</button>
+            <button id="nextCue" type="button" disabled>다음 자막</button>
+            <button id="previewSelectedCue" type="button" disabled><span class="es-icon es-icon--play" aria-hidden="true"></span>여기부터 재생</button>
+          </div>
+        </div>
+      </details>
       <details id="editorTools" class="editor-tools"><summary>검색 · 필터 · 위치 이동</summary><label class="search-label">자막 검색<input id="cueSearch" type="search" placeholder="원문 또는 번역 검색" /></label>
       <div class="review-controls"><label>검수 필터<select id="cueFilter"><option value="all">전체 자막</option><option value="untranslated">미번역 자막</option><option value="issues">확인이 필요한 자막</option></select></label><form id="jumpForm"><label for="cueJump">시간 또는 자막 번호로 이동</label><div class="jump-controls"><input id="cueJump" type="text" placeholder="01:20:00 또는 #245" aria-describedby="jumpHint" autocomplete="off" /><button type="submit">자막으로 이동</button></div></form></div><p id="jumpHint" class="hint" role="status">시:분:초 또는 #자막번호를 입력하세요.</p>
       </details>
