@@ -24,7 +24,7 @@ test('Editorial Studio 2.0 tokens and opt-in state patterns exist on web and And
     assert.match(css, /\.es2-timecode\s*\{[^}]*font-variant-numeric:\s*tabular-nums/s);
     assert.match(css, /\.es2-detail-toggle:focus-visible\s*\{[^}]*outline/s);
     assert.match(css, /\.es2-state-panel\s*\{[^}]*border:\s*1px solid/s);
-    assert.doesNotMatch(css.slice(css.indexOf('Editorial Studio 2.0 · 1-A')), /box-shadow\s*:\s*(?!none)[^;]+;/);
+    assert.doesNotMatch(css.slice(css.indexOf('Editorial Studio 2.0 · 1-A')), /box-shadow\s*:\s*(?!none\b)\S[^;]*;/);
   }
 });
 
