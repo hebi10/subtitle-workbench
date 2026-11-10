@@ -133,7 +133,7 @@ async function run(node, action) {
   node.disabled = true;
   try { await action(); }
   catch (error) { message(error.message || String(error), true); }
-  finally { busyNodes.delete(node); if (node.isConnected) node.disabled = wasDisabled; syncEditorButtons(); syncJobsPagination(); syncConnection(); }
+  finally { busyNodes.delete(node); if (node.isConnected) node.disabled = wasDisabled; syncEditorButtons(); syncJobsPagination(); syncConnection(); if (node.closest('#editorCueContext')) updateEditorCueContext(); }
 }
 const editable = () => current?.status === 'completed';
 const dirty = () => revision !== savedRevision;
