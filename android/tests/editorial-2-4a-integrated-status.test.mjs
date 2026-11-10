@@ -163,6 +163,7 @@ test('4-A Android save failure blocks navigation until retry and keeps unsaved t
     assert.equal(await page.locator('#editorView').isVisible(), true,
       'Failed persistence must not discard the editor state');
     assert.equal(await page.locator('#appMessage').getAttribute('role'), 'alert');
+    await mkdir(output, { recursive: true });
     await page.screenshot({ path: join(output, '4a-native-save-error-light.png'), fullPage: true });
 
     await page.evaluate(() => { window.mockNative.failSave = false; });
