@@ -2149,3 +2149,157 @@ summary:focus-visible, a:focus-visible, .workspace-tab:focus-visible {
     align-content: start;
   }
 }
+
+
+/* Editorial Studio 2.0 · 3-B — media-first editor and selected-cue navigation. */
+#panel-edit .editor-layout {
+  grid-template-columns: minmax(300px, .86fr) minmax(0, 1.14fr);
+}
+#panel-edit .player-card {
+  grid-column: 1;
+  grid-row: 1;
+}
+#panel-edit .editor-main {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+#panel-edit .editor-main .panel-head-row {
+  align-items: flex-start;
+}
+#panel-edit .editor-main .studio-panel-description {
+  max-width: 56ch;
+  margin-bottom: 0;
+}
+#panel-edit .editor-cue-context {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 12px 0;
+  padding: 14px;
+  color: var(--text);
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+}
+#panel-edit .editor-cue-context-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+#panel-edit .editor-cue-context-title {
+  min-width: 0;
+  flex: 1 1 180px;
+}
+#panel-edit .editor-cue-context-title h3 {
+  margin: 0 0 5px;
+  font-size: 17px;
+  line-height: 1.4;
+}
+#panel-edit #editorCuePosition {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.6;
+}
+#panel-edit .editor-cue-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#panel-edit .editor-cue-navigation button,
+#panel-edit #editorFocusCue {
+  min-height: 48px;
+  min-width: 0;
+  padding: 9px 12px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+#panel-edit .editor-cue-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+}
+#panel-edit .editor-cue-meta > div,
+#panel-edit .editor-cue-comparison > div {
+  min-width: 0;
+  padding: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+#panel-edit .editor-cue-meta dt,
+#panel-edit .editor-cue-comparison h4 {
+  margin: 0 0 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+#panel-edit .editor-cue-meta dd {
+  margin: 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+#panel-edit .editor-cue-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+#panel-edit .editor-cue-comparison p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#panel-edit .editor-table tr.is-selected-cue {
+  outline: 2px solid var(--text);
+  outline-offset: 0;
+}
+#panel-edit .editor-table tr[data-cue-index] {
+  scroll-margin-top: 20px;
+}
+#panel-edit .editor-table tr.is-active-cue:not(.is-selected-cue) {
+  outline: 2px dashed var(--line-strong);
+}
+@media (max-width: 1180px) {
+  #panel-edit .editor-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #panel-edit .player-card,
+  #panel-edit .editor-main {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  #panel-edit .player-card {
+    position: static;
+  }
+}
+@media (max-width: 760px) {
+  #panel-edit .editor-cue-context {
+    padding: 12px;
+  }
+  #panel-edit #editPlayerMount .video-preview:not([hidden]) {
+    max-height: 280px;
+  }
+  #panel-edit .editor-cue-navigation {
+    width: 100%;
+  }
+  #panel-edit .editor-cue-navigation button {
+    flex: 1 1 0;
+  }
+}
+@media (max-width: 390px) {
+  #panel-edit .editor-cue-meta,
+  #panel-edit .editor-cue-comparison {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

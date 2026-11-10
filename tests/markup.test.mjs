@@ -179,3 +179,29 @@ test('Editorial Studio 2.0 3-A shows actual preparation details before starting 
   assert.ok(app.includes('getGeneratePreparationStatus({'));
   assert.ok(app.includes("refs.customTargetLanguage.addEventListener('input', updateStartButtonState)"));
 });
+
+test('Editorial Studio 2.0 3-B keeps existing web editor controls and moves media ahead of editing on mobile', () => {
+  const html = readFileSync('index.html', 'utf8');
+  const css = readFileSync('styles.css', 'utf8');
+  const app = readFileSync('src/app.js', 'utf8');
+  const editor = html.slice(html.indexOf('id="panel-edit"'), html.indexOf('id="panel-export"'));
+  assert.ok(editor.indexOf('class="panel-card player-card"') < editor.indexOf('class="editor-main panel-card"'));
+  assert.ok(editor.indexOf('id="editorCueContext"') < editor.indexOf('id="editorBody"'));
+  assert.match(editor, /수정 내용은 현재 페이지에서 유지됩니다/);
+  for (const id of [
+    'editorCueContext', 'editorCuePosition', 'editorCueTiming', 'editorCueSpeaker',
+    'editorCueOriginal', 'editorCueTranslated', 'editorPrevCue', 'editorNextCue', 'editorFocusCue',
+    'editorBody', 'editorSearch', 'editorStatusFilter', 'editorGlobalOffset', 'applyGlobalOffset',
+    'mergeShortSubtitles', 'undoEdit', 'redoEdit', 'attachMediaFile', 'subtitleFile',
+    'subtitleDisplayMode', 'subtitleSyncReset', 'subtitleOffsetValue',
+  ]) {
+    assert.equal((editor.match(new RegExp(`id="${id}"`, 'g')) ?? []).length, 1, `missing or duplicate ${id}`);
+  }
+  assert.ok(app.includes('function renderEditorCueContext()'));
+  assert.ok(app.includes('state.editorVisibleCueIndices = filtered.map('));
+  assert.ok(app.includes('function focusSelectedEditorCue()'));
+  assert.ok(app.includes("refs.editorBody.addEventListener('focusin'"));
+  assert.ok(app.includes("refs.editorBody.addEventListener('input'"));
+  assert.ok(css.includes('#panel-edit .editor-table tr.is-selected-cue'));
+  assert.ok(css.includes('#panel-edit .editor-cue-context'));
+});

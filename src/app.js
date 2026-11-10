@@ -66,6 +66,8 @@ const state = {
   subtitles: [],
   playerSubtitles: [],
   activeSubtitleIndex: -1,
+  editorSelectedCueIndex: -1,
+  editorVisibleCueIndices: [],
   subtitleOffsetSeconds: 0,
   ffmpeg: null,
   results: [],
@@ -173,6 +175,15 @@ const refs = {
   mergeShortSubtitles: document.querySelector('#mergeShortSubtitles'),
   editorBody: document.querySelector('#editorBody'),
   editorCount: document.querySelector('#editorCount'),
+  editorCueContext: document.querySelector('#editorCueContext'),
+  editorCuePosition: document.querySelector('#editorCuePosition'),
+  editorCueTiming: document.querySelector('#editorCueTiming'),
+  editorCueSpeaker: document.querySelector('#editorCueSpeaker'),
+  editorCueOriginal: document.querySelector('#editorCueOriginal'),
+  editorCueTranslated: document.querySelector('#editorCueTranslated'),
+  editorPrevCue: document.querySelector('#editorPrevCue'),
+  editorNextCue: document.querySelector('#editorNextCue'),
+  editorFocusCue: document.querySelector('#editorFocusCue'),
   exportSubtitleCount: document.querySelector('#exportSubtitleCount'),
 };
 
@@ -347,6 +358,25 @@ function bindEvents() {
     renderEditor();
   });
 
+  refs.editorPrevCue.addEventListener('click', () => moveEditorCueSelection(-1));
+  refs.editorNextCue.addEventListener('click', () => moveEditorCueSelection(1));
+  refs.editorFocusCue.addEventListener('click', focusSelectedEditorCue);
+
+  refs.editorBody.addEventListener('focusin', (event) => {
+    const row = event.target.closest('[data-cue-index]');
+    if (row) selectEditorCue(Number(row.dataset.cueIndex));
+  });
+
+  refs.editorBody.addEventListener('input', (event) => {
+    const index = Number(event.target.dataset.editIndex);
+    if (index !== state.editorSelectedCueIndex || state.isBusy) return;
+    if (event.target.dataset.editField === 'original') {
+      refs.editorCueOriginal.textContent = event.target.value || '원문 없음';
+    } else if (event.target.dataset.editField === 'translated') {
+      refs.editorCueTranslated.textContent = event.target.value || '번역 없음';
+    }
+  });
+
   refs.applyGlobalOffset.addEventListener('click', () => {
     applyGlobalSubtitleOffset();
   });
@@ -383,6 +413,8 @@ function bindEvents() {
 
   refs.editorBody.addEventListener('click', (event) => {
     if (state.isBusy) return;
+    const row = event.target.closest('[data-cue-index]');
+    if (row) selectEditorCue(Number(row.dataset.cueIndex));
     const actionButton = event.target.closest('[data-editor-action]');
     if (actionButton) {
       handleEditorAction(actionButton);
@@ -887,6 +919,7 @@ function saveNewResult(subtitles, fileName, options = {}) {
   state.outputFileName = fileName;
   state.editHistory = entry.editHistory;
   state.subtitles = state.editHistory.present;
+  state.editorSelectedCueIndex = -1;
   setPlayerSubtitles(state.subtitles, `${fileName} · ${state.subtitles.length}개`, { resetOffset: true });
   syncSubtitleOutputs();
   return entry;
@@ -989,6 +1022,7 @@ async function restoreResult(id) {
     state.outputFileName = entry.fileName;
     state.editHistory = entry.editHistory;
     state.subtitles = state.editHistory.present;
+    state.editorSelectedCueIndex = -1;
     state.subtitleOffsetSeconds = entry.offsetSeconds;
     setPlayerSubtitles(state.subtitles, `${entry.fileName} · ${entry.subtitleCount}개`);
     syncSubtitleOutputs();
@@ -1024,6 +1058,7 @@ function updateEditControls() {
   refs.editorBody.querySelectorAll('input, textarea, button').forEach((control) => {
     control.disabled = state.isBusy;
   });
+  updateEditorCueNavigation();
 }
 
 function updateTranslationControls() {
@@ -1212,6 +1247,12 @@ function renderEditor() {
       ? `${state.subtitles.length}개`
       : `${filtered.length}/${state.subtitles.length}개`;
 
+  const sorted = sortSubtitles(state.subtitles);
+  state.editorVisibleCueIndices = filtered.map((subtitle) => sorted.indexOf(subtitle));
+  if (!state.editorVisibleCueIndices.includes(state.editorSelectedCueIndex)) {
+    state.editorSelectedCueIndex = state.editorVisibleCueIndices[0] ?? -1;
+  }
+
   if (filtered.length === 0) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
@@ -1220,15 +1261,17 @@ function renderEditor() {
     cell.textContent = state.subtitles.length === 0 ? '편집할 자막이 없습니다.' : '필터에 맞는 자막이 없습니다.';
     row.append(cell);
     refs.editorBody.replaceChildren(row);
+    renderEditorCueContext();
     return;
   }
 
-  const sorted = sortSubtitles(state.subtitles);
   refs.editorBody.replaceChildren(
     ...filtered.map((subtitle) => {
       const index = sorted.indexOf(subtitle);
       const row = document.createElement('tr');
       row.dataset.cueIndex = String(index);
+      row.setAttribute('aria-label', `${index + 1}번 자막`);
+      if (index === state.editorSelectedCueIndex) row.classList.add('is-selected-cue');
       const time = document.createElement('td');
       const original = document.createElement('td');
       const translated = document.createElement('td');
@@ -1327,6 +1370,56 @@ function renderEditor() {
     );
     replacement?.focus({ preventScroll: true });
   }
+  renderEditorCueContext();
+}
+
+function updateEditorCueNavigation() {
+  const position = state.editorVisibleCueIndices.indexOf(state.editorSelectedCueIndex);
+  refs.editorPrevCue.disabled = state.isBusy || position <= 0;
+  refs.editorNextCue.disabled = state.isBusy || position < 0 || position >= state.editorVisibleCueIndices.length - 1;
+  refs.editorFocusCue.disabled = state.isBusy || position < 0;
+}
+
+function renderEditorCueContext() {
+  const cue = sortSubtitles(state.subtitles)[state.editorSelectedCueIndex];
+  if (!cue || !state.editorVisibleCueIndices.includes(state.editorSelectedCueIndex)) {
+    refs.editorCueContext.hidden = true;
+    updateEditorCueNavigation();
+    return;
+  }
+  refs.editorCueContext.hidden = false;
+  refs.editorCuePosition.textContent = `자막 ${state.editorSelectedCueIndex + 1} / ${state.subtitles.length}개 · 필터 표시 ${state.editorVisibleCueIndices.length}개`;
+  refs.editorCueTiming.textContent = `${formatTimestamp(cue.start)} – ${formatTimestamp(cue.end)}`;
+  refs.editorCueSpeaker.textContent = cue.speaker || '미지정';
+  refs.editorCueOriginal.textContent = cue.original || '원문 없음';
+  refs.editorCueTranslated.textContent = cue.translated || (cue.status === 'failed' ? '번역 실패 · 원문 보존' : '번역 없음');
+  refs.editorBody.querySelectorAll('[data-cue-index]').forEach((row) => {
+    row.classList.toggle('is-selected-cue', Number(row.dataset.cueIndex) === state.editorSelectedCueIndex);
+  });
+  updateEditorCueNavigation();
+}
+
+function selectEditorCue(index) {
+  if (state.isBusy || !state.editorVisibleCueIndices.includes(index)) return;
+  state.editorSelectedCueIndex = index;
+  renderEditorCueContext();
+}
+
+function moveEditorCueSelection(direction) {
+  if (state.isBusy) return;
+  const position = state.editorVisibleCueIndices.indexOf(state.editorSelectedCueIndex);
+  const next = state.editorVisibleCueIndices[position + direction];
+  if (position < 0 || next === undefined) return;
+  selectEditorCue(next);
+}
+
+function focusSelectedEditorCue() {
+  if (state.isBusy) return;
+  const row = refs.editorBody.querySelector(`[data-cue-index="${state.editorSelectedCueIndex}"]`);
+  const textarea = row?.querySelector('[data-edit-field="original"]');
+  if (!textarea) return;
+  textarea.scrollIntoView({ block: 'center', behavior: 'auto' });
+  textarea.focus({ preventScroll: true });
 }
 
 function createSubtitleTextarea(index, field, value) {
@@ -1651,6 +1744,8 @@ function clearOutputs() {
   state.downloadUrls = [];
   state.subtitles = [];
   state.activeSubtitleIndex = -1;
+  state.editorSelectedCueIndex = -1;
+  state.editorVisibleCueIndices = [];
   renderDownloadPlaceholders();
   refs.chunksList.replaceChildren();
   if (refs.chunksList.parentElement) {
