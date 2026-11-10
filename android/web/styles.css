@@ -1098,3 +1098,16 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
   .es2-action-row > :is(button, a) { white-space: normal; overflow-wrap: anywhere; }
   .es2-empty-state { padding: var(--es2-space-4); }
 }
+
+
+/* Editorial Studio 2.0 · 1-B first-use wayfinding. */
+.first-run-guide { margin: 0 0 var(--es2-space-4); }
+.first-run-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--es2-space-2); }
+.first-run-heading h3 { margin: 0; }
+.first-run-heading button { min-height: var(--es-control-height); }
+.first-run-guide .es2-supporting-text { margin: var(--es2-space-2) 0 var(--es2-space-3); }
+.first-run-actions button { flex: 1 1 130px; white-space: normal; overflow-wrap: anywhere; text-align: center; }
+@media (max-width: 360px) {
+  .first-run-guide { padding: var(--es2-space-3); }
+  .first-run-actions button { flex-basis: 100%; }
+}
