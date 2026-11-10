@@ -1573,3 +1573,118 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
   #editorView .editor-cue-context-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   #editorView .editor-cue-context-body { gap: var(--es2-space-3); }
 }
+
+
+/* Editorial Studio 2.0 · 2-E Android settings: clear health, defaults and privacy. */
+#settingsView .settings-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--es2-space-2);
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+#settingsView .settings-overview > .settings-overview-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--es2-space-2);
+  min-width: 0;
+  padding: var(--es2-space-3);
+  background: var(--es-surface-alt);
+  border: 1px solid var(--es-border);
+  box-shadow: none;
+  border-radius: 0;
+}
+#settingsView .settings-overview .settings-overview-label { margin: 0; font-size: 12px; }
+#settingsView .settings-overview #settingsConnectionSummary,
+#settingsView .settings-overview #settingsDefaultsOverview {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+#settingsView .settings-health-badge {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 4px 8px;
+  min-height: 26px;
+  border: 1px solid var(--es-border);
+  background: var(--es-surface);
+  color: var(--es-ink);
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+#settingsView .settings-health-badge[data-state="error"] {
+  background: var(--es-status-danger);
+  border-color: var(--es-status-danger-border);
+  color: var(--error);
+}
+#settingsView .settings-overview-help {
+  margin: 0;
+  flex: 1;
+  color: var(--es-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+#settingsView .settings-overview-action {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: var(--es2-space-2);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  word-break: keep-all;
+  white-space: normal;
+  background: var(--es-surface);
+  color: var(--es-ink);
+  border: 1px solid var(--es-border);
+  box-shadow: none;
+  border-radius: 0;
+}
+#settingsView .settings-overview-action:focus-visible {
+  outline: 2px solid var(--es-ink);
+  outline-offset: 2px;
+}
+#settingsView .settings-group {
+  margin-top: var(--es2-space-3);
+  border: 1px solid var(--es-border);
+  padding: 0 var(--es2-space-4);
+  background: var(--es-surface);
+}
+#settingsView .settings-group > summary {
+  min-height: 56px;
+  font-size: 15px;
+}
+#settingsView .settings-section [role="status"] {
+  overflow-wrap: anywhere;
+}
+#settingsView .settings-data-guide {
+  display: grid;
+  gap: var(--es2-space-2);
+}
+#settingsView .settings-data-guide > section {
+  padding: var(--es2-space-3);
+  border: 1px solid var(--es-border);
+  background: var(--es-surface-alt);
+}
+#settingsView .settings-data-guide h4 {
+  margin: 0 0 var(--es2-space-2);
+  color: var(--es-ink);
+  font-size: 14px;
+  line-height: 1.4;
+}
+#settingsView .settings-data-guide .hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+@media (max-width: 360px) {
+  #settingsView .settings-overview { grid-template-columns: minmax(0, 1fr); }
+  #settingsView .settings-overview > .settings-overview-card { padding: var(--es2-space-3); }
+  #settingsView .settings-group { padding-inline: var(--es2-space-3); }
+}
