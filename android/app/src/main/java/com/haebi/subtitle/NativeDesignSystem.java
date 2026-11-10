@@ -192,6 +192,35 @@ final class NativeDesignSystem {
         }
     }
 
+    static void helpDisclosure(LinearLayout parent, String label, String content, float density) {
+        Context context = parent.getContext();
+        Button toggle = new Button(context);
+        button(toggle, false, density);
+        toggle.setText(label + " 보기");
+        toggle.setTextSize(13);
+        LinearLayout.LayoutParams control = new LinearLayout.LayoutParams(-1, -2);
+        control.topMargin = dp(density, 6);
+        parent.addView(toggle, control);
+
+        TextView detail = new TextView(context);
+        text(detail, 13, false, density);
+        detail.setText(content);
+        detail.setTextColor(ink(context));
+        detail.setBackground(surface(soft(context), line(context), density));
+        detail.setPadding(dp(density, 12), dp(density, 10), dp(density, 12), dp(density, 10));
+        detail.setVisibility(View.GONE);
+        detail.setTag("editorial-native-help:" + label);
+        LinearLayout.LayoutParams help = new LinearLayout.LayoutParams(-1, -2);
+        help.topMargin = dp(density, 6);
+        parent.addView(detail, help);
+        toggle.setOnClickListener(v -> {
+            boolean show = detail.getVisibility() != View.VISIBLE;
+            detail.setVisibility(show ? View.VISIBLE : View.GONE);
+            toggle.setText(label + (show ? " 접기" : " 보기"));
+            toggle.setContentDescription(label + (show ? " 접기" : " 보기"));
+        });
+    }
+
     static void statusPanel(TextView view, float density) {
         Context context = view.getContext();
         surfaceText(view, density);
