@@ -224,6 +224,7 @@ test('4-B Android WebView: all views at six widths, dark/light, keyboard and sho
         await page.emulateMedia({ colorScheme: theme });
         for (const [name, nav, panel] of navigation) {
           await page.locator(nav).click();
+          await page.locator(panel).waitFor({ state: 'visible' });
           assert.equal(await page.locator(panel).isVisible(), true);
           await checkBounds(page, 'android ' + name + ' ' + width + '/' + theme, true);
         }
