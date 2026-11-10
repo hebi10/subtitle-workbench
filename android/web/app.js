@@ -360,6 +360,8 @@ function renderJobs() {
         actions.append(settingsButton);
       }
     }
+    const featuredAction = actions.querySelector('button.primary:not(:disabled)');
+    if (featuredAction) actions.prepend(featuredAction);
     article.append(actions);
     if (ready) article.append(preparationEditor(job));
     article.append(inspection); nextNodes.push(article);
