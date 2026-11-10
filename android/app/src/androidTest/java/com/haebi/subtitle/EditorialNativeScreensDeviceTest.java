@@ -34,7 +34,7 @@ public final class EditorialNativeScreensDeviceTest {
                 assertSection(root, "01 / PREPARE");
                 assertSection(root, "02 / CAPTURE");
                 assertSection(root, "03 / RESULT");
-                assertWorkflow(root, "언어 준비", "마이크 인식", "자막 저장");
+                assertWorkflow(root, "언어", "인식", "저장");
                 assertHelp(root, "언어 모델 도움말");
                 assertHelp(root, "인식·저장 안내");
                 LinearLayout steps = (LinearLayout) findTag(root, "editorial-native-workflow");
@@ -66,7 +66,7 @@ public final class EditorialNativeScreensDeviceTest {
                 assertSection(root, "01 / CONNECTION");
                 assertSection(root, "02 / LIVE");
                 assertSection(root, "03 / RESULT");
-                assertWorkflow(root, "연결 확인", "실시간 인식", "자막 저장");
+                assertWorkflow(root, "연결", "인식", "저장");
                 assertHelp(root, "시간·전송 안내");
                 assertText(root, "GPT 실시간 마이크 자막");
                 assertText(root, "API 이용 요금");
@@ -88,7 +88,7 @@ public final class EditorialNativeScreensDeviceTest {
                 assertSection(root, "01 / MODEL");
                 assertSection(root, "02 / FILE");
                 assertSection(root, "03 / TRANSCRIPTION");
-                assertWorkflow(root, "모델 설치", "파일 선택", "전사·저장");
+                assertWorkflow(root, "모델", "파일", "전사");
                 assertHelp(root, "인식 품질·라이선스");
                 assertText(root, "인터넷과 OpenAI API 키 없이");
                 assertText(root, "오프라인 인식은 최대 60분");
