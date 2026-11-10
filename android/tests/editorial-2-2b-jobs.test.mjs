@@ -33,7 +33,7 @@ test('2-B preserves navigation, state semantics, exact record counts and origina
   assert.match(css, /#jobsView \.job-error/);
   assert.match(css, /#jobsView \.job-inspection/);
   assert.doesNotMatch(css.slice(css.indexOf('Editorial Studio 2.0 · 2-B jobs')),
-    /box-shadow\s*:\s*(?!none\b)[^;]+;/);
+    /box-shadow\s*:\s*(?!none\b)\S[^;]+;/);
 });
 
 test('2-B real WebView layout exposes safe next actions and accurate progress', { skip: !enabled }, async () => {
