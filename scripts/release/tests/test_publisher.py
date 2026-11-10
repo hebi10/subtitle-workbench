@@ -57,7 +57,7 @@ def track(name, code, status='completed'):
 class PublisherTests(unittest.TestCase):
     def test_track_label_matches_android_version_name(self):
         gradle = (SCRIPT.parents[2] / 'android' / 'app' / 'build.gradle').read_text(encoding='utf-8')
-        match = re.search(r"\\bversionName\\s+'([^']+)'", gradle)
+        match = re.search(r"\bversionName\s+'([^']+)'", gradle)
         self.assertIsNotNone(match, 'Android versionName must remain readable')
         self.assertEqual(publisher.RELEASE_VERSION_NAME, match.group(1))
 
