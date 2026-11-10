@@ -48,6 +48,19 @@ let changingConnection = false;
 let connectionError = '';
 const busyNodes = new WeakSet();
 const jobActionsInFlight = new Set();
+const FIRST_RUN_GUIDE_KEY = 'subtitle-editorial-first-run-guide-v2';
+let firstRunDismissed = false;
+try { firstRunDismissed = localStorage.getItem(FIRST_RUN_GUIDE_KEY) === 'dismissed'; } catch {}
+
+function updateFirstRunGuide() {
+  $('firstRunGuide').hidden = firstRunDismissed || jobs.length > 0;
+}
+function dismissFirstRunGuide() {
+  firstRunDismissed = true;
+  try { localStorage.setItem(FIRST_RUN_GUIDE_KEY, 'dismissed'); } catch {}
+  updateFirstRunGuide();
+}
+
 
 export function nativeCall(method, params = {}) {
   return new Promise((resolve, reject) => {
@@ -196,6 +209,7 @@ async function refresh() {
         syncEditorButtons();
       }
     }
+    updateFirstRunGuide();
     if (!initialViewSet) await show(jobs.length ? 'jobs' : 'video');
     else if (view === 'results' && !current && !changingJob) await ensureResult();
     renderResults();
@@ -890,6 +904,25 @@ $('jumpForm').addEventListener('submit', (event) => {
   $('cueSearch').value = ''; $('cueFilter').value = 'all'; page = Math.floor(index / PAGE_SIZE); selectedIndex = index; renderCues();
   focusCue(index);
   $('jumpHint').textContent = `자막 ${index + 1}로 이동했습니다. 검색과 필터를 전체로 변경했습니다.`;
+});
+$('dismissFirstRunGuide').addEventListener('click', dismissFirstRunGuide);
+$('guideFile').addEventListener('click', () => {
+  if ($('pickVideo').disabled) {
+    void openSettings().catch((error) => message(error.message || String(error), true));
+  } else {
+    $('pickVideo').focus();
+    $('pickVideo').scrollIntoView({ block: 'center' });
+  }
+});
+$('guideMic').addEventListener('click', () => {
+  $('openOnDevice').focus();
+  $('openOnDevice').scrollIntoView({ block: 'center' });
+});
+$('guideOffline').addEventListener('click', () => {
+  const entry = document.querySelector('.local-offline-entry');
+  entry.open = true;
+  $('openOfflineModel').focus();
+  $('openOfflineModel').scrollIntoView({ block: 'center' });
 });
 for (const [id, action] of Object.entries({
   navVideo: () => show('video'), navJobs: () => show('jobs'), navResults: () => show('results'), navSettings: () => show('settings'),
