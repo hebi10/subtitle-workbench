@@ -2367,6 +2367,7 @@ summary:focus-visible, a:focus-visible, .workspace-tab:focus-visible {
   overflow-wrap: anywhere;
 }
 #panel-export #exportResultStatus[data-state="partial"],
+#panel-export #exportResultStatus[data-state="pending"],
 #panel-export #exportResultStatus[data-state="error"] {
   color: var(--warning);
 }
