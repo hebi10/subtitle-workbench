@@ -528,39 +528,59 @@
               <div>
                 <p class="eyebrow">04 / EXPORT</p>
                 <h2>내보내기</h2>
+                <p class="studio-panel-description">현재 작업을 확인하고 자막 파일을 기기에 저장하세요.</p>
               </div>
-              <div class="export-meta">
-                <span id="exportSubtitleCount">0개</span>
-              </div>
+              <div class="export-meta"><span id="exportSubtitleCount">0개</span></div>
             </div>
 
-            <p class="studio-panel-description">현재 작업 결과는 파일로 내려받아야 보존됩니다.</p>
-            <div class="section-title">
-              <h3>다운로드 및 형식</h3>
-              <span>SRT · VTT · JSON</span>
-            </div>
+            <section class="export-overview" aria-label="내보낼 작업 확인">
+              <label class="export-result-field" for="exportResultSelect">
+                내보낼 작업
+                <select id="exportResultSelect" aria-describedby="exportSessionNote" disabled>
+                  <option value="">선택할 작업 없음</option>
+                </select>
+              </label>
+              <dl class="export-summary-grid">
+                <div><dt>원본 파일</dt><dd id="exportFileName">선택한 작업 없음</dd></div>
+                <div><dt>자막 상태</dt><dd id="exportResultStatus" data-state="empty">저장할 자막 없음</dd></div>
+                <div><dt>결과 언어</dt><dd id="exportLanguage">—</dd></div>
+                <div><dt>싱크 보정</dt><dd id="exportSyncSummary">0.0초</dd></div>
+              </dl>
+              <p id="exportSessionNote" class="export-session-note">자막과 수정 내용은 현재 페이지에서만 유지됩니다. 페이지를 닫기 전에 파일을 내려받으세요.</p>
+            </section>
+
             <div id="exportEmptyActions" class="empty-actions">
-              <p>내려받을 자막이 없습니다. 기존 파일을 불러오거나 자막을 먼저 생성하세요.</p>
+              <p>내려받을 자막이 없습니다. 기존 자막 파일을 불러오거나 자막을 먼저 생성하세요.</p>
               <div class="empty-action-buttons">
                 <button id="importSubtitlesExport" class="primary-button" type="button">기존 자막 불러오기</button>
                 <button id="goGenerateExport" class="ghost-button" type="button">자막 생성으로 이동</button>
               </div>
             </div>
+
             <div class="studio-export-layout">
               <section class="studio-export-files" aria-labelledby="studioFilesHeading">
                 <p class="studio-toolgroup-label">OUTPUT FILES</p>
                 <h3 id="studioFilesHeading">자막 파일 저장</h3>
-                <p class="studio-panel-description">현재 선택한 작업의 자막을 형식별로 내려받습니다.</p>
+                <p class="studio-panel-description">SRT를 기본 형식으로 권장하며, VTT와 JSON도 내려받을 수 있습니다.</p>
                 <div id="downloads" class="downloads" aria-label="자막 파일 다운로드"></div>
+                <p id="exportDownloadStatus" class="export-download-status" role="status" aria-live="polite"></p>
+                <div id="exportBuildError" class="export-build-error" role="alert" hidden>
+                  <p id="exportBuildErrorText">파일을 준비하지 못했습니다. 편집 내용은 유지됩니다.</p>
+                  <button id="retryExportButton" class="ghost-button" type="button">파일 다시 준비</button>
+                </div>
               </section>
               <aside class="studio-export-formats" aria-labelledby="studioFormatsHeading">
                 <p class="studio-toolgroup-label">FORMAT GUIDE</p>
                 <h3 id="studioFormatsHeading">파일 형식 안내</h3>
-                <dl class="format-guide">
-                  <div><dt>SRT</dt><dd>영상 편집기와 일반 플레이어</dd></div>
-                  <div><dt>VTT</dt><dd>웹사이트의 영상 자막</dd></div>
-                  <div><dt>JSON</dt><dd>원문·번역·시간 정보를 보관하고 다시 편집할 때</dd></div>
-                </dl>
+                <details class="export-format-details">
+                  <summary>형식별 용도 확인</summary>
+                  <dl class="format-guide">
+                    <div><dt>SRT</dt><dd>영상 편집기와 일반 자막 플레이어</dd></div>
+                    <div><dt>VTT</dt><dd>웹 동영상 및 HTML 영상 자막</dd></div>
+                    <div><dt>JSON</dt><dd>타임코드·원문·번역 등 자막 데이터 백업</dd></div>
+                  </dl>
+                </details>
+                <p class="studio-panel-description">다운로드 버튼은 파일 저장을 요청합니다. 완료 여부는 브라우저 다운로드 내역에서 확인하세요.</p>
               </aside>
             </div>
             <div id="translationFailureSummary" class="translation-failure-summary" hidden></div>
