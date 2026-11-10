@@ -1654,6 +1654,10 @@ function renderExportOverview() {
   refs.exportResultStatus.dataset.state = summary.status.state;
   refs.exportLanguage.textContent = summary.language;
   refs.exportSyncSummary.textContent = summary.sync;
+  if (!refs.exportBuildError.hidden) {
+    refs.exportResultStatus.textContent = '파일 준비 오류 · 재시도 필요';
+    refs.exportResultStatus.dataset.state = 'error';
+  }
 }
 
 function renderDownloads(subtitles) {
