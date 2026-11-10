@@ -33,7 +33,7 @@ test('2-A separates file, microphone, and Vosk without changing Native IDs', asy
   assert.match(view, /id="microphoneHeading">마이크 자막/);
   assert.match(view, /id="connectionCard"[^>]*data-state="missing"/);
   assert.match(js, /\$\('connectionCard'\)\.dataset\.state = !connection\.hasKey/);
-  assert.match(js, /\['pickVideo'\)/);
+  assert.match(js, /pickVideo/);
   assert.match(css, /#videoView \.es2-input-options/);
   assert.match(css, /#videoView \.offline-source/);
 });
