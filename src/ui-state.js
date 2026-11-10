@@ -55,7 +55,7 @@ export function getGeneratePreparationStatus({
 }
 
 
-export function getExportSummary({ fileName, subtitleCount, failedCount, language, offsetSeconds } = {}) {
+export function getExportSummary({ fileName, subtitleCount, failedCount, translationPending = false, language, offsetSeconds } = {}) {
   const count = Math.max(0, Number(subtitleCount) || 0);
   const failures = Math.max(0, Number(failedCount) || 0);
   const offset = Number(offsetSeconds) || 0;
@@ -63,7 +63,9 @@ export function getExportSummary({ fileName, subtitleCount, failedCount, languag
     ? { state: 'empty', label: '저장할 자막 없음' }
     : failures > 0
       ? { state: 'partial', label: `자막 ${count}개 · 번역 실패 ${failures}개 (원문 보존)` }
-      : { state: 'ready', label: `자막 ${count}개 · 파일 준비됨` };
+      : translationPending
+        ? { state: 'pending', label: `자막 ${count}개 · 번역 완료 전 (원문 보존)` }
+        : { state: 'ready', label: `자막 ${count}개 · 파일 준비됨` };
   const languageLabel = String(language ?? '').trim();
   return {
     fileName: String(fileName ?? '').trim() || '선택한 작업 없음',
