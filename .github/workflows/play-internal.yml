@@ -46,6 +46,7 @@ jobs:
       sha: ${{ steps.source.outputs.sha }}
       mode: ${{ steps.route.outputs.mode }}
       target: ${{ steps.route.outputs.target }}
+      promotion_code: ${{ steps.route.outputs.promotion_code }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,6 +73,12 @@ jobs:
             echo 'mode=listing' >> "$GITHUB_OUTPUT"
             echo 'target=none' >> "$GITHUB_OUTPUT"
           elif [[ "$EVENT_TYPE" == 'workflow_run' ]]; then
+            if [[ "$title" == 'fix(play): resume existing internal 21 to closed [promote-existing-21]' ]]; then
+              echo 'mode=promote' >> "$GITHUB_OUTPUT"
+              echo 'target=alpha' >> "$GITHUB_OUTPUT"
+              echo 'promotion_code=21' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             if [[ "$title" == *'[skip-play]'* ]]; then
               echo 'mode=check' >> "$GITHUB_OUTPUT"
               echo 'target=none' >> "$GITHUB_OUTPUT"
@@ -96,7 +103,8 @@ jobs:
                   exit 1
                 fi
                 echo 'mode=promote' >> "$GITHUB_OUTPUT"
-                echo 'target=alpha' >> "$GITHUB_OUTPUT" ;;
+                echo 'target=alpha' >> "$GITHUB_OUTPUT"
+                echo "promotion_code=$PROMOTE_VERSION_CODE" >> "$GITHUB_OUTPUT" ;;
               *) echo 'Unsupported release mode' >&2; exit 1 ;;
             esac
           fi
@@ -224,7 +232,7 @@ jobs:
         if: (needs.source.outputs.mode == 'deploy' && needs.source.outputs.target == 'alpha') || needs.source.outputs.mode == 'promote'
         env:
           PLAY_ACCESS_TOKEN: ${{ steps.wif.outputs.access_token || steps.json.outputs.access_token }}
-          VERSION_CODE: ${{ needs.source.outputs.mode == 'promote' && inputs.version_code || steps.version.outputs.version_code }}
+          VERSION_CODE: ${{ needs.source.outputs.mode == 'promote' && needs.source.outputs.promotion_code || steps.version.outputs.version_code }}
         run: python3 scripts/release/publisher.py --report output/play-promotion.json promote --version-code "$VERSION_CODE" --track alpha
       - name: Submit only the reviewed 5-B phone screenshots and check fresh Play hashes
         if: needs.source.outputs.mode == 'listing'
