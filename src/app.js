@@ -21,6 +21,7 @@ import { createCredentialController } from './credential-controller.js';
 import { getStartRequirement } from './credential-ui-state.js';
 import {
   canStartSubtitleJob,
+  getGeneratePreparationStatus,
   previewLimitLabel,
   visibleSubtitlePreview,
 } from './ui-state.js';
@@ -129,6 +130,9 @@ const refs = {
   credentialStatus: document.querySelector('#credentialStatus'),
   credentialError: document.querySelector('#credentialError'),
   startRequirement: document.querySelector('#startRequirement'),
+  generateFileStatus: document.querySelector('#generateFileStatus'),
+  generateConnectionStatus: document.querySelector('#generateConnectionStatus'),
+  generateLanguageStatus: document.querySelector('#generateLanguageStatus'),
   sourceLanguage: document.querySelector('#sourceLanguage'),
   targetLanguage: document.querySelector('#targetLanguage'),
   customTargetLanguage: document.querySelector('#customTargetLanguage'),
@@ -273,6 +277,10 @@ function bindEvents() {
   refs.redoEdit.addEventListener('click', () => restoreEdit('redo'));
   refs.translationEnabled.addEventListener('change', updateTranslationControls);
   refs.targetLanguage.addEventListener('change', updateTranslationControls);
+  [refs.sourceLanguage, refs.targetLanguage, refs.translationEnabled].forEach((field) => {
+    field.addEventListener('change', updateStartButtonState);
+  });
+  refs.customTargetLanguage.addEventListener('input', updateStartButtonState);
   refs.tabButtons.forEach((button) => {
     button.addEventListener('keydown', (event) => {
       const tabs = [...refs.tabButtons];
@@ -511,6 +519,22 @@ function updateStartButtonState() {
     apiKey: activeApiKey,
     proxyUrl: refs.proxyUrl.value,
   });
+
+  const preparation = getGeneratePreparationStatus({
+    hasFile,
+    hasDuration,
+    hasApiKey: Boolean(String(activeApiKey ?? '').trim()),
+    connectionMode,
+    proxyUrl: refs.proxyUrl.value,
+    sourceLanguage: refs.sourceLanguage.selectedOptions[0]?.textContent,
+    translationEnabled: refs.translationEnabled.checked,
+    targetLanguage: refs.targetLanguage.selectedOptions[0]?.textContent,
+    isCustomTarget: refs.targetLanguage.value === 'custom',
+    customTargetLanguage: refs.customTargetLanguage.value,
+  });
+  refs.generateFileStatus.textContent = preparation.file;
+  refs.generateConnectionStatus.textContent = preparation.connection;
+  refs.generateLanguageStatus.textContent = preparation.language;
 }
 
 function restoreConnectionSettings() {

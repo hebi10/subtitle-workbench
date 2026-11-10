@@ -158,3 +158,24 @@ test('editor exposes quality filter and short subtitle merge action', () => {
   assert.ok(html.includes('value="warning"'));
   assert.ok(html.includes('id="mergeShortSubtitles"'));
 });
+
+test('Editorial Studio 2.0 3-A shows actual preparation details before starting without removing legacy controls', () => {
+  const html = readFileSync('index.html', 'utf8');
+  const app = readFileSync('src/app.js', 'utf8');
+  const css = readFileSync('styles.css', 'utf8');
+  const generate = html.slice(html.indexOf('id="panel-generate"'), html.indexOf('id="panel-edit"'));
+  assert.ok(generate.indexOf('id="videoFile"') < generate.indexOf('id="settingsForm"'));
+  assert.ok(generate.indexOf('id="generateFileStatus"') < generate.indexOf('id="runControls"'));
+  assert.ok(generate.indexOf('id="runControls"') < generate.indexOf('id="runPanel"'));
+  for (const id of ['generateFileStatus', 'generateConnectionStatus', 'generateLanguageStatus']) {
+    assert.match(generate, new RegExp(`id="${id}"`));
+    assert.match(app, new RegExp(`refs\\.${id}\\.textContent`));
+  }
+  for (const id of ['videoFile', 'apiKey', 'proxyUrl', 'sourceLanguage', 'targetLanguage', 'startButton', 'cancelButton']) {
+    assert.ok(generate.includes(`id="${id}"`));
+  }
+  assert.match(generate, /id="startButton"[^>]+aria-describedby="startRequirement"/);
+  assert.ok(css.includes('#panel-generate .generate-preflight-items {'));
+  assert.ok(app.includes('getGeneratePreparationStatus({'));
+  assert.ok(app.includes("refs.customTargetLanguage.addEventListener('input', updateStartButtonState)"));
+});

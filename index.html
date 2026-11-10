@@ -203,9 +203,18 @@
                 <p class="form-help">번역을 끄면 원문 자막만 생성합니다.</p>
               </fieldset>
 
+              <section class="generate-preflight" aria-label="자막 생성 준비 상태">
+                <p class="generate-preflight-heading">생성 전 확인</p>
+                <dl class="generate-preflight-items">
+                  <div><dt>파일</dt><dd id="generateFileStatus">파일 선택 필요</dd></div>
+                  <div><dt>연결 정보</dt><dd id="generateConnectionStatus">API 키 입력 필요</dd></div>
+                  <div><dt>언어</dt><dd id="generateLanguageStatus">자동 감지 → 한국어</dd></div>
+                </dl>
+              </section>
+
               <div id="runControls" class="run-controls" aria-label="자막 생성 실행">
                 <p id="startRequirement" class="start-requirement" aria-live="polite"></p>
-                <button id="startButton" class="primary-button" type="button" disabled><span class="es-icon es-icon--play" aria-hidden="true"></span>자막 생성 시작</button>
+                <button id="startButton" class="primary-button" type="button" aria-describedby="startRequirement" disabled><span class="es-icon es-icon--play" aria-hidden="true"></span>자막 생성 시작</button>
                 <button id="cancelButton" class="ghost-button" type="button" disabled><span class="es-icon es-icon--stop" aria-hidden="true"></span>중단</button>
               </div>
 
