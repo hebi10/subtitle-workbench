@@ -1703,3 +1703,12 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
   body.is-editor main { padding-bottom: calc(116px + env(safe-area-inset-bottom)); }
   html { scroll-padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
 }
+
+
+/* Editorial Studio 2.0 · 5-A: keep Korean action labels intact at Android text zoom 160%. */
+#videoView .file-source .start-actions button,
+#videoView .file-source #connectionHeading,
+#videoView .file-source #openConnection {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
