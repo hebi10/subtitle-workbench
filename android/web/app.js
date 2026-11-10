@@ -909,8 +909,24 @@ function syncConnection() {
   $('apiSettingsSummary').textContent = `${modeLabel} · ${connection.hasKey ? (matches ? '연결 확인됨' : '연결 저장됨') : '연결 필요'}`;
   $('defaultSettingsSummary').textContent = settingsSummary(savedSettings);
   $('videoSettingsSummary').textContent = `다음 영상: ${settingsSummary(savedSettings)}`;
-  $('settingsConnectionSummary').textContent = `${modeLabel} · ${connection.hasKey ? matches ? '인증·모델 확인됨' : '연결 저장됨' : '연결 필요'}`;
+  const connectionHealth = checkingConnection ? 'checking' : !connection.hasKey ? 'missing' : connectionError ? 'error' : matches ? 'verified' : 'saved';
+  const healthLabels = { checking: '확인 중', missing: '연결 필요', error: '확인 실패', verified: '연결 확인됨', saved: '연결 미확인' };
+  $('settingsConnectionHealth').dataset.state = connectionHealth;
+  $('settingsConnectionHealth').textContent = healthLabels[connectionHealth];
+  const healthGuides = {
+    checking: '선택한 음성 인식·번역 모델에 접근할 수 있는지 확인하고 있습니다.',
+    missing: '개인 API 키 또는 테스트 서버 연결을 저장해야 파일 자막을 생성할 수 있습니다.',
+    error: '연결 확인에 실패했습니다. 상세 설정에서 실패 원인을 확인해 주세요.',
+    verified: '인증과 선택 모델 접근을 확인했습니다. 결제 상태와 잔액을 확인한 것은 아닙니다.',
+    saved: '연결 정보가 저장됐습니다. 연결 확인을 실행해 선택 모델에 접근할 수 있는지 검사해 주세요.',
+  };
+  $('settingsConnectionHelp').textContent = healthGuides[connectionHealth];
+  $('settingsConnectionSummary').textContent = `${modeLabel} · ${connectionHealth === 'error' ? '연결 확인 실패' : connection.hasKey ? matches ? '인증·모델 확인됨' : '연결 저장됨' : '연결 필요'}`;
   $('settingsDefaultsOverview').textContent = settingsSummary(savedSettings);
+  const unsavedDefaultChanges = !sameSettings(selected, savedSettings);
+  $('settingsDefaultsHelp').textContent = unsavedDefaultChanges
+    ? '입력 중인 변경은 아직 적용되지 않습니다. 아래에서 설정을 저장해 주세요.'
+    : '새로 선택하는 영상에 적용됩니다. 기존 작업 설정은 바뀌지 않습니다.';
   $('cloudTransmissionNotice').hidden = !relay;
   $('cloudTransmissionNotice').textContent = relayTransmissionNotice(connection.reviewRelay.url);
   $('cloudLiveNotice').textContent = relay ? relayTransmissionNotice(connection.reviewRelay.url, true) : '개인 API 연결: 마이크 음성을 OpenAI로 전송합니다. 본인의 API 키와 별도 이용 요금이 필요하며 인식 시작 전 안내를 제공합니다.';
@@ -1023,7 +1039,9 @@ $('guideOffline').addEventListener('click', () => {
 for (const [id, action] of Object.entries({
   startNewJob: () => show('video'),
   navVideo: () => show('video'), navJobs: () => show('jobs'), navResults: () => show('results'), navSettings: () => show('settings'),
-  openConnection: () => openSettings(), openDefaultSettings: () => openSettings('defaultSettings'), backToJobs: () => show('results'), refreshJobs: refresh,
+  openConnection: () => openSettings(), openDefaultSettings: () => openSettings('defaultSettings'),
+  settingsOpenConnection: () => openSettings('apiSettings'), settingsOpenDefaults: () => openSettings('defaultSettings'),
+  backToJobs: () => show('results'), refreshJobs: refresh,
   openResultJobs: () => show('jobs'), openResultVideo: () => show('video'),
   resultPreview: () => previewAt(0), editResult: () => show('editor'),
   prevJobs: () => { jobsPage -= 1; renderJobs(); $('jobsHeading').scrollIntoView({ block: 'start' }); },
