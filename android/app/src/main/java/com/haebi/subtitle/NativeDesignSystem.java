@@ -27,6 +27,14 @@ final class NativeDesignSystem {
     private static final int NIGHT_MUTED = Color.rgb(173, 173, 173);
     private static final int NIGHT_BORDER = Color.rgb(65, 65, 65);
 
+    // Shared editorial sizing; native text sizes remain scalable SP.
+    static final int SPACE_SMALL_DP = 8;
+    static final int SPACE_STANDARD_DP = 16;
+    static final int SECTION_TITLE_SP = 18;
+    static final int BODY_SP = 16;
+    static final int CAPTION_SP = 13;
+    static final int CONTROL_MIN_HEIGHT_DP = 52;
+
     private NativeDesignSystem() {}
 
     static boolean isDark(Context context) {
@@ -70,7 +78,7 @@ final class NativeDesignSystem {
         view.setTextColor(textColors);
         view.setBackground(backgrounds);
         view.setElevation(0f);
-        view.setMinHeight(dp(density, 52));
+        view.setMinHeight(dp(density, CONTROL_MIN_HEIGHT_DP));
         view.setPadding(dp(density, 12), dp(density, 10), dp(density, 12), dp(density, 10));
     }
 
@@ -92,7 +100,7 @@ final class NativeDesignSystem {
     }
 
     static void language(Spinner spinner, float density) {
-        spinner.setMinimumHeight(dp(density, 52));
+        spinner.setMinimumHeight(dp(density, CONTROL_MIN_HEIGHT_DP));
         spinner.setPadding(dp(density, 12), 0, dp(density, 12), 0);
         spinner.setBackgroundTintList(ColorStateList.valueOf(ink(spinner.getContext())));
     }
@@ -142,6 +150,20 @@ final class NativeDesignSystem {
         view.setTextColor(ink(context));
         view.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
     }
+    // Optional state variant; callers must still provide an accessible text label.
+    static void statusPanel(TextView view, String state, float density) {
+        statusPanel(view, density);
+        Context context = view.getContext();
+        boolean error = "error".equals(state);
+        int border = error
+                ? (isDark(context) ? Color.rgb(166, 95, 108) : Color.rgb(220, 158, 170))
+                : line(context);
+        int fill = error
+                ? (isDark(context) ? Color.rgb(58, 36, 42) : Color.rgb(255, 241, 242))
+                : soft(context);
+        view.setBackground(surface(fill, border, density));
+    }
+
     static void transcriptPanel(TextView view, float density) {
         Context context = view.getContext();
         surfaceText(view, density);
