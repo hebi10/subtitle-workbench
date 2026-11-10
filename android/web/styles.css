@@ -1056,3 +1056,45 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
 @media (max-width:360px) {
   .app-nav button { white-space:normal; overflow-wrap:normal; word-break:keep-all; line-height:1.3; }
 }
+
+
+/* Editorial Studio 2.0 · 1-A common patterns, without changing existing navigation or state logic. */
+:root {
+  --es2-space-1: 4px;
+  --es2-space-2: 8px;
+  --es2-space-3: 12px;
+  --es2-space-4: 16px;
+  --es2-space-6: 24px;
+  --es2-space-8: 32px;
+  --es2-title-size: 24px;
+  --es2-section-size: 18px;
+  --es2-body-size: 16px;
+  --es2-caption-size: 13px;
+  --es2-status-ready: var(--es-surface-alt);
+  --es2-status-running: var(--es-surface-alt);
+  --es2-status-paused: var(--es-surface-alt);
+  --es2-status-completed: var(--es-surface-alt);
+  --es2-status-error: var(--es-status-danger);
+  --es2-status-error-border: var(--es-status-danger-border);
+}
+.es2-section-title { font-size: var(--es2-section-size); line-height: 1.35; font-weight: 700; overflow-wrap: anywhere; }
+.es2-supporting-text { font-size: var(--es2-caption-size); line-height: 1.5; color: var(--es-muted); overflow-wrap: anywhere; }
+.es2-timecode { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; white-space: nowrap; }
+.es2-action-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--es2-space-2); }
+.es2-action-row > :is(button, a) { min-height: var(--es-control-height); min-width: 0; }
+.es2-state-panel { padding: var(--es2-space-3) var(--es2-space-4); background: var(--es2-status-ready); border: 1px solid var(--es-border); color: var(--es-ink); overflow-wrap: anywhere; }
+.es2-state-panel[data-state="running"] { background: var(--es2-status-running); }
+.es2-state-panel[data-state="paused"] { background: var(--es2-status-paused); }
+.es2-state-panel[data-state="completed"] { background: var(--es2-status-completed); }
+.es2-state-panel[data-state="error"] { background: var(--es2-status-error); border-color: var(--es2-status-error-border); }
+.es2-state-panel > :first-child { margin-top: 0; }
+.es2-state-panel [role="status"], .es2-state-panel [role="alert"] { overflow-wrap: anywhere; }
+.es2-empty-state { background: var(--es-surface-alt); border: 1px solid var(--es-border); padding: var(--es2-space-6); text-align: center; }
+.es2-empty-state > :first-child { margin-top: 0; }
+.es2-progress { width: 100%; accent-color: var(--es-ink); }
+.es2-detail-toggle { display: block; min-height: var(--es-control-height); padding: var(--es2-space-3); color: var(--es-ink); background: var(--es-surface); border: 1px solid var(--es-border); cursor: pointer; }
+.es2-detail-toggle:focus-visible { outline: 2px solid var(--es-ink); outline-offset: 2px; }
+@media (max-width: 360px) {
+  .es2-action-row > :is(button, a) { white-space: normal; overflow-wrap: anywhere; }
+  .es2-empty-state { padding: var(--es2-space-4); }
+}
