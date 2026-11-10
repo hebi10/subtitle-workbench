@@ -13,6 +13,7 @@ import urllib.parse
 import urllib.request
 
 PACKAGE = 'com.haebi.subtitle'
+RELEASE_VERSION_NAME = '0.10.0'
 API = 'https://androidpublisher.googleapis.com'
 BASE = f'/androidpublisher/v3/applications/{PACKAGE}'
 MIN_VERSION = 10
@@ -155,7 +156,7 @@ class Publisher:
             if version_code(uploaded['versionCode']) != code:
                 raise ReleaseError('Uploaded bundle versionCode does not match the allocated version')
             self.request('PUT', edit + '/tracks/internal', {'track': 'internal', 'releases': [
-                {'name': f'0.9.1 ({code})', 'versionCodes': [str(code)], 'status': release_status}]})
+                {'name': f'{RELEASE_VERSION_NAME} ({code})', 'versionCodes': [str(code)], 'status': release_status}]})
             self.commit(edit, changes_not_sent_for_review)
         return self.verify_track(track, code, release_status)
 
@@ -171,7 +172,7 @@ class Publisher:
                 raise ReleaseError('The exact versionCode must exist in a completed internal release')
             if code not in self.used_versions(edit):
                 raise ReleaseError('Requested uploaded versionCode was not found')
-            promoted = {'name': release.get('name', f'0.9.1 ({code})'), 'versionCodes': [str(code)], 'status': 'completed'}
+            promoted = {'name': release.get('name', f'{RELEASE_VERSION_NAME} ({code})'), 'versionCodes': [str(code)], 'status': 'completed'}
             if release.get('releaseNotes'):
                 promoted['releaseNotes'] = release['releaseNotes']
             self.request('PUT', edit + '/tracks/alpha', {'track': 'alpha', 'releases': [promoted]})
