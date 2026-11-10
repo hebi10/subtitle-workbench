@@ -1678,7 +1678,7 @@ function renderDownloads(subtitles) {
     state.downloadUrls = [];
     refs.downloads.replaceChildren(...createDownloadPlaceholders(), createDownloadSyncMeta());
     refs.exportBuildError.hidden = false;
-    refs.exportBuildErrorText.textContent = '자막 파일을 준비하지 못했습니다. 자막과 수정 내용은 유지됩니다. 파일을 다시 준비해 주세요.';
+    refs.exportBuildErrorText.textContent = '자막 파일을 준비하지 못했습니다. 기존 자막과 편집 내용은 유지됩니다. 파일을 다시 준비해 주세요.';
     refs.exportDownloadStatus.textContent = '파일 준비 오류 · 아직 다운로드를 요청할 수 없습니다.';
   }
   renderTranslationFailureSummary(subtitles);
