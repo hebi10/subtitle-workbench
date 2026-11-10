@@ -249,7 +249,7 @@ test('4-B Android WebView: all views at six widths, dark/light, keyboard and sho
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.locator('#navResults').focus();
     await page.keyboard.press('Enter');
-    assert.equal(await page.locator('#resultsView').isVisible(), true);
+    await page.locator('#resultsView').waitFor({ state: 'visible' });
     await page.locator('#editResult').click();
     const input = page.locator('#editorView .cue.selected textarea').first();
     await input.waitFor({ state: 'visible' });
@@ -264,7 +264,7 @@ test('4-B Android WebView: all views at six widths, dark/light, keyboard and sho
       animations: 'disabled', fullPage: false,
     });
     await page.locator('#navSettings').click();
-    assert.equal(await page.locator('#settingsView').isVisible(), true);
+    await page.locator('#settingsView').waitFor({ state: 'visible' });
     await page.locator('#settingsOpenConnection').click();
     await page.locator('#apiSettings > summary').focus();
     assert.equal(await page.locator('#apiSettings > summary')
