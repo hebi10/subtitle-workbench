@@ -1455,3 +1455,121 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
   #resultsView .result-cue-details > summary { padding: var(--es2-space-2); }
   #resultsView .export-section { padding: var(--es2-space-3); }
 }
+
+
+/* Editorial Studio 2.0 · 2-D current subtitle review and editing context. */
+#editorView .editor-cue-context {
+  margin: var(--es2-space-3) 0 0;
+  border: 1px solid var(--es-border);
+  background: var(--es-surface);
+  border-radius: 0;
+  box-shadow: none;
+  min-width: 0;
+}
+#editorView .editor-cue-context > summary {
+  min-height: 48px;
+  padding: var(--es2-space-3);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+#editorView .editor-cue-context > summary #editorCuePosition {
+  color: var(--es-muted);
+  font-size: 13px;
+  font-weight: 500;
+  margin-inline-start: var(--es2-space-2);
+  font-variant-numeric: tabular-nums;
+}
+#editorView .editor-cue-context-body {
+  display: grid;
+  gap: var(--es2-space-2);
+  padding: 0 var(--es2-space-3) var(--es2-space-3);
+  min-width: 0;
+}
+#editorView .editor-cue-timing {
+  color: var(--es-muted);
+  font-size: 12px;
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+#editorView .editor-cue-text {
+  background: var(--es-surface-alt);
+  border: 1px solid var(--es-border);
+  color: var(--es-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+  margin: 0;
+  padding: var(--es2-space-3);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#editorView .editor-cue-original {
+  color: var(--es-muted);
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+#editorView .editor-cue-note {
+  color: var(--es-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0;
+}
+#editorView .editor-cue-context-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--es2-space-2);
+}
+#editorView .editor-cue-context-actions button {
+  min-height: var(--es-control-height);
+  min-width: 0;
+  padding: var(--es2-space-2);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: keep-all;
+}
+#editorView .editor-cue-context-actions #previewSelectedCue:not(:disabled) {
+  background: var(--es-ink);
+  border-color: var(--es-ink);
+  color: var(--es-on-action);
+}
+#editorView .editor-cue-context-actions .es-icon { flex-shrink: 0; }
+#editorView .cue.selected {
+  border: 1px solid var(--es-ink);
+  background: var(--es-surface);
+}
+#editorView .cue.selected .cue-detail > label {
+  font-size: 14px;
+  color: var(--es-ink);
+}
+#editorView .cue.selected .cue-detail textarea {
+  width: 100%;
+  min-height: 104px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+#editorView .cue.selected .cue-times input {
+  font-variant-numeric: tabular-nums;
+}
+#editorView .cue.selected :is(input, textarea, button):focus-visible {
+  outline: 2px solid var(--es-ink);
+  outline-offset: 2px;
+}
+@media (max-width: 360px) {
+  #editorView .editor-cue-context-body { padding: 0 var(--es2-space-2) var(--es2-space-2); }
+  #editorView .editor-cue-context > summary { padding: var(--es2-space-2); }
+  #editorView .editor-cue-context-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #editorView .editor-cue-context-actions #previewSelectedCue { grid-column: 1 / -1; }
+}
+@media (min-width: 620px) {
+  #editorView .editor-cue-context-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #editorView .editor-cue-context-body { gap: var(--es2-space-3); }
+}
