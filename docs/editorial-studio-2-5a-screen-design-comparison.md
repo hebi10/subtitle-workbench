@@ -18,6 +18,16 @@
 
 원안은 **기능·정보 구조를 설명하는 기획서**이므로, 구현 화면을 초기의 임의 이미지 픽셀과 똑같이 재현했는지가 아니라 작업 동선/주요 계층/색상/대비/플랫폼별 특성의 일치를 우선 판정한다.
 
+
+
+### 11월 9일 ↔ 11월 10일 비교 시트 (동일 화면 순서)
+
+- [웹 생성/편집/내보내기 3종 × 라이트/다크 비교 JPG](https://drive.google.com/file/d/1xANz7f3AvmRpXhSO9EvNyY2kYTndqZRs/view)
+- [실제 Android 15 WebView 6개 상태 × 글꼴 160% × 라이트/다크 비교 JPG](https://drive.google.com/file/d/1fCn8nBWrkLdx9f3Apps2ED0xZJvq4fcv/view)
+- [네이티브 3종 × 글꼴 160% × 라이트/다크 비교 JPG](https://drive.google.com/file/d/1M9RnSi8_sIT5_Emr3gQP0ZycG8uFVoDJ/view)
+
+이 비교 시트는 기존 2026-11-09 QA 캡처와 2026-11-10 4-B PR 동일 앱 코드를 사용한 캡처를 한 화면에 배열한 **검수용 자료**이며, 비슷한 날짜의 파일명이라도 Google Play 스토어 게시 사실을 의미하지 않는다.
+
 ## 영역별 대조
 
 | 화면 | 초기 기획 | 11/10 실제 관찰 | 판정 |
