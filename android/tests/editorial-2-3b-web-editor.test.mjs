@@ -87,6 +87,7 @@ test('3-B web editor supports cue selection, filter reset, retained edits, media
       for (const theme of ['light', 'dark']) {
         await page.setViewportSize({ width, height: 844 });
         await page.emulateMedia({ colorScheme: theme });
+        await page.evaluate(() => window.scrollTo(0, 0));
         const layout = await page.locator('#panel-edit .editor-layout').evaluate(node => ({
           mobileOrder: node.firstElementChild.classList.contains('player-card'),
           radius: getComputedStyle(document.querySelector('#editorCueContext')).borderRadius,
