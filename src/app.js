@@ -1646,6 +1646,7 @@ function renderExportOverview() {
     fileName: entry?.fileName || state.outputFileName,
     subtitleCount: state.subtitles.length,
     failedCount: getTranslationFailures(state.subtitles).length,
+    translationPending: Boolean(entry?.translationPending),
     language: entry?.outputLanguage,
     offsetSeconds: state.subtitleOffsetSeconds,
   });
