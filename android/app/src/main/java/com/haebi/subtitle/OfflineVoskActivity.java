@@ -73,7 +73,7 @@ public final class OfflineVoskActivity extends Activity {
         float density = getResources().getDisplayMetrics().density;
         NativeDesignSystem.header(root, "OFFLINE / LOCAL AI", "독립 로컬 AI 자막",
                 "앱이 직접 다운로드한 Vosk 언어 모델로 영상·음성 파일을 전사합니다. 모델 설치 후에는 인터넷과 OpenAI API 키 없이 사용할 수 있습니다.", density);
-        workflow = NativeDesignSystem.workflow(root, density, "모델 설치", "파일 선택", "전사·저장");
+        workflow = NativeDesignSystem.workflow(root, density, "모델", "파일", "전사");
 
         LinearLayout models = NativeDesignSystem.section(root, "01 / MODEL", "언어 모델 준비", density);
         selection = new Spinner(this);
