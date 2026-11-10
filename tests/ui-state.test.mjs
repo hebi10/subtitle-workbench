@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   canStartSubtitleJob,
+  getExportSummary,
   getGeneratePreparationStatus,
   previewLimitLabel,
   visibleSubtitlePreview,
@@ -206,4 +207,32 @@ test('custom translation language status never claims a blank custom language is
   });
   assert.equal(status.language, '자동 감지 → 번역 언어 입력 필요');
   assert.match(status.connection, /미검증/);
+});
+
+test('getExportSummary reports empty, ready, and partial translation accurately', () => {
+  assert.deepEqual(getExportSummary(), {
+    fileName: '선택한 작업 없음',
+    status: { state: 'empty', label: '저장할 자막 없음' },
+    language: '—',
+    sync: '0.0초',
+  });
+  const ready = getExportSummary({
+    fileName: 'subtitles.mp4', subtitleCount: 3, failedCount: 0, language: 'en', offsetSeconds: 0.5,
+  });
+  assert.equal(ready.fileName, 'subtitles.mp4');
+  assert.equal(ready.status.state, 'ready');
+  assert.equal(ready.language, 'en');
+  assert.equal(ready.sync, '0.5초');
+  const partial = getExportSummary({
+    fileName: 'partial.wav', subtitleCount: 4, failedCount: 2, language: 'original', offsetSeconds: -0.5,
+  });
+  assert.equal(partial.status.state, 'partial');
+  assert.match(partial.status.label, /번역 실패 2개/);
+  assert.match(partial.status.label, /원문 보존/);
+  assert.equal(partial.language, '원문');
+  assert.equal(partial.sync, '-0.5초');
+  const pending = getExportSummary({ fileName: 'cancelled.mp4', subtitleCount: 2, failedCount: 0, translationPending: true });
+  assert.equal(pending.status.state, 'pending');
+  assert.match(pending.status.label, /번역 완료 전/);
+  assert.match(pending.status.label, /원문 보존/);
 });

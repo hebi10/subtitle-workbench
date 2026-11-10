@@ -205,3 +205,34 @@ test('Editorial Studio 2.0 3-B keeps existing web editor controls and moves medi
   assert.ok(css.includes('#panel-edit .editor-table tr.is-selected-cue'));
   assert.ok(css.includes('#panel-edit .editor-cue-context'));
 });
+
+test('Editorial Studio 2.0 3-C preserves SRT/VTT/JSON and exposes result-scoped download statuses', () => {
+  const html = readFileSync('index.html', 'utf8');
+  const app = readFileSync('src/app.js', 'utf8');
+  const css = readFileSync('styles.css', 'utf8');
+  const section = html.slice(html.indexOf('id="panel-export"'), html.indexOf('</main>'));
+  for (const id of [
+    'exportResultSelect', 'exportFileName', 'exportResultStatus', 'exportLanguage',
+    'exportSyncSummary', 'exportSessionNote', 'exportSubtitleCount', 'downloads',
+    'exportDownloadStatus', 'exportBuildError', 'exportBuildErrorText', 'retryExportButton',
+    'translationFailureSummary', 'exportEmptyActions', 'importSubtitlesExport',
+    'goGenerateExport', 'logOutput',
+  ]) {
+    assert.equal((section.match(new RegExp(`id="${id}"`, 'g')) ?? []).length, 1, `missing/duplicate ${id}`);
+  }
+  assert.ok(section.indexOf('id="exportResultSelect"') < section.indexOf('id="downloads"'));
+  assert.ok(section.indexOf('id="downloads"') < section.indexOf('id="translationFailureSummary"'));
+  assert.match(section, /id="exportDownloadStatus"[^>]+aria-live="polite"/);
+  assert.match(section, /class="export-format-details"/);
+  assert.match(section, /SRT/);
+  assert.match(section, /VTT/);
+  assert.match(section, /JSON/);
+  assert.ok(app.includes('createSubtitleDownloads(subtitles,'));
+  assert.ok(app.includes('createTranslationFailureLogDownload(subtitles,'));
+  assert.ok(app.includes('getExportSummary({'));
+  assert.ok(app.includes("refs.exportResultSelect.addEventListener('change'"));
+  assert.ok(app.includes('function renderDownloadPlaceholders()'));
+  assert.ok(app.includes('function renderDownloads(subtitles)'));
+  assert.ok(css.includes('#panel-export .downloads .download-link--primary'));
+  assert.ok(css.includes('#panel-export .export-summary-grid'));
+});
