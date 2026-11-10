@@ -33,6 +33,8 @@ public final class EditorialNativeScreensDeviceTest {
                 assertSection(root, "02 / CAPTURE");
                 assertSection(root, "03 / RESULT");
                 assertWorkflow(root, "언어 준비", "마이크 인식", "자막 저장");
+                assertHelp(root, "언어 모델 도움말");
+                assertHelp(root, "인식·저장 안내");
                 assertText(root, "OpenAI API 키나 API 이용 요금은 필요하지 않습니다");
                 assertButton(root, "마이크 인식 시작");
                 Button stop = button(root, "인식 종료");
@@ -56,6 +58,7 @@ public final class EditorialNativeScreensDeviceTest {
                 assertSection(root, "02 / LIVE");
                 assertSection(root, "03 / RESULT");
                 assertWorkflow(root, "연결 확인", "실시간 인식", "자막 저장");
+                assertHelp(root, "시간·전송 안내");
                 assertText(root, "GPT 실시간 마이크 자막");
                 assertText(root, "API 이용 요금");
                 assertButton(root, "인식 종료 및 결과 확정");
@@ -77,6 +80,7 @@ public final class EditorialNativeScreensDeviceTest {
                 assertSection(root, "02 / FILE");
                 assertSection(root, "03 / TRANSCRIPTION");
                 assertWorkflow(root, "모델 설치", "파일 선택", "전사·저장");
+                assertHelp(root, "인식 품질·라이선스");
                 assertText(root, "인터넷과 OpenAI API 키 없이");
                 assertText(root, "오프라인 인식은 최대 60분");
                 assertButton(root, "선택 모델 다운로드·설치");
@@ -108,6 +112,20 @@ public final class EditorialNativeScreensDeviceTest {
             if (label.getContentDescription().toString().contains("현재 단계")) activeCount++;
         }
         assertEquals("Exactly one current step", 1, activeCount);
+    }
+
+    private static void assertHelp(View root, String label) {
+        View details = findTag(root, "editorial-native-help:" + label);
+        assertNotNull("Disclosure content: " + label, details);
+        assertEquals(View.GONE, details.getVisibility());
+        Button toggle = button(root, label + " 보기");
+        assertNotNull("Disclosure toggle: " + label, toggle);
+        toggle.performClick();
+        assertEquals(View.VISIBLE, details.getVisibility());
+        assertTrue(toggle.getText().toString().contains("접기"));
+        toggle.performClick();
+        assertEquals(View.GONE, details.getVisibility());
+        assertTrue(toggle.getText().toString().contains("보기"));
     }
 
     private static void verifyBackground(Activity activity, View root) {
