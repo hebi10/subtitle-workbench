@@ -124,6 +124,39 @@ class PublisherTests(unittest.TestCase):
         with self.assertRaisesRegex(publisher.ReleaseError, 'PLAY_ACCESS_TOKEN'):
             publisher.HttpTransport('')
 
+    def test_http_errors_identify_stage_without_exposing_messages(self):
+        import io
+        import json
+        import urllib.error
+        secret = 'user-private-key-value'
+        payload = {'error': {'status': 'FAILED_PRECONDITION',
+                             'message': 'Sensitive: ' + secret,
+                             'errors': [{'reason': 'invalidRelease', 'message': secret}]}}
+        def fail(request, **kwargs):
+            raise urllib.error.HTTPError(request.full_url, 400, 'Bad Request', {},
+                                         io.BytesIO(json.dumps(payload).encode()))
+        client = publisher.HttpTransport(secret, opener=fail)
+        with self.assertRaises(publisher.ReleaseError) as error:
+            client('POST', '/edits/123:validate', {})
+        message = str(error.exception)
+        self.assertIn('validate_edit HTTP 400', message)
+        self.assertIn('status=FAILED_PRECONDITION', message)
+        self.assertIn('reason=invalidRelease', message)
+        self.assertNotIn(secret, message)
+        self.assertNotIn('Sensitive:', message)
+
+    def test_http_errors_ignore_unsafe_reason_and_raw_payload(self):
+        import io
+        import urllib.error
+        secret = 'confidential-token'
+        def fail(request, **kwargs):
+            raise urllib.error.HTTPError(request.full_url, 400, secret, {},
+                                         io.BytesIO(('{"error":{"status":"BAD\\n' + secret + '"}}').encode()))
+        with self.assertRaises(publisher.ReleaseError) as error:
+            publisher.HttpTransport(secret, opener=fail)('POST', '/edits/123:commit', {})
+        self.assertIn('commit_edit HTTP 400', str(error.exception))
+        self.assertNotIn(secret, str(error.exception))
+
     def test_http_errors_do_not_echo_server_or_credentials(self):
         import io
         import urllib.error
