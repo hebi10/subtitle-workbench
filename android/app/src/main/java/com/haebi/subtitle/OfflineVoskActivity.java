@@ -112,7 +112,9 @@ public final class OfflineVoskActivity extends Activity {
         NativeDesignSystem.transcriptPanel(captionPreview, density);
         save = button(transcription, "자막 저장 및 편집", true, this::save);
         save.setEnabled(false);
-        label(transcription, "Vosk 소형 모델은 Whisper와 인식 정확도가 다릅니다. 한국어 소형 모델의 공개 Zeroth 테스트 WER는 28.1%입니다. 모델 다운로드에만 네트워크를 사용하며 음성 파일은 OpenAI로 전송하지 않습니다. 모델 라이선스: Apache-2.0.", 13, false);
+        label(transcription, "모델 다운로드만 인터넷이 필요하며 음성 파일은 OpenAI로 전송하지 않습니다.", 13, false);
+        NativeDesignSystem.helpDisclosure(transcription, "인식 품질·라이선스",
+                "Vosk 소형 모델은 Whisper와 인식 정확도가 다릅니다. 한국어 소형 모델의 공개 Zeroth 테스트 WER는 28.1%입니다. 모델 다운로드에만 네트워크를 사용하며 음성 파일은 OpenAI로 전송하지 않습니다. 모델 라이선스: Apache-2.0.", density);
         button(root, "닫기", false, this::closeRequested);
     }
 
