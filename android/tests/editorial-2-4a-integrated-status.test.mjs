@@ -139,6 +139,7 @@ test('4-A Android status, export cancel, and deletion confirmations preserve rec
     assert.equal(await page.evaluate(() => window.mockNative.jobs.some(j => j.id === 'partial-1')), true,
       'Other job records must be retained');
     assert.equal(await page.evaluate(() => window.mockNative.calls.filter(call => call.method === 'deleteJob').length), 1);
+    await page.waitForFunction(() => document.getElementById('appMessage').textContent.includes('원본 영상은 유지됩니다'));
     assert.match(await page.locator('#appMessage').innerText(), /원본 영상은 유지됩니다/);
     assert.equal(await page.locator('#appMessage').getAttribute('role'), 'status');
   });
@@ -162,6 +163,7 @@ test('4-A Android save failure blocks navigation until retry and keeps unsaved t
     await page.locator('#navJobs').click();
     assert.equal(await page.locator('#editorView').isVisible(), true,
       'Failed persistence must not discard the editor state');
+    await page.waitForFunction(() => document.getElementById('appMessage').getAttribute('role') === 'alert');
     assert.equal(await page.locator('#appMessage').getAttribute('role'), 'alert');
     await mkdir(output, { recursive: true });
     await page.screenshot({ path: join(output, '4a-native-save-error-light.png'), fullPage: true });
