@@ -20,8 +20,8 @@
   <main>
     <div id="messageBar" class="message-bar" hidden><p id="appMessage" class="message" role="status" hidden></p><button id="dismissMessage" type="button" aria-label="알림 닫기">닫기</button></div>
     <section id="videoView" aria-labelledby="videoHeading" hidden>
-      <div class="section-heading"><div><p class="page-kicker">01 / INPUT</p><h2 id="videoHeading">영상 추가</h2></div></div>
-      <p class="page-description">파일이나 마이크를 선택해 자막 작업을 시작합니다.</p>
+      <div class="section-heading"><div><p class="page-kicker">01 / NEW TASK</p><h2 id="videoHeading">새 자막 작업</h2></div></div>
+      <p class="page-description">파일을 선택하거나 마이크·오프라인 AI로 자막을 만듭니다.</p>
       <section id="firstRunGuide" class="es2-state-panel first-run-guide" aria-labelledby="firstRunGuideHeading" hidden>
         <div class="first-run-heading"><h3 id="firstRunGuideHeading" class="es2-section-title">처음 시작하시나요?</h3><button id="dismissFirstRunGuide" type="button" aria-label="처음 사용 안내 닫기">닫기</button></div>
         <p class="es2-supporting-text">원하는 작업 방식부터 선택하세요. 파일 자막과 GPT 실시간 인식에는 개인 API 또는 테스트 서버 연결이 필요합니다. 기기 마이크와 설치된 오프라인 모델은 개인 API 없이 사용할 수 있습니다.</p>
@@ -31,27 +31,44 @@
           <button id="guideOffline" type="button">오프라인 AI</button>
         </div>
       </section>
-      <section class="file-source" aria-labelledby="fileSourceHeading">
-        <div class="source-heading"><div><p class="source-kicker">FILE / TRANSCRIPTION</p><h3 id="fileSourceHeading">파일에서 자막 만들기</h3></div><span class="source-capacity">영상 최대 3시간</span></div>
-        <div class="start-actions"><button id="pickVideo" class="primary" type="button" disabled><span class="es-icon es-icon--video" aria-hidden="true"></span>영상 선택</button><button id="importSubtitles" type="button"><span class="es-icon es-icon--add" aria-hidden="true"></span>자막 불러오기</button></div>
-        <section id="connectionCard" class="connection-summary" aria-labelledby="connectionHeading"><div><h3 id="connectionHeading">내 API로 자막 생성</h3><p id="connectionSummary" class="hint">API 연결 상태를 확인하고 있습니다.</p><p id="activeModel" class="hint">번역 모델: gpt-6-luna</p></div><button id="openConnection" type="button">API 연결 설정</button></section>
+      <section class="file-source es2-input-primary" aria-labelledby="fileSourceHeading">
+        <div class="source-heading">
+          <div><p class="source-kicker">01 / FILE</p><h3 id="fileSourceHeading">파일에서 자막 만들기</h3></div>
+          <span class="source-capacity">영상 최대 3시간</span>
+        </div>
+        <p class="source-description">영상·음성 파일을 선택해 음성을 인식하고 필요하면 번역합니다.</p>
+        <div class="start-actions">
+          <button id="pickVideo" class="primary" type="button" disabled><span class="es-icon es-icon--video" aria-hidden="true"></span>영상 선택</button>
+          <button id="importSubtitles" type="button"><span class="es-icon es-icon--add" aria-hidden="true"></span>자막 불러오기</button>
+        </div>
+        <section id="connectionCard" class="connection-summary" aria-labelledby="connectionHeading" data-state="missing">
+          <div><h3 id="connectionHeading">내 API로 자막 생성</h3><p id="connectionSummary" class="hint" role="status">API 연결 상태를 확인하고 있습니다.</p><p id="activeModel" class="hint">번역 모델: gpt-6-luna</p></div>
+          <button id="openConnection" type="button">API 연결 설정</button>
+        </section>
         <p id="keyHint" class="hint">개인 API 또는 테스트 서버 연결을 저장하면 영상을 선택할 수 있습니다.</p>
         <p id="cloudTransmissionNotice" class="job-ready-note" hidden></p>
         <div class="default-summary"><p id="videoSettingsSummary" class="hint"></p><button id="openDefaultSettings" type="button">기본 설정</button></div>
-        <details class="local-offline-entry">
-        <summary>독립 로컬 AI · 영상/음성 파일</summary>
-        <div><p class="hint">Vosk 언어 모델을 앱에서 직접 다운로드합니다. 설치 후에는 API 키나 인터넷 없이 최대 60분 파일을 자막으로 만들 수 있습니다. 모델 크기는 약 42~87MB입니다.</p><button id="openOfflineModel" type="button">로컬 AI 모델 관리 및 파일 전사</button></div>
-        </details>
         <label id="preparedJobLabel" class="job-selector" hidden>준비할 영상<select id="preparedJobSelector"></select></label>
         <div id="preparedJobs" class="job-list"><p class="empty">영상을 선택하면 여기에서 생성을 준비합니다.</p></div>
       </section>
-      <section class="microphone-source" aria-labelledby="microphoneHeading">
-        <div class="source-heading"><div><p class="source-kicker">MICROPHONE</p><h3 id="microphoneHeading">마이크 자막</h3></div></div>
-        <div class="microphone-entries">
-          <div class="local-caption-entry"><button id="openOnDevice" type="button"><span class="es-icon es-icon--mic" aria-hidden="true"></span>온디바이스 마이크 자막</button><p class="hint">Android 12 이상에서 지원되는 기기 음성 인식 엔진을 사용하며, OpenAI API 키가 필요하지 않습니다.</p></div>
-          <div class="local-caption-entry"><button id="openCloudLive" type="button"><span class="es-icon es-icon--mic" aria-hidden="true"></span>GPT 실시간 마이크 자막</button><p id="cloudLiveNotice" class="hint">마이크 음성을 선택한 연결을 통해 OpenAI로 전송합니다. 인식 시작 전 전송 대상과 비용 안내를 확인하세요.</p></div>
-        </div>
-      </section>
+      <div class="es2-input-options">
+        <section class="microphone-source" aria-labelledby="microphoneHeading">
+          <div class="source-heading"><div><p class="source-kicker">02 / MICROPHONE</p><h3 id="microphoneHeading">마이크 자막</h3></div></div>
+          <p class="source-description">기기 음성 인식 또는 연결된 AI로 말하는 내용을 기록합니다.</p>
+          <div class="microphone-entries">
+            <div class="local-caption-entry"><button id="openOnDevice" type="button"><span class="es-icon es-icon--mic" aria-hidden="true"></span>온디바이스 마이크 자막</button><p class="hint">Android 12 이상에서 지원되는 기기 음성 인식 엔진을 사용하며, OpenAI API 키가 필요하지 않습니다.</p></div>
+            <div class="local-caption-entry"><button id="openCloudLive" type="button"><span class="es-icon es-icon--mic" aria-hidden="true"></span>GPT 실시간 마이크 자막</button><p id="cloudLiveNotice" class="hint">마이크 음성을 선택한 연결을 통해 OpenAI로 전송합니다. 인식 시작 전 전송 대상과 비용 안내를 확인하세요.</p></div>
+          </div>
+        </section>
+        <section class="offline-source" aria-labelledby="offlineHeading">
+          <div class="source-heading"><div><p class="source-kicker">03 / OFFLINE</p><h3 id="offlineHeading">오프라인 AI</h3></div></div>
+          <p class="source-description">언어 모델을 설치한 후 기기에서 파일을 인식합니다.</p>
+          <details class="local-offline-entry">
+            <summary>독립 로컬 AI · 영상/음성 파일</summary>
+            <div><p class="hint">Vosk 언어 모델을 앱에서 직접 다운로드합니다. 설치 후에는 API 키나 인터넷 없이 최대 60분 파일을 자막으로 만들 수 있습니다. 모델 크기는 약 42~87MB입니다.</p><button id="openOfflineModel" type="button">로컬 AI 모델 관리 및 파일 전사</button></div>
+          </details>
+        </section>
+      </div>
     </section>
 
     <section id="jobsView" aria-labelledby="jobsHeading">
