@@ -53,3 +53,22 @@ export function getGeneratePreparationStatus({
   const language = translationEnabled ? `${source} → ${target}` : `${source} · 번역 사용 안 함`;
   return { file, connection, language };
 }
+
+
+export function getExportSummary({ fileName, subtitleCount, failedCount, language, offsetSeconds } = {}) {
+  const count = Math.max(0, Number(subtitleCount) || 0);
+  const failures = Math.max(0, Number(failedCount) || 0);
+  const offset = Number(offsetSeconds) || 0;
+  const status = count === 0
+    ? { state: 'empty', label: '저장할 자막 없음' }
+    : failures > 0
+      ? { state: 'partial', label: `자막 ${count}개 · 번역 실패 ${failures}개 (원문 보존)` }
+      : { state: 'ready', label: `자막 ${count}개 · 파일 준비됨` };
+  const languageLabel = String(language ?? '').trim();
+  return {
+    fileName: String(fileName ?? '').trim() || '선택한 작업 없음',
+    status,
+    language: count === 0 ? '—' : /^(auto|original)$/i.test(languageLabel) ? '원문' : languageLabel || '—',
+    sync: `${(Number.isFinite(offset) ? offset : 0).toFixed(1)}초`,
+  };
+}
