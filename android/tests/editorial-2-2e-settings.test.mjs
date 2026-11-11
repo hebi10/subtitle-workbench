@@ -38,6 +38,9 @@ test('2-E preserves encrypted settings contracts and scopes all status UI to exi
     assert.match(html, new RegExp('<h4>' + label + '</h4>'));
   assert.match(css, /#settingsView \.settings-overview-action:focus-visible/);
   assert.match(css, /#settingsView \.settings-health-badge\[data-state="error"\]/);
+  assert.match(html, /class="settings-overview-state"/);
+  assert.match(html, /id="settingsEditHeading">상세 설정/);
+  assert.match(css, /@media \(max-width: 619px\)/);
 });
 
 async function withApp(action) {
@@ -84,6 +87,8 @@ test('2-E gives honest connection state and opens the original encrypted forms',
   await withApp(async page => {
     await page.locator('#navSettings').click();
     assert.equal(await page.locator('.settings-overview > div').count(), 2);
+    assert.equal(await page.locator('#settingsConnectionSummary').evaluate(node =>
+      node.parentElement.contains(document.querySelector('#settingsConnectionHealth'))), true);
     assert.equal(await page.locator('#settingsConnectionHealth').getAttribute('data-state'), 'saved');
     assert.match(await page.locator('#settingsConnectionHelp').innerText(), /연결 확인/);
     assert.match(await page.locator('#settingsConnectionSummary').innerText(), /개인 API/);

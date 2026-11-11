@@ -1878,3 +1878,45 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
   border: 1px solid var(--es-border);
   background: var(--es-surface-alt);
 }
+
+/* UI-09-F · settings status first; editable forms and data help stay separated. */
+#settingsView .settings-overview-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--es2-space-2);
+  min-width: 0;
+}
+#settingsView .settings-overview-state #settingsConnectionSummary {
+  flex: 1 1 130px;
+  min-width: 0;
+  margin: 0;
+}
+#settingsView .settings-overview-state #settingsConnectionHealth {
+  flex: 0 0 auto;
+}
+#settingsView .settings-edit-heading {
+  margin: var(--es2-space-4) 0 var(--es2-space-2);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--es-ink);
+}
+#settingsView .settings-edit-heading + .settings-group {
+  margin-top: 0;
+}
+#settingsView .settings-overview-card .settings-overview-action {
+  margin-top: auto;
+}
+@media (max-width: 619px) {
+  #settingsView .settings-overview {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--es2-space-2);
+  }
+  #settingsView .settings-overview > .settings-overview-card {
+    padding: var(--es2-space-3);
+  }
+  #settingsView .settings-overview-card .settings-overview-action {
+    min-height: 48px;
+  }
+}

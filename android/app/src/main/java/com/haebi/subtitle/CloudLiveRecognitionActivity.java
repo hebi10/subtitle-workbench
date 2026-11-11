@@ -94,13 +94,14 @@ public final class CloudLiveRecognitionActivity extends Activity {
 
         float density = getResources().getDisplayMetrics().density;
         NativeDesignSystem.header(root, "CLOUD / REALTIME", "GPT 실시간 마이크 자막",
-                "사용자가 인식을 시작한 동안에만 마이크 음성을 선택한 연결을 통해 전송합니다. 비용과 연결 대상을 먼저 확인하세요.", density);
+                "연결과 이용 요금을 확인한 뒤 마이크 인식을 시작합니다. 전송은 시작한 동안에만 진행됩니다.", density);
         workflow = NativeDesignSystem.workflow(root, density, "연결", "인식", "저장");
 
         LinearLayout connection = NativeDesignSystem.section(root, "01 / CONNECTION", "연결·인식 언어", density);
         disclosure = label(connection,
-                "개인 API 연결은 API 이용 요금이 별도로 청구되며, 테스트 연결은 서버의 공용 테스트 한도가 적용됩니다. 선택한 전송 대상을 확인한 뒤 시작해 주세요.",
+                "연결 확인 중 · 개인 API는 API 이용 요금이 별도 청구되며, 테스트 서버에는 공용 사용 한도가 적용됩니다. 시작 전에 전송 대상을 확인하세요.",
                 14, false);
+        disclosure.setTag("editorial-cloud-disclosure");
         NativeDesignSystem.statusPanel(disclosure, density);
         label(connection, "인식 언어", 14, true);
         language = new Spinner(this);
@@ -109,6 +110,8 @@ public final class CloudLiveRecognitionActivity extends Activity {
         language.setContentDescription("인식 언어");
         NativeDesignSystem.language(language, density);
         connection.addView(language, new LinearLayout.LayoutParams(-1, -2));
+        NativeDesignSystem.helpDisclosure(connection, "연결·전송·요금 상세",
+                "개인 API 연결은 본인의 OpenAI 계정에 음성 인식 요금이 청구됩니다. 테스트 연결은 등록된 서버를 거쳐 OpenAI로 전송하며 서버의 공유 사용량 한도가 적용됩니다. 마이크 권한은 사용자가 시작할 때 요청하고, 화면을 떠나면 전송을 중단합니다.", density);
 
         LinearLayout capture = NativeDesignSystem.section(root, "02 / LIVE", "실시간 음성 인식", density);
         start = button(capture, "유료 GPT 실시간 인식 시작", true, this::requestStart);
@@ -135,8 +138,8 @@ public final class CloudLiveRecognitionActivity extends Activity {
 
     private void updateDisclosure(CloudAccess access) {
         disclosure.setText(access.isRelay()
-                ? "테스트 연결: " + access.origin() + "\n마이크 음성을 이 테스트 서버를 거쳐 OpenAI의 gpt-live-transcribe로 전송합니다. 개인 API 키와 개인 결제는 필요하지 않으며 서버의 공용 테스트 한도가 적용됩니다. 시작을 누른 경우에만 전송합니다."
-                : "개인 API 연결: OpenAI\n본인의 OpenAI API 키로 gpt-live-transcribe를 사용합니다. 마이크 음성을 OpenAI로 전송하며 API 이용 요금이 별도로 청구됩니다. 시작을 누른 경우에만 전송합니다.");
+                ? "테스트 연결: " + access.origin() + "\n마이크 음성은 테스트 서버를 거쳐 OpenAI로 전송됩니다. 개인 API 요금은 없으나 공용 테스트 한도가 적용됩니다. 인식 시작 후에만 전송합니다."
+                : "개인 API 연결: OpenAI\n마이크 음성을 OpenAI로 전송하며 API 이용 요금은 본인 계정에 별도 청구됩니다. 인식 시작 후에만 전송합니다.");
         start.setText(access.isRelay() ? "테스트 GPT 실시간 인식 시작" : "유료 GPT 실시간 인식 시작");
     }
 

@@ -37,6 +37,9 @@ public final class EditorialNativeScreensDeviceTest {
                 assertWorkflow(root, "언어", "인식", "저장");
                 assertHelp(root, "언어 모델 도움말");
                 assertHelp(root, "인식·저장 안내");
+                View readiness = findTag(root, "editorial-ondevice-readiness");
+                assertTrue("Live support state stays in preparation", readiness instanceof TextView);
+                assertTrue(((TextView) readiness).getText().length() > 0);
                 LinearLayout steps = (LinearLayout) findTag(root, "editorial-native-workflow");
                 NativeDesignSystem.setWorkflowStep(steps, 1,
                         activity.getResources().getDisplayMetrics().density);
@@ -68,6 +71,8 @@ public final class EditorialNativeScreensDeviceTest {
                 assertSection(root, "03 / RESULT");
                 assertWorkflow(root, "연결", "인식", "저장");
                 assertHelp(root, "시간·전송 안내");
+                assertHelp(root, "연결·전송·요금 상세");
+                assertTrue(findTag(root, "editorial-cloud-disclosure") instanceof TextView);
                 assertText(root, "GPT 실시간 마이크 자막");
                 assertText(root, "API 이용 요금");
                 assertButton(root, "인식 종료 및 결과 확정");
@@ -90,6 +95,8 @@ public final class EditorialNativeScreensDeviceTest {
                 assertSection(root, "03 / TRANSCRIPTION");
                 assertWorkflow(root, "모델", "파일", "전사");
                 assertHelp(root, "인식 품질·라이선스");
+                assertHelp(root, "모델 상세·설치 조건");
+                assertHelp(root, "파일 길이·원본 안내");
                 assertText(root, "인터넷과 OpenAI API 키 없이");
                 assertText(root, "오프라인 인식은 최대 60분");
                 assertButton(root, "선택 모델 다운로드·설치");
