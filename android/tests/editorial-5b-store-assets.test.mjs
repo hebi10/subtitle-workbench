@@ -41,9 +41,10 @@ test('5-B final Play screenshots are eight authentic Android 15 capture-based PN
 });
 
 
-test('5-B trusted Play release route cannot sign a new AAB in screenshot-only mode', async () => {
+test('STORE-03 trusted listing route cannot sign AAB or change Play tracks', async () => {
   const workflow = await readFile(join(root, '.github/workflows/play-internal.yml'), 'utf8');
   assert.match(workflow, /title.*store: Editorial Studio 5-B trusted screenshot registration/);
+  assert.match(workflow, /title.*store: STORE-03 trusted screenshot registration \[listing-only\]/);
   assert.match(workflow, /echo 'mode=listing' >> "\$GITHUB_OUTPUT"/);
   assert.match(workflow, /if: needs\.source\.outputs\.mode == 'build' \|\| needs\.source\.outputs\.mode == 'deploy'\n\s*env:\n\s*ANDROID_UPLOAD_KEYSTORE_B64/);
   for (const step of ['Install SDK 36', 'Build signed release with the allocated versionCode',
@@ -51,7 +52,10 @@ test('5-B trusted Play release route cannot sign a new AAB in screenshot-only mo
     assert.ok(workflow.includes('name: ' + step + "\n        if: needs.source.outputs.mode == 'build' || needs.source.outputs.mode == 'deploy'"),
       step + ' must be skipped for screenshot registration');
   }
-  assert.match(workflow, /apply --phone-only --send-for-review --report output\/play-listing-5b\.json/);
+  assert.match(workflow, /check --phone-only --require-eight-screenshots/);
+  assert.match(workflow, /apply --phone-only --require-eight-screenshots --send-for-review --report output\/play-listing-store03\.json/);
+  assert.match(workflow, /if: needs\.source\.outputs\.mode == 'listing'\n\s*env:\n\s*GH_TOKEN:/);
+  assert.match(workflow, /if: needs\.source\.outputs\.mode == 'deploy'/);
   assert.match(workflow, /echo 'mode=deploy' >> "\$GITHUB_OUTPUT"/);
   assert.match(workflow, /echo 'mode=promote' >> "\$GITHUB_OUTPUT"/);
   assert.match(workflow, /echo 'promotion_code=21' >> "\$GITHUB_OUTPUT"/);
