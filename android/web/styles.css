@@ -1920,3 +1920,33 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
     min-height: 48px;
   }
 }
+
+/* UI-09-F compact summary: keep long help readable and actions beside it on 361–619px. */
+@media (min-width: 361px) and (max-width: 619px) {
+  #settingsView .settings-overview > .settings-overview-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 112px;
+    column-gap: var(--es2-space-2);
+    row-gap: var(--es2-space-1);
+    padding: var(--es2-space-2) var(--es2-space-3);
+    align-items: start;
+  }
+  #settingsView .settings-overview-label { grid-column: 1 / -1; }
+  #settingsView .settings-overview-state,
+  #settingsView #settingsDefaultsOverview,
+  #settingsView .settings-overview-help {
+    grid-column: 1;
+    min-width: 0;
+    margin: 0;
+  }
+  #settingsView .settings-overview-action {
+    grid-column: 2;
+    grid-row: 2 / span 2;
+    align-self: center;
+    min-height: 48px;
+    padding: var(--es2-space-2);
+    font-size: 12px;
+    margin: 0;
+  }
+  #settingsView .settings-edit-heading { margin-top: var(--es2-space-2); }
+}

@@ -39,7 +39,7 @@ test('2-E preserves encrypted settings contracts and scopes all status UI to exi
   assert.match(css, /#settingsView \.settings-overview-action:focus-visible/);
   assert.match(css, /#settingsView \.settings-health-badge\[data-state="error"\]/);
   assert.match(html, /class="settings-overview-state"/);
-  assert.match(html, /id="settingsEditHeading">상세 설정/);
+  assert.match(html, /id="settingsEditHeading"[^>]*>상세 설정/);
   assert.match(css, /@media \(max-width: 619px\)/);
 });
 
