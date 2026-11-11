@@ -5,6 +5,7 @@ on:
     paths:
       - 'android/app/src/androidTest/java/com/haebi/subtitle/EditorialUi09aStateMatrixDeviceTest.java'
       - 'scripts/ui09a/**'
+      - 'android/tests/editorial-ui09h-integrated.test.mjs'
       - '.github/workflows/ui09a-state-baseline.yml'
   workflow_dispatch:
 
