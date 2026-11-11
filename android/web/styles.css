@@ -1712,3 +1712,39 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
+
+/* UI-09-E: keep the selected cue and its editable fields ahead of secondary tools. */
+#editorView .editor-cue-context { margin: 8px 0 0; }
+#editorView .editor-cue-context > summary { padding: 8px 12px; }
+#editorView .editor-cue-context-body {
+  gap: 6px;
+  padding: 0 12px 12px;
+}
+#editorView .editor-cue-text {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+#editorView .editor-cue-original {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#editorView .editor-cue-context-actions { gap: 6px; }
+#editorView .editor-tools { margin: 8px 0 0; padding: 0 12px 12px; }
+#editorView .editor-tools:not([open]) { padding-bottom: 0; }
+#editorView .editor-tools > summary { min-height: 48px; }
+#editorView .editor-tools .editor-actions { margin: 0 0 12px; }
+#editorView .cue-list { margin-top: 8px; }
+#editorView .cue.selected .cue-summary { min-height: 52px; padding: 8px 12px; }
+#editorView .cue.selected .cue-detail { gap: 10px; padding: 10px 12px 12px; }
+@media (max-width: 360px) {
+  #editorView .editor-cue-context-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #editorView .editor-cue-context-actions #previewSelectedCue { grid-column: 1 / -1; }
+}

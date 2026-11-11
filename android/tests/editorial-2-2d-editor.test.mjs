@@ -24,6 +24,8 @@ test('2-D retains existing editing IDs, Native bridge, feedback toolbar and new 
     assert.equal((html.match(new RegExp('id="' + id + '"', 'g')) || []).length, 1, id);
   }
   assert.ok(html.indexOf('id="editorFeedback"') < html.indexOf('id="editorCueContext"'));
+  assert.ok(html.indexOf('id="editorCueContext"') < html.indexOf('id="editorTools"'));
+  assert.ok(html.indexOf('id="editorTools"') < html.indexOf('id="cueList"'));
   assert.ok(html.indexOf('id="editorCueContext"') < html.indexOf('id="cueList"'));
   assert.match(js, /prevCue: \(\) => moveSelectedCue\(-1\)/);
   assert.match(js, /nextCue: \(\) => moveSelectedCue\(1\)/);
@@ -108,6 +110,7 @@ test('2-D synchronizes context, navigation and Native playback with actual cue t
     await translation.fill('고친 번역 텍스트');
     assert.match(await page.locator('#editorCueText').innerText(), /고친 번역 텍스트/);
     assert.equal(await translation.evaluate(node => node === document.activeElement), true);
+    await page.locator('#editorTools > summary').click();
     await page.locator('#undo').click();
     assert.match(await page.locator('#editorCueText').innerText(), /테스트 번역 자막 1/);
     await page.locator('#redo').click();
@@ -179,5 +182,58 @@ test('2-D keyboard viewport preserves the selected edit and sticky save feedback
     }));
     assert.equal(bar.position, 'sticky');
     assert.match(bar.scrollMargin, /px/);
+  });
+});
+
+test('UI-09-E prioritizes editable text, normalizes displayed time and preserves saved values', { skip: !enabled }, async () => {
+  await withApp(async page => {
+    await page.evaluate(() => { window.mockNative.cues['complete-1'][5].end = 17.150000000000002; });
+    await openEditor(page);
+    assert.equal(await page.locator('#editorTools').evaluate(node => node.open), false,
+      'secondary actions must initially be collapsed');
+    await page.locator('#cueList [data-index="5"] .cue-summary').click();
+    const selected = page.locator('#cueList .cue.selected');
+    assert.equal(await selected.getAttribute('data-index'), '5');
+    assert.equal(await page.locator('#cueList .cue').first().getAttribute('data-index'), '5',
+      'selected editor must appear before other cues on the same page');
+    const order = await selected.locator('.cue-detail').evaluate(detail =>
+      [...detail.children].slice(0, 4).map(node =>
+        node.classList.contains('cue-times') ? '시간' : node.firstChild.textContent.trim()));
+    assert.deepEqual(order, ['시간', '원문', '번역', '화자 식별 (빈칸이면 미지정)']);
+    const endTime = selected.locator('.cue-times input').nth(1);
+    assert.equal(await endTime.inputValue(), '17.15',
+      'long floating point precision must not leak into the time input');
+    assert.equal(await page.evaluate(() => window.mockNative.cues['complete-1'][5].end),
+      17.150000000000002, 'display formatting must not mutate stored data');
+    await endTime.fill('17.125');
+    await endTime.dispatchEvent('change');
+    await page.waitForFunction(() => window.mockNative.cues['complete-1'][5].end === 17.125);
+    await page.locator('#navJobs').click();
+    await openEditor(page);
+    await page.locator('#cueList [data-index="5"] .cue-summary').click();
+    assert.equal(await page.locator('#cueList .cue.selected .cue-times input').nth(1).inputValue(),
+      '17.125', 'time edit must survive native save and reload');
+    const source = page.locator('#cueList .cue.selected textarea').first();
+    for (const width of [320, 390, 800]) {
+      for (const theme of ['light', 'dark']) {
+        await page.setViewportSize({ width, height: 844 });
+        await page.emulateMedia({ colorScheme: theme });
+        await source.focus();
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1),
+          false, 'UI-09-E overflow at ' + width + ' ' + theme);
+        assert.equal(await page.locator('#editorFeedback').evaluate(node => getComputedStyle(node).position),
+          'sticky');
+        if (width === 390) {
+          await mkdir(output, { recursive: true });
+          await page.screenshot({ path: join(output, 'ui09e-editor-' + width + '-' + theme + '.png'),
+            fullPage: true, animations: 'disabled' });
+        }
+      }
+    }
+    await page.setViewportSize({ width: 390, height: 480 });
+    await source.focus();
+    assert.equal(await source.evaluate(node => node === document.activeElement), true);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1),
+      false, 'keyboard-sized editor must not scroll horizontally');
   });
 });

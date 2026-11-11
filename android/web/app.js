@@ -775,6 +775,11 @@ function syncEditorButtons() {
   $('prevPage').disabled = page === 0;
   $('nextPage').disabled = page >= pages - 1;
 }
+function editorTimeValue(value) {
+  if (value == null || value === '') return '';
+  const seconds = Number(value);
+  return Number.isFinite(seconds) ? String(Number(seconds.toFixed(3))) : '';
+}
 function field(labelText, tag, value, update, type) {
   const label = el('label', labelText);
   const input = el(tag); input.value = value ?? ''; input.disabled = !editable();
@@ -809,7 +814,7 @@ function renderCues() {
     const detail = el('div', undefined, 'cue-detail'); detail.id = `cue-detail-${index}`;
     const times = el('div', undefined, 'cue-times');
     for (const [key, label] of [['start', '시작 (초)'], ['end', '종료 (초)']]) {
-      times.append(field(label, 'input', cue[key], (input) => {
+      times.append(field(label, 'input', editorTimeValue(cue[key]), (input) => {
         if (!input.value || !Number.isFinite(Number(input.value))) { input.value = history.present[index][key]; return; }
         const next = updateSubtitleTimingAt(history.present, index, { [key]: Number(input.value) });
         const edited = next[index]; const sorted = sortSubtitles(next); selectedIndex = sorted.indexOf(edited);
@@ -820,11 +825,6 @@ function renderCues() {
       }, 'number'));
     }
     detail.append(times);
-    detail.append(field('화자 식별 (빈칸이면 미지정)', 'input', cue.speaker || '', (input) => {
-      changed(updateSpeakerAt(history.present, index, input.value), false);
-      meta.querySelector('strong').textContent = `자막 ${index + 1}${input.value.trim() ? ` · 화자 ${input.value.trim()}` : ''}`;
-      snippet.textContent = speakerMarkedText(history.present[index], history.present[index - 1]);
-    }));
     for (const [key, label] of [['original', '원문'], ['translated', '번역']]) {
       detail.append(field(label, 'textarea', cue[key], (input) => {
         // Keep the focused DOM node and its exact draft, including trailing spaces and IME input.
@@ -835,6 +835,11 @@ function renderCues() {
         const reasons = issueReasons(next[index], index); issues.textContent = reasons.join(' · '); issues.hidden = !reasons.length;
       }));
     }
+    detail.append(field('화자 식별 (빈칸이면 미지정)', 'input', cue.speaker || '', (input) => {
+      changed(updateSpeakerAt(history.present, index, input.value), false);
+      meta.querySelector('strong').textContent = `자막 ${index + 1}${input.value.trim() ? ` · 화자 ${input.value.trim()}` : ''}`;
+      snippet.textContent = speakerMarkedText(history.present[index], history.present[index - 1]);
+    }));
     const actions = el('div', undefined, 'cue-actions');
     actions.append(button('여기부터 재생', () => previewAt(Math.round(history.present[index].start * 1000)), !current.uri));
     detail.append(actions);
@@ -848,6 +853,9 @@ function renderCues() {
     editing.append(split, merge); details.append(editing); detail.append(details); row.append(detail);
     fragment.append(row);
   }
+  // Place the active editor before collapsed sibling cues; keep logical cue indices unchanged.
+  const activeCue = fragment.querySelector('.cue.selected');
+  if (activeCue) fragment.prepend(activeCue);
   $('cueList').replaceChildren(fragment);
   syncEditorButtons();
   updateEditorCueContext();

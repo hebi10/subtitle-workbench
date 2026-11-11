@@ -132,6 +132,7 @@ regression('result navigation waits for dirty cues and switching results keeps t
   await page.locator('#jobsView .job[data-job-id="complete-1"]').getByRole('button', { name: '자막 편집', exact: true }).click();
   await holdNextSave(page);
   await page.locator('.cue textarea').first().fill('결과 이동 전에 보존할 원문');
+  await page.locator('#editorTools > summary').click();
   await page.locator('#jumpToExport').click();
   await page.waitForFunction(() => window.heldSave);
   assert.equal(await page.locator('#editorView').isVisible(), true, 'pending save keeps the original editor available');
@@ -155,6 +156,7 @@ regression('failed saves block all four tabs and result navigation until retry s
   await page.locator('.cue textarea').first().fill('저장 실패 후 탭을 눌러도 보존');
   await page.locator('#retrySave').waitFor({ state: 'visible' });
   for (const selector of ['#navVideo', '#navJobs', '#navResults', '#navSettings', '#jumpToExport']) {
+    if (selector === '#jumpToExport') await page.locator('#editorTools > summary').click();
     await page.locator(selector).click();
     await page.waitForFunction((selector) => !document.querySelector(selector).disabled, selector);
     await page.waitForFunction(() => document.getElementById('appMessage').textContent.includes('테스트 저장 실패'));

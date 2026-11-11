@@ -111,6 +111,8 @@ regression('only the selected cue expands and page navigation reveals the first 
   assert.equal(await selectedCue(page).getAttribute('data-index'), '0');
   await page.locator('.cue[data-index="10"] .cue-summary').click();
   assert.equal(await selectedCue(page).getAttribute('data-index'), '10');
+  assert.equal(await page.locator('.cue').first().getAttribute('data-index'), '10',
+    'active cue moves visually before its sibling cues, without changing indices');
   assert.equal(await page.locator('.cue-detail').count(), 1);
   await page.locator('#nextPage').click();
   const next = page.locator('.cue[data-index="12"]');
@@ -132,6 +134,7 @@ regression('preview waits for the edited subtitle to finish saving', async (page
   await openEditor(page);
   await holdNextSave(page);
   await page.locator('.cue textarea').first().fill('미리보기 전에 저장할 원문');
+  await openEditorTools(page);
   await page.locator('#preview').click();
   await page.waitForFunction(() => window.heldSave || window.mockNative.calls.some((call) => call.method === 'preview'));
   assert.equal(await page.evaluate(() => window.mockNative.calls.some((call) => call.method === 'preview')), false, 'preview must not open while save is unresolved');
@@ -187,6 +190,7 @@ regression('save failure and retry remain visible while editing a deep cue', asy
   await page.waitForFunction(() => document.getElementById('appMessage').textContent.includes('테스트 저장 실패'));
   assert.equal(await page.locator('#editorView').isVisible(), true, 'failed save blocks leaving the editor');
   await assertInViewport(page.locator('#appMessage'), 'blocked navigation reason must remain visible');
+  await openEditorTools(page);
   await page.locator('#preview').click();
   await page.waitForFunction(() => !document.getElementById('preview').disabled);
   await page.waitForFunction(() => document.getElementById('appMessage').textContent.includes('테스트 저장 실패'));
