@@ -58,7 +58,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/release/source.py
-      - name: Route one approved 5-B screenshot-only release through the existing trusted workflow
+      - name: Route exact approved STORE-03 listing update through the existing trusted workflow
         id: route
         env:
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
@@ -69,7 +69,10 @@ jobs:
         run: |
           set -euo pipefail
           title="$(git log -1 --format=%s "$SOURCE_SHA")"
-          if [[ "$EVENT_TYPE" == 'workflow_run' && "$title" == 'store: Editorial Studio 5-B trusted screenshot registration' ]]; then
+          if [[ "$EVENT_TYPE" == 'workflow_run' && "$title" == 'store: STORE-03 trusted screenshot registration [listing-only]' ]]; then
+            echo 'mode=listing' >> "$GITHUB_OUTPUT"
+            echo 'target=none' >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT_TYPE" == 'workflow_run' && "$title" == 'store: Editorial Studio 5-B trusted screenshot registration' ]]; then
             echo 'mode=listing' >> "$GITHUB_OUTPUT"
             echo 'target=none' >> "$GITHUB_OUTPUT"
           elif [[ "$EVENT_TYPE" == 'workflow_run' ]]; then
@@ -234,11 +237,22 @@ jobs:
           PLAY_ACCESS_TOKEN: ${{ steps.wif.outputs.access_token || steps.json.outputs.access_token }}
           VERSION_CODE: ${{ needs.source.outputs.mode == 'promote' && needs.source.outputs.promotion_code || steps.version.outputs.version_code }}
         run: python3 scripts/release/publisher.py --report output/play-promotion.json promote --version-code "$VERSION_CODE" --track alpha
-      - name: Submit only the reviewed 5-B phone screenshots and check fresh Play hashes
+      - name: Verify STORE-03 image count and file SHA-256 before submission
+        if: needs.source.outputs.mode == 'listing'
+        run: |
+          python3 scripts/release/listing.py check --phone-only --require-eight-screenshots --report output/play-listing-check.json
+          node --test android/tests/editorial-5b-store-assets.test.mjs
+      - name: Reject superseded main before image update
+        if: needs.source.outputs.mode == 'listing'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.source.outputs.sha }}
+        run: python3 scripts/release/source.py --assert-current "$SOURCE_SHA"
+      - name: Submit only STORE-03 eight phone screenshots and check fresh Play hashes
         if: needs.source.outputs.mode == 'listing'
         env:
           PLAY_ACCESS_TOKEN: ${{ steps.wif.outputs.access_token || steps.json.outputs.access_token }}
-        run: python3 scripts/release/listing.py apply --phone-only --send-for-review --report output/play-listing-5b.json
+        run: python3 scripts/release/listing.py apply --phone-only --require-eight-screenshots --send-for-review --report output/play-listing-store03.json
       - name: Preserve non-secret release reports
         if: always()
         uses: actions/upload-artifact@v4

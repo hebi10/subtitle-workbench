@@ -68,6 +68,10 @@ class HttpTransport:
                 stage = 'read_track'
             elif '/bundles' in path:
                 stage = 'bundle_request'
+            elif '/listings/' in path and method == 'POST' and upload:
+                stage = 'upload_store_image'
+            elif '/listings/' in path:
+                stage = 'store_listing_request'
             else:
                 stage = 'other_edit_request'
             detail = []
@@ -87,6 +91,8 @@ class HttpTransport:
             except (ValueError, TypeError, AttributeError, OSError):
                 pass
             suffix = (' (' + ', '.join(dict.fromkeys(detail)) + ')') if detail else ''
+            if error.code == 403 and stage in ('upload_store_image', 'store_listing_request'):
+                suffix += '; check service account Manage store presence access for this app'
             raise ReleaseError(f'Play API {stage} HTTP {error.code}{suffix}; inspect Console for full validation details') from None
         except (urllib.error.URLError, TimeoutError, ValueError):
             raise ReleaseError('Play API request or response failed; no successful deployment can be claimed') from None
