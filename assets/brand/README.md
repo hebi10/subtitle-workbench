@@ -29,3 +29,11 @@
 - PR 병합 후 main 검증 통과, 내부 테스트 자동 릴리스 실행 여부 구분
 - Play Store 실제 스토어 등록정보 적용은 별도 workflow_dispatch listing apply로 수행
 - 기존 Play Store용 실제 UI 스크린샷 5개는 5-B 전체 최신 화면 QA 이후 교체
+
+## UI-09-B · 2026-11-11 최종 브랜드 정합성 기준
+- 현재 앱에서 확정·구현된 기준은 Editorial Studio 1-B의 프레임형 단색 심볼이다.
+- 11월 11일 연필형 신규 시안은 검토 후보이며 실제 교체 승인은 확인되지 않았다. 승인 전에는 적용 자산을 임의 변경하지 않는다.
+- Google Drive 1-B 원본 리소스 ZIP을 기준으로 assets/brand/canonical.json에 10개 기준 자산의 크기·SHA-256을 기록했다.
+- 웹/Android WebView의 동일 마크, adaptive/round/monochrome Android 리소스, favicon, Apple touch, Google Play 아이콘과 대표 그래픽을 동일 브랜드로 검증한다.
+- 스토어 이미지 재생성 프롬프트의 이전 ‘프레임 없는 삼각형 + 막대’ 설명을 실제 1-B 프레임 내부 심볼과 일치시키되, 기존 PNG의 바이트와 Google Play 등록은 변경하지 않는다.
+- 기존 docs/design-v0.8.md의 HB 표현은 과거 디자인 역사에 해당하며 최신 UI 기준으로 사용하지 않는다.

@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "brandName": "해비 자막",
+  "englishName": "Subtitle Workbench",
+  "canonicalDirection": "Editorial Studio 1-B · framed subtitle symbol with play glyph",
+  "status": "current approved and implemented; 2026-11-11 pencil proposal is not an approved replacement",
+  "sourceDriveFolder": "https://drive.google.com/drive/folders/1qlauhvho7B6mr8SHFuk2HF2ldox-z1Dh",
+  "sourceDriveBundle": "https://drive.google.com/file/d/1FutrLGM_Uqs9coKWioz1YpSgXhlHTFq0/view",
+  "masterMark": "assets/brand/editorial-mark-white.png",
+  "light": {
+    "canvas": "#F5F5F5",
+    "surface": "#FFFFFF",
+    "ink": "#171717",
+    "muted": "#626262",
+    "border": "#D8D8D8"
+  },
+  "dark": {
+    "canvas": "#141414",
+    "surface": "#242424",
+    "ink": "#F2F2F2",
+    "muted": "#ADADAD",
+    "border": "#414141"
+  },
+  "assets": [
+    {
+      "path": "assets/brand/editorial-mark-white.png",
+      "width": 256,
+      "height": 256,
+      "sha256": "426d4b8d786a1f9f7fe489b617ba2881d8d3b8ac0ed531092f0d040a9b5707f5"
+    },
+    {
+      "path": "assets/brand/editorial-mark-dark.png",
+      "width": 256,
+      "height": 256,
+      "sha256": "3e062541171f8cf14154dc69c3b57cdfc706ab6e4994c2a60e33ffb94a860b92"
+    },
+    {
+      "path": "assets/brand/editorial-wordmark-dark.png",
+      "width": 1040,
+      "height": 200,
+      "sha256": "69aafa48834a83dbca6db138f2b7b1e886c8b8267bdefd67a494bed0b6830bf3"
+    },
+    {
+      "path": "assets/brand/editorial-wordmark-light.png",
+      "width": 1040,
+      "height": 200,
+      "sha256": "fd15b9384355fee443f27e7b078a926d6a7d4da594db81b91718bca55d4e8847"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-nodpi/editorial_launcher_foreground.png",
+      "width": 432,
+      "height": 432,
+      "sha256": "4076af584eca1e925382bd13b0a4600659a61a3bca66d4fd216fea9342080c20"
+    },
+    {
+      "path": "favicon.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "fd3ea17ddc699f6644c1a4265063ea7015cab30592431689d192be4a4502c071"
+    },
+    {
+      "path": "favicon.ico",
+      "sha256": "c19ea7a0cf96c0d13d3da3206f0a98c313e19ce5dab370055e30ee579ae18e65"
+    },
+    {
+      "path": "apple-touch-icon.png",
+      "width": 180,
+      "height": 180,
+      "sha256": "0063637c39f7b390d72246c622d3edce29355473780a633dd48e5883edb17af2"
+    },
+    {
+      "path": "assets/play-store/ko-KR/icon.png",
+      "width": 512,
+      "height": 512,
+      "sha256": "86b29ea473098b9ed551fc7b290d3b3a24a8bd29c1ffc102b0f63649172dda0e"
+    },
+    {
+      "path": "assets/play-store/ko-KR/feature-graphic.png",
+      "width": 1024,
+      "height": 500,
+      "sha256": "31a996d13ca0541b8c20f54c0717f99b1ed0fc63bb5b1a79f670b367f7484548"
+    }
+  ],
+  "equivalentCopies": [
+    {
+      "source": "assets/brand/editorial-mark-white.png",
+      "copy": "android/web/editorial-mark-white.png"
+    },
+    {
+      "source": "android/app/src/main/res/drawable-nodpi/editorial_launcher_foreground.png",
+      "copy": "android/app/src/main/res/drawable-nodpi/editorial_launcher_monochrome.png"
+    }
+  ],
+  "constraints": {
+    "style": "Neutral grayscale and clean flat art; no AI sparkle, gradient, shadow or unrelated pencil logo",
+    "approval": "Alternative brand concepts must be approved before replacing any currently implemented asset",
+    "store": "Local asset audit is not proof of Play Console publication; listing readback remains STORE-05"
+  }
+}
