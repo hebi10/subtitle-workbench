@@ -2498,3 +2498,12 @@ summary:focus-visible, a:focus-visible, .workspace-tab:focus-visible {
   #panel-export .workflow-state-note { padding: 8px 10px; font-size: 12px; }
   #panel-edit #editPlayerMount .video-preview:not([hidden]) { max-height: 220px; }
 }
+
+/* UI-09-G visual follow-up: show guidance before long editor/export contents. */
+#panel-edit > .workflow-state-note { margin: 0 0 12px; }
+#panel-export .panel-head + .workflow-state-note { margin-top: 0; }
+@media (min-width: 361px) and (max-width: 760px) {
+  #panel-export .export-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

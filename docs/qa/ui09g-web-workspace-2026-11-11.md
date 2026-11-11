@@ -17,3 +17,6 @@ index.html, styles.css, src/app.js, android/tests/editorial-4a-web.test.mjs, and
 기존 파일/자막·작업 결과 및 브라우저 Blob/MIME/다운로드·키 보관/삭제·실패 재시도 로직 불변. 320·390·800·1280px, 라이트/다크, 자막 미연결, 필터 결과 없음, 번역 대기·오류 및 SRT/VTT/JSON 요청/재시도. Node/Playwright + Android JVM/Lint/APK + Android15(API35) 에뮬레이터 CI와 실제 화면 캡처를 최종 PR SHA에 매칭한다. Google Play 신규 AAB/리스트/트랙은 건드리지 않으며 CI 통과 뒤 [skip-play] Squash 병합한다.
 
 다음: UI-09-H — 전체 통합 QA. 물리 기기/유료 API 인식 품질은 별도.
+
+## 390px 실제 화면 시각 검수 후속
+기존 CI 생성 390px 세 탭 캡처를 대조하여, 생성 안내는 파일 선택 뒤에 두고 편집/내보내기 안내는 긴 미디어·결과 목록보다 먼저 보이도록 DOM 위치를 조정했습니다. 또한 361~760px에서는 내보내기 요약을 2열로 배치해 단일 열로 길게 늘어나는 문제를 줄였습니다. 360px 이하의 한 열 구성과 전체 자막·다운로드 기능은 유지합니다.

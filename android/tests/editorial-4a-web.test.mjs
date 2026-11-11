@@ -32,6 +32,10 @@ test('4-A semantic layout retains all stateful web DOM endpoints', async () => {
   assert.match(css, /#panel-edit \.editor-table-wrap \{[\s\S]*?overflow:visible/);
   assert.match(css, /#panel-export \.studio-export-layout/);
   assert.match(css, /UI-09-G: task-context messages/);
+  assert.ok(html.indexOf('id="editorWorkspaceStatus"') < html.indexOf('class="editor-layout"'),
+    'editor task guidance must precede media and editing tools');
+  assert.ok(html.indexOf('id="exportWorkflowStatus"') < html.indexOf('class="export-overview"'),
+    'export guidance must precede long result summaries');
   const app = await readFile(join(root, 'src/app.js'), 'utf8');
   assert.match(app, /updateEditorWorkspaceStatus\(\)/);
   assert.match(app, /exportWorkflowStatus\.dataset\.state/);
