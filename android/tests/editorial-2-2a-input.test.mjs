@@ -114,7 +114,9 @@ test('2-A real browser has usable file action, source cards and original native 
     await page.locator('#openConnection').click();
     assert.equal(await page.locator('#settingsView').isVisible(), true);
     await page.locator('#navVideo').click();
-    await page.locator('#videoView .offline-source summary').click();
+    if (!(await page.locator('#videoView .local-offline-entry').evaluate(node => node.open))) {
+      await page.locator('#videoView .local-offline-entry > summary').click();
+    }
     await page.locator('#openOfflineModel').click();
     await page.waitForFunction(() => window.mockNative.calls.some(c => c.method === 'openOfflineModel'));
     assert.deepEqual(await page.locator('.app-nav button').allTextContents(), ['영상 추가','작업','결과','설정']);

@@ -44,12 +44,12 @@
           <div><p class="source-kicker">01 / FILE</p><h3 id="fileSourceHeading">파일에서 자막 만들기</h3></div>
           <span class="source-capacity">영상 최대 3시간</span>
         </div>
-        <p class="source-description">영상·음성 파일의 자동 자막 생성에는 개인 API 또는 테스트 서버 연결이 필요합니다.</p>
+        <p class="source-description">파일 자동 자막에는 API 연결이 필요합니다.</p>
         <div class="start-actions">
           <button id="pickVideo" class="primary" type="button" disabled><span class="es-icon es-icon--video" aria-hidden="true"></span>영상 선택</button>
           <button id="importSubtitles" type="button"><span class="es-icon es-icon--add" aria-hidden="true"></span>자막 불러오기</button>
         </div>
-        <p class="source-import-note">SRT·VTT·JSON 자막 불러오기는 API 연결 없이 사용할 수 있습니다.</p>
+        <p class="source-import-note">SRT·VTT·JSON은 API 없이 불러올 수 있습니다.</p>
         <section id="connectionCard" class="connection-summary" aria-labelledby="connectionHeading" data-state="missing">
           <div><h3 id="connectionHeading">내 API로 자막 생성</h3><p id="connectionSummary" class="hint" role="status">API 연결 상태를 확인하고 있습니다.</p><p id="activeModel" class="hint">번역 모델: gpt-6-luna</p></div>
           <button id="openConnection" type="button">API 연결 설정</button>
@@ -65,14 +65,14 @@
           <div class="source-heading"><div><p class="source-kicker">02 / MICROPHONE</p><h3 id="microphoneHeading">마이크 자막</h3></div></div>
           <p class="source-description">기기 음성 인식 또는 연결된 AI로 말하는 내용을 기록합니다.</p>
           <div class="microphone-entries">
-            <div class="local-caption-entry"><p class="source-prerequisite">기기 음성 인식 · OpenAI API 불필요</p><button id="openOnDevice" type="button"><span class="es-icon es-icon--mic" aria-hidden="true"></span>온디바이스 마이크 자막</button><p class="hint">Android 12 이상에서 지원되는 기기 음성 인식 엔진을 사용하며, OpenAI API 키가 필요하지 않습니다.</p></div>
-            <div class="local-caption-entry"><p id="cloudLiveEntryStatus" class="source-prerequisite" role="status">연결 정보 확인 중</p><button id="openCloudLive" type="button"><span class="es-icon es-icon--mic" aria-hidden="true"></span>GPT 실시간 마이크 자막</button><p id="cloudLiveNotice" class="hint">마이크 음성을 선택한 연결을 통해 OpenAI로 전송합니다. 인식 시작 전 전송 대상과 비용 안내를 확인하세요.</p></div>
+            <div class="local-caption-entry"><p class="source-prerequisite">기기 인식 · OpenAI API 불필요</p><button id="openOnDevice" type="button"><span class="es-icon es-icon--mic" aria-hidden="true"></span>온디바이스 마이크 자막</button><details class="source-help"><summary>지원 기기·인식 안내</summary><p class="hint">Android 12 이상에서 지원되는 기기 음성 인식 엔진을 사용하며, OpenAI API 키가 필요하지 않습니다.</p></details></div>
+            <div class="local-caption-entry"><p id="cloudLiveEntryStatus" class="source-prerequisite" role="status">연결 정보 확인 중</p><button id="openCloudLive" type="button"><span class="es-icon es-icon--mic" aria-hidden="true"></span>GPT 실시간 마이크 자막</button><details class="source-help"><summary>전송·요금 상세 안내</summary><p id="cloudLiveNotice" class="hint">마이크 음성을 선택한 연결을 통해 OpenAI로 전송합니다. 인식 시작 전 전송 대상과 비용 안내를 확인하세요.</p></details></div>
           </div>
         </section>
         <section class="offline-source" aria-labelledby="offlineHeading">
           <div class="source-heading"><div><p class="source-kicker">03 / OFFLINE</p><h3 id="offlineHeading">오프라인 AI</h3></div></div>
           <p class="source-description">모델 다운로드에는 인터넷이 필요하지만, 설치 후 인식은 기기 안에서 실행합니다.</p>
-          <p class="source-prerequisite">개인 API 불필요 · 모델 설치 상태는 다음 화면에서 확인</p>
+          <p class="source-prerequisite">모델 설치 필요 · 개인 API 불필요</p>
           <details class="local-offline-entry">
             <summary>독립 로컬 AI · 영상/음성 파일</summary>
             <div><p class="hint">Vosk 언어 모델을 앱에서 직접 다운로드합니다. 설치 후에는 API 키나 인터넷 없이 최대 60분 파일을 자막으로 만들 수 있습니다. 모델 크기는 약 42~87MB입니다.</p><button id="openOfflineModel" type="button">로컬 AI 모델 관리 및 파일 전사</button></div>
