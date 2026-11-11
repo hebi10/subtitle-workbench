@@ -192,7 +192,7 @@ final class NativeDesignSystem {
         }
     }
 
-    static void helpDisclosure(LinearLayout parent, String label, String content, float density) {
+    static TextView helpDisclosure(LinearLayout parent, String label, String content, float density) {
         Context context = parent.getContext();
         Button toggle = new Button(context);
         button(toggle, false, density);
@@ -219,6 +219,7 @@ final class NativeDesignSystem {
             toggle.setText(label + (show ? " 접기" : " 보기"));
             toggle.setContentDescription(label + (show ? " 접기" : " 보기"));
         });
+        return detail;
     }
 
     static void statusPanel(TextView view, float density) {

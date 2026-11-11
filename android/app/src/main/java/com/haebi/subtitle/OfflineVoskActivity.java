@@ -31,7 +31,7 @@ public final class OfflineVoskActivity extends Activity {
     private OfflineModelInstaller installer;
     private Spinner selection;
     private LinearLayout workflow;
-    private TextView modelStatus, sourceStatus, status, captionPreview;
+    private TextView modelStatus, modelDetails, sourceStatus, status, captionPreview;
     private Button download, delete, pick, run, cancel, save;
     private Uri sourceUri;
     private String sourceName;
@@ -94,12 +94,16 @@ public final class OfflineVoskActivity extends Activity {
         NativeDesignSystem.statusPanel(modelStatus, density);
         download = button(models, "선택 모델 다운로드·설치", true, this::downloadSelected);
         delete = button(models, "다운로드한 모델 삭제", false, this::requestDelete);
+        modelDetails = NativeDesignSystem.helpDisclosure(models, "모델 상세·설치 조건",
+                "선택한 언어 모델의 설치·용량·인식 특성을 확인합니다. 다운로드에는 네트워크 연결이 필요합니다.", density);
 
         LinearLayout media = NativeDesignSystem.section(root, "02 / FILE", "영상·오디오 선택", density);
         sourceStatus = label(media, "선택한 영상·오디오가 없습니다.", 14, false);
         NativeDesignSystem.statusPanel(sourceStatus, density);
         pick = button(media, "영상·오디오 파일 선택", false, this::pickFile);
-        label(media, "오프라인 인식은 최대 60분 파일을 지원합니다. 기기 성능에 따라 처리 시간이 길어질 수 있습니다. 원본은 복사하지 않고 파일 선택기의 읽기 권한으로 미리보기와 연결합니다.", 13, false);
+        label(media, "파일 최대 60분 · 원본은 기기의 파일 선택기로 연결합니다.", 13, false);
+        NativeDesignSystem.helpDisclosure(media, "파일 길이·원본 안내",
+                "오프라인 인식은 최대 60분 파일을 지원합니다. 기기 성능에 따라 처리 시간이 길어질 수 있습니다. 원본은 복사하지 않고 파일 선택기의 읽기 권한으로 미리보기와 연결합니다.", density);
 
         LinearLayout transcription = NativeDesignSystem.section(root, "03 / TRANSCRIPTION", "자막 생성·저장", density);
         run = button(transcription, "오프라인 음성 인식 시작", true, this::runTranscription);
@@ -149,13 +153,14 @@ public final class OfflineVoskActivity extends Activity {
         NativeDesignSystem.setWorkflowStep(workflow, installed == null ? 0 : sourceUri == null ? 1 : 2,
                 getResources().getDisplayMetrics().density);
         modelStatus.setText(installed != null
-                ? model.title + " 설치됨 · 저장 공간 "
-                    + (installer.installedSize(model) / (1024 * 1024)) + "MB 사용\n"
-                    + model.description
+                ? model.title + " 설치됨 · 저장 공간 " + (installer.installedSize(model) / (1024 * 1024)) + "MB 사용"
                 : damaged
                     ? model.title + " 설치 정보가 손상되었습니다. 모델 삭제 후 다시 다운로드해 주세요."
-                    : model.title + " 설치되지 않음 · 모델 크기 약 " + model.approximateMegabytes
-                        + "MB\n" + model.description);
+                    : model.title + " 설치되지 않음 · 모델 크기 약 " + model.approximateMegabytes + "MB");
+        if (modelDetails != null) {
+            modelDetails.setText(model.description
+                    + "\n모델 다운로드에는 인터넷이 필요하며, 설치 후 인식은 기기 내부에서 실행됩니다. 모델 손상이 감지되면 삭제 후 재설치해야 합니다.");
+        }
         selection.setEnabled(!busy);
         download.setEnabled(!busy && installed == null && !damaged);
         delete.setEnabled(!busy && (installed != null || damaged));

@@ -101,17 +101,18 @@ public final class OnDeviceRecognitionActivity extends Activity {
         language.setContentDescription("인식 언어");
         NativeDesignSystem.language(language, density);
         preparation.addView(language, new LinearLayout.LayoutParams(-1, -2));
+        status = addText(preparation, "기기 음성 인식 지원 상태를 확인 중입니다.", 14, false);
+        status.setTag("editorial-ondevice-readiness");
+        NativeDesignSystem.statusPanel(status, density);
         checkButton = addButton(preparation, "언어 지원 확인", false, this::checkSupport);
         downloadButton = addButton(preparation, "온디바이스 언어 모델 다운로드 요청", false, this::downloadModel);
         NativeDesignSystem.helpDisclosure(preparation, "언어 모델 도움말",
-                "모델은 Android 시스템 인식 서비스가 설치·관리합니다. Android 13 이상에서만 다운로드 요청을 지원합니다.", density);
+                "모델은 Android 시스템 인식 서비스가 설치·관리합니다. Android 13 이상에서만 다운로드 요청을 지원하며, 마이크 권한은 인식 시작 시 요청합니다. 기기·언어에 따라 지원 여부가 다릅니다.", density);
 
         LinearLayout capture = NativeDesignSystem.section(root, "02 / CAPTURE", "마이크 인식", density);
         startButton = addButton(capture, "마이크 인식 시작", true, this::requestStart);
         stopButton = addButton(capture, "인식 종료", false, this::stopListening);
         stopButton.setEnabled(false);
-        status = addText(capture, "서비스 지원 상태를 확인 중입니다.", 14, false);
-        NativeDesignSystem.statusPanel(status, density);
         addText(capture, "인식 중인 문장", 15, true);
         partial = addText(capture, "마이크 입력 대기", 15, false);
         NativeDesignSystem.transcriptPanel(partial, density);
