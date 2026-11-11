@@ -188,7 +188,7 @@ public final class EditorialUi09aStateMatrixDeviceTest {
         Uri result = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values);
         assertNotNull("QA video must be written as a real content:// media item", result);
         try {
-            try (InputStream source = context.getAssets().open("ui09a-video.mp4");
+            try (InputStream source = InstrumentationRegistry.getInstrumentation().getContext().getAssets().open("ui09a-video.mp4");
                  OutputStream destination = resolver.openOutputStream(result)) {
                 assertNotNull(destination);
                 byte[] buffer = new byte[8192];
