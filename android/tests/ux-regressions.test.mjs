@@ -111,6 +111,8 @@ regression('only the selected cue expands and page navigation reveals the first 
   assert.equal(await selectedCue(page).getAttribute('data-index'), '0');
   await page.locator('.cue[data-index="10"] .cue-summary').click();
   assert.equal(await selectedCue(page).getAttribute('data-index'), '10');
+  assert.equal(await page.locator('.cue').first().getAttribute('data-index'), '10',
+    'active cue moves visually before its sibling cues, without changing indices');
   assert.equal(await page.locator('.cue-detail').count(), 1);
   await page.locator('#nextPage').click();
   const next = page.locator('.cue[data-index="12"]');

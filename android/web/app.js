@@ -853,6 +853,9 @@ function renderCues() {
     editing.append(split, merge); details.append(editing); detail.append(details); row.append(detail);
     fragment.append(row);
   }
+  // Place the active editor before collapsed sibling cues; keep logical cue indices unchanged.
+  const activeCue = fragment.querySelector('.cue.selected');
+  if (activeCue) fragment.prepend(activeCue);
   $('cueList').replaceChildren(fragment);
   syncEditorButtons();
   updateEditorCueContext();

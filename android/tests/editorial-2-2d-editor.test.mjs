@@ -194,6 +194,8 @@ test('UI-09-E prioritizes editable text, normalizes displayed time and preserves
     await page.locator('#cueList [data-index="5"] .cue-summary').click();
     const selected = page.locator('#cueList .cue.selected');
     assert.equal(await selected.getAttribute('data-index'), '5');
+    assert.equal(await page.locator('#cueList .cue').first().getAttribute('data-index'), '5',
+      'selected editor must appear before other cues on the same page');
     const order = await selected.locator('.cue-detail').evaluate(detail =>
       [...detail.children].slice(0, 4).map(node =>
         node.classList.contains('cue-times') ? '시간' : node.firstChild.textContent.trim()));
