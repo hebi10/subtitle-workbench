@@ -57,6 +57,7 @@
               <span class="file-drop-title">영상 또는 오디오 선택</span>
               <span id="fileMeta" class="file-drop-meta">MP4, MOV, WEBM, MP3, M4A</span>
             </label>
+            <p id="generateWorkflowStatus" class="workflow-state-note" role="status" data-state="empty">파일 선택과 연결 정보를 확인해 주세요.</p>
 
             <p class="privacy-note">영상 원본은 브라우저에서 처리합니다. 추출한 음성과 자막 텍스트는 전사·번역을 위해 OpenAI 또는 선택한 Worker로 전송됩니다.</p>
 
@@ -388,6 +389,7 @@
         </section>
 
         <section id="panel-edit" class="workspace-panel" role="tabpanel" aria-labelledby="tab-edit" tabindex="0" data-tab-panel="edit">
+          <p id="editorWorkspaceStatus" class="workflow-state-note" role="status" data-state="empty">자막을 불러오거나 생성하면 편집할 수 있습니다.</p>
           <section class="editor-layout">
             <aside class="panel-card player-card" aria-labelledby="studioEditorPlayerTitle">
               <div class="studio-preview-heading"><div>
@@ -532,6 +534,7 @@
               </div>
               <div class="export-meta"><span id="exportSubtitleCount">0개</span></div>
             </div>
+            <p id="exportWorkflowStatus" class="workflow-state-note" role="status" data-state="empty">자막을 불러오거나 생성한 뒤 파일을 준비하세요.</p>
 
             <section class="export-overview" aria-label="내보낼 작업 확인">
               <label class="export-result-field" for="exportResultSelect">
