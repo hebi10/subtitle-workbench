@@ -136,5 +136,68 @@ class ListingTests(unittest.TestCase):
             self.assertTrue(server.committed)
 
 
+    def test_manifest_hashes_reject_stale_store_assets_before_any_play_calls(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            inputs(root)
+            manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
+            manifest['assets'] = [{'file': 'screen1.png', 'sha256': '0' * 64}]
+            (root / 'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+            with self.assertRaisesRegex(publisher.ReleaseError, 'Manifest SHA-256 mismatch'):
+                listing.load_inputs(root / 'listing.json', root / 'manifest.json')
+
+    def test_phone_only_matching_eight_hashes_avoids_unnecessary_update(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            inputs(root)
+            plan = listing.load_inputs(root / 'listing.json', root / 'manifest.json')
+            server = ListingServer()
+            server.text = plan['listing']
+            server.images = {
+                'icon': [{'sha256': 'prior-icon'}],
+                'featureGraphic': [{'sha256': 'prior-banner'}],
+                'phoneScreenshots': [
+                    {'sha256': hashlib.sha256(item['data']).hexdigest()}
+                    for item in plan['images']['phoneScreenshots']
+                ],
+            }
+            result = listing.apply_phone_screenshots(publisher.Publisher(server), plan)
+            self.assertEqual(result['status'], 'already_matching_no_write')
+            self.assertFalse(server.committed)
+            self.assertFalse(any(path.endswith('/phoneScreenshots') and method == 'DELETE'
+                                 for method, path in server.calls))
+            self.assertFalse(any('uploadType=media' in path for _, path in server.calls))
+
+    def test_denied_image_upload_never_commits_edit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            inputs(root)
+            plan = listing.load_inputs(root / 'listing.json', root / 'manifest.json')
+            class PermissionDenied(ListingServer):
+                def __call__(self, method, path, body=None, content_type=None):
+                    if method == 'POST' and path.endswith('/phoneScreenshots?uploadType=media'):
+                        raise publisher.ReleaseError('Play API upload_store_image HTTP 403')
+                    return super().__call__(method, path, body, content_type)
+            server = PermissionDenied()
+            server.text = plan['listing']
+            with self.assertRaisesRegex(publisher.ReleaseError, 'HTTP 403'):
+                listing.apply_phone_screenshots(publisher.Publisher(server), plan)
+            self.assertFalse(server.committed)
+            self.assertFalse(any(method == 'PUT' for method, _ in server.calls))
+            self.assertFalse(any('/tracks/' in path or '/bundles' in path for _, path in server.calls))
+
+    def test_store03_enforces_exactly_eight_approved_phone_images(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            inputs(root)
+            args = ['listing.py', 'check', '--phone-only', '--require-eight-screenshots',
+                    '--listing', str(root / 'listing.json'), '--manifest', str(root / 'manifest.json')]
+            with patch.object(sys, 'argv', args):
+                self.assertEqual(listing.main(), 1)
+
+
+
 if __name__ == '__main__':
     unittest.main()
