@@ -22,6 +22,7 @@ test('4-A semantic layout retains all stateful web DOM endpoints', async () => {
     'editorGlobalOffset','applyGlobalOffset','mergeShortSubtitles','undoEdit','redoEdit',
     'editorBody','editPlayerMount','subtitleFile','downloads','exportEmptyActions',
     'exportSubtitleCount','translationFailureSummary','logOutput',
+    'generateWorkflowStatus','editorWorkspaceStatus','exportWorkflowStatus',
   ]) assert.equal((html.match(new RegExp('id="' + id + '"', 'g')) || []).length, 1, 'Missing or duplicated ' + id);
   assert.match(html, /studio-preview-card/);
   assert.match(html, /studio-export-layout/);
@@ -30,6 +31,10 @@ test('4-A semantic layout retains all stateful web DOM endpoints', async () => {
   assert.ok(html.indexOf('id="downloads"') < html.indexOf('class="format-guide"'), 'Downloads precede format guidance');
   assert.match(css, /#panel-edit \.editor-table-wrap \{[\s\S]*?overflow:visible/);
   assert.match(css, /#panel-export \.studio-export-layout/);
+  assert.match(css, /UI-09-G: task-context messages/);
+  const app = await readFile(join(root, 'src/app.js'), 'utf8');
+  assert.match(app, /updateEditorWorkspaceStatus\(\)/);
+  assert.match(app, /exportWorkflowStatus\.dataset\.state/);
 });
 
 test('4-A desktop and mobile workspaces preserve UI, source import and exports', { skip: !enabled }, async () => {
@@ -60,6 +65,12 @@ test('4-A desktop and mobile workspaces preserve UI, source import and exports',
     page.on('pageerror', e => errors.push(e.message));
     await page.goto('http://127.0.0.1:' + server.address().port + '/');
     await page.locator('#tab-generate').waitFor();
+    await page.waitForFunction(() => document.getElementById('generateWorkflowStatus').textContent.includes('파일을 선택'));
+    assert.equal(await page.locator('#generateWorkflowStatus').getAttribute('data-state'), 'empty');
+    await page.locator('#tab-edit').click();
+    assert.equal(await page.locator('#editorWorkspaceStatus').getAttribute('data-state'), 'empty');
+    await page.locator('#tab-export').click();
+    assert.equal(await page.locator('#exportWorkflowStatus').getAttribute('data-state'), 'empty');
 
     for (const width of [320, 390, 1280]) {
       await page.setViewportSize({ width, height: 844 });
@@ -113,15 +124,23 @@ test('4-A desktop and mobile workspaces preserve UI, source import and exports',
     await page.waitForFunction(() => document.querySelectorAll('#downloads a[download]').length >= 3);
     await page.locator('#tab-edit').click();
     assert.ok(await page.locator('#editorBody [data-cue-index]').count() >= 1, 'Imported SRT should remain editable');
+    assert.equal(await page.locator('#editorWorkspaceStatus').getAttribute('data-state'), 'ready');
+    assert.match(await page.locator('#editorWorkspaceStatus').innerText(), /영상 미연결/);
     assert.equal(await page.locator('#editorSearch').isEnabled(), true);
     await page.locator('#editorSearch').fill('Sample');
     assert.ok(await page.locator('#editorBody [data-cue-index]').count() >= 1, 'Existing search must still filter cues');
+    await page.locator('#editorSearch').fill('__not_in_the_subtitles__');
+    assert.equal(await page.locator('#editorWorkspaceStatus').getAttribute('data-state'), 'filtered');
+    assert.match(await page.locator('#editorWorkspaceStatus').innerText(), /원본 자막은 유지/);
     await page.locator('#editorSearch').fill('');
+    assert.equal(await page.locator('#editorWorkspaceStatus').getAttribute('data-state'), 'ready');
     await page.screenshot({ path: join(out, 'edit-imported-1280-light.png'), animations: 'disabled' });
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.screenshot({ path: join(out, 'edit-imported-1280-dark.png'), animations: 'disabled' });
     await page.emulateMedia({ colorScheme: 'light' });
     await page.locator('#tab-export').click();
+    assert.equal(await page.locator('#exportWorkflowStatus').getAttribute('data-state'), 'ready');
+    assert.match(await page.locator('#exportWorkflowStatus').innerText(), /브라우저 다운로드 내역/);
     const downloads = await page.locator('#downloads a[download]').evaluateAll(
       nodes => nodes.map(node => ({ filename: node.download, href: node.getAttribute('href') }))
     );

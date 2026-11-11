@@ -2466,3 +2466,35 @@ summary:focus-visible, a:focus-visible, .workspace-tab:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* UI-09-G: task-context messages in the existing three web tabs. */
+#panel-generate .workflow-state-note,
+#panel-edit .workflow-state-note,
+#panel-export .workflow-state-note {
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--soft);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+#panel-generate .workflow-state-note[data-state="ready"],
+#panel-edit .workflow-state-note[data-state="ready"],
+#panel-export .workflow-state-note[data-state="ready"] { font-weight: 600; }
+#panel-generate .workflow-state-note[data-state="error"],
+#panel-export .workflow-state-note[data-state="error"] {
+  color: var(--danger);
+  border-color: var(--es-danger-border);
+  background: var(--es-danger-surface);
+}
+@media (max-width: 760px) {
+  #panel-generate .workflow-state-note,
+  #panel-edit .workflow-state-note,
+  #panel-export .workflow-state-note { padding: 8px 10px; font-size: 12px; }
+  #panel-edit #editPlayerMount .video-preview:not([hidden]) { max-height: 220px; }
+}

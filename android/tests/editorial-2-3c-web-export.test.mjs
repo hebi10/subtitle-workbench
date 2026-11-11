@@ -48,6 +48,7 @@ test('3-C export keeps selected job, file formats, partial failure, real downloa
     await page.locator('#tab-export').click();
     assert.equal(await page.locator('#exportResultSelect').isDisabled(), true);
     assert.equal(await page.locator('#exportResultStatus').innerText(), '저장할 자막 없음');
+    assert.equal(await page.locator('#exportWorkflowStatus').getAttribute('data-state'), 'empty');
     assert.equal(await page.locator('#exportEmptyActions').isVisible(), true);
     assert.equal(await page.locator('#downloads button:disabled').count(), 3);
 
@@ -96,6 +97,8 @@ test('3-C export keeps selected job, file formats, partial failure, real downloa
     assert.ok(incompleteId, 'fixture must preserve cancelled translation output');
     await page.locator('#exportResultSelect').selectOption(incompleteId);
     assert.equal(await page.locator('#exportResultStatus').getAttribute('data-state'), 'pending');
+    assert.equal(await page.locator('#exportWorkflowStatus').getAttribute('data-state'), 'partial');
+    assert.match(await page.locator('#exportWorkflowStatus').innerText(), /원문을 보존/);
     assert.match(await page.locator('#exportResultStatus').innerText(), /원문 보존/);
     assert.equal(await page.locator('#translationFailureSummary').isVisible(), false);
     assert.equal(await page.locator('#downloads a[download]').count(), 3);
@@ -107,6 +110,7 @@ test('3-C export keeps selected job, file formats, partial failure, real downloa
       document.querySelector('#subtitleSyncReset').click();
     });
     assert.equal(await page.locator('#exportBuildError').isVisible(), true);
+    assert.equal(await page.locator('#exportWorkflowStatus').getAttribute('data-state'), 'error');
     assert.equal(await page.locator('#exportResultStatus').getAttribute('data-state'), 'error');
     assert.equal(await page.locator('#downloads a[download]').count(), 0);
     assert.equal(await page.locator('#downloads button:disabled').count(), 3);
@@ -117,6 +121,7 @@ test('3-C export keeps selected job, file formats, partial failure, real downloa
     });
     await page.locator('#retryExportButton').click();
     assert.equal(await page.locator('#exportBuildError').isVisible(), false);
+    assert.equal(await page.locator('#exportWorkflowStatus').getAttribute('data-state'), 'ready');
     assert.equal(await page.locator('#downloads a[download]').count(), 3);
     assert.equal(await page.locator('#exportResultStatus').getAttribute('data-state'), 'ready');
 

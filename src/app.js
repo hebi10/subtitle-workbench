@@ -99,6 +99,7 @@ const refs = {
   exportResultSelect: document.querySelector('#exportResultSelect'),
   exportFileName: document.querySelector('#exportFileName'),
   exportResultStatus: document.querySelector('#exportResultStatus'),
+  exportWorkflowStatus: document.querySelector('#exportWorkflowStatus'),
   exportLanguage: document.querySelector('#exportLanguage'),
   exportSyncSummary: document.querySelector('#exportSyncSummary'),
   exportDownloadStatus: document.querySelector('#exportDownloadStatus'),
@@ -145,6 +146,7 @@ const refs = {
   generateFileStatus: document.querySelector('#generateFileStatus'),
   generateConnectionStatus: document.querySelector('#generateConnectionStatus'),
   generateLanguageStatus: document.querySelector('#generateLanguageStatus'),
+  generateWorkflowStatus: document.querySelector('#generateWorkflowStatus'),
   sourceLanguage: document.querySelector('#sourceLanguage'),
   targetLanguage: document.querySelector('#targetLanguage'),
   customTargetLanguage: document.querySelector('#customTargetLanguage'),
@@ -186,6 +188,7 @@ const refs = {
   editorBody: document.querySelector('#editorBody'),
   editorCount: document.querySelector('#editorCount'),
   editorCueContext: document.querySelector('#editorCueContext'),
+  editorWorkspaceStatus: document.querySelector('#editorWorkspaceStatus'),
   editorCuePosition: document.querySelector('#editorCuePosition'),
   editorCueTiming: document.querySelector('#editorCueTiming'),
   editorCueSpeaker: document.querySelector('#editorCueSpeaker'),
@@ -584,6 +587,19 @@ function updateStartButtonState() {
   refs.generateFileStatus.textContent = preparation.file;
   refs.generateConnectionStatus.textContent = preparation.connection;
   refs.generateLanguageStatus.textContent = preparation.language;
+  const next = state.isBusy
+    ? { state: 'running', text: '자막 생성 진행 중 · 오른쪽 진행 상태에서 처리 과정을 확인하세요.' }
+    : refs.statusBadge.dataset.state === 'failed'
+      ? { state: 'error', text: '생성 또는 번역 오류 · 상단 오류와 저장된 원문을 확인한 뒤 다시 시도하세요.' }
+      : !hasFile
+        ? { state: 'empty', text: '다음 단계 · 영상 또는 오디오 파일을 선택하세요.' }
+        : !hasDuration
+          ? { state: 'blocked', text: '파일 길이 확인 필요 · 지원되는 파일인지 확인한 뒤 다시 선택하세요.' }
+          : refs.startButton.disabled
+            ? { state: 'blocked', text: '연결 정보 확인 필요 · 생성 전 확인에서 API 연결 및 언어 설정을 점검하세요.' }
+            : { state: 'ready', text: '생성 준비 완료 · 자막 생성 시작을 누르면 진행 상태를 확인할 수 있습니다.' };
+  refs.generateWorkflowStatus.dataset.state = next.state;
+  if (refs.generateWorkflowStatus.textContent !== next.text) refs.generateWorkflowStatus.textContent = next.text;
 }
 
 function restoreConnectionSettings() {
@@ -1251,6 +1267,20 @@ function renderPreview(subtitles) {
   );
 }
 
+function updateEditorWorkspaceStatus() {
+  const total = state.subtitles.length;
+  const visible = state.editorVisibleCueIndices.length;
+  const next = !total
+    ? { state: 'empty', text: '편집할 자막이 없습니다. 자막 파일을 불러오거나 생성 탭에서 만들어 주세요.' }
+    : !visible
+      ? { state: 'filtered', text: '검색·필터에 맞는 자막이 없습니다. 검색어 또는 필터를 변경해 주세요. 원본 자막은 유지됩니다.' }
+      : { state: 'ready', text: `검수 자막 ${visible} / ${total}개 · ${state.file
+          ? '영상·오디오 연결됨 · 선택한 자막과 재생 시점을 대조할 수 있습니다.'
+          : '영상 미연결 · 자막 텍스트와 시간을 편집할 수 있습니다.'}` };
+  refs.editorWorkspaceStatus.dataset.state = next.state;
+  if (refs.editorWorkspaceStatus.textContent !== next.text) refs.editorWorkspaceStatus.textContent = next.text;
+}
+
 function renderEditor() {
   const expandedCues = new Set(
     [...refs.editorBody.querySelectorAll('details.cue-more[open]')]
@@ -1275,6 +1305,7 @@ function renderEditor() {
   if (!state.editorVisibleCueIndices.includes(state.editorSelectedCueIndex)) {
     state.editorSelectedCueIndex = state.editorVisibleCueIndices[0] ?? -1;
   }
+  updateEditorWorkspaceStatus();
 
   if (filtered.length === 0) {
     const row = document.createElement('tr');
@@ -1599,6 +1630,7 @@ function resetSubtitleSync() {
 }
 
 function renderSubtitlePlayer() {
+  updateEditorWorkspaceStatus();
   const hasMedia = Boolean(state.file);
   refs.videoPreview.hidden = !hasMedia;
   refs.subtitlePanel.hidden = !hasMedia || state.playerSubtitles.length === 0;
@@ -1659,6 +1691,17 @@ function renderExportOverview() {
     refs.exportResultStatus.textContent = '파일 준비 오류 · 재시도 필요';
     refs.exportResultStatus.dataset.state = 'error';
   }
+  const next = !refs.exportBuildError.hidden
+    ? { state: 'error', text: '파일 준비 오류 · 기존 자막과 편집 내용은 유지됩니다. 파일 다시 준비를 선택하세요.' }
+    : !state.subtitles.length
+      ? { state: 'empty', text: '내려받을 자막이 없습니다. 기존 자막을 불러오거나 생성 탭에서 작업하세요.' }
+      : entry?.translationPending
+        ? { state: 'partial', text: '부분 번역 결과 · 저장된 원문을 보존한 상태로 SRT·VTT·JSON을 내려받을 수 있습니다.' }
+        : getTranslationFailures(state.subtitles).length
+          ? { state: 'partial', text: '번역 오류가 포함되어 있습니다. 원문 자막을 확인한 뒤 파일을 내려받으세요.' }
+          : { state: 'ready', text: '자막 파일 준비 완료 · SRT를 먼저 권장합니다. 실제 저장 여부는 브라우저 다운로드 내역에서 확인하세요.' };
+  refs.exportWorkflowStatus.dataset.state = next.state;
+  if (refs.exportWorkflowStatus.textContent !== next.text) refs.exportWorkflowStatus.textContent = next.text;
 }
 
 function renderDownloads(subtitles) {
