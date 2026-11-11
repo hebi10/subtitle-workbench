@@ -323,6 +323,10 @@ function renderJobs() {
     if (!ready && ['paused', 'error'].includes(job.status)) inspection.append(el('p', '저장된 결과를 유지하고 남은 구간부터 이어갑니다.', 'hint'));
     if (job.error) article.append(el('p', job.error, 'job-error'));
     const actions = el('div', undefined, 'job-actions');
+    const secondaryActions = el('div', undefined, 'job-secondary-actions');
+    secondaryActions.setAttribute('role', 'group');
+    secondaryActions.setAttribute('aria-label', '완료 작업의 파일 저장 및 기록 관리');
+    secondaryActions.append(el('p', '파일 저장 · 기록 관리', 'job-secondary-title'));
     if (!ready) {
       const open = actionIcon(button(job.status === 'completed' ? '자막 편집' : '자막 보기', () => openJob(job.id)), 'edit');
       if (job.status === 'completed') open.classList.add('primary');
@@ -330,19 +334,19 @@ function renderJobs() {
       actions.append(button('결과 보기', () => openJob(job.id, 'results')));
     }
     if (job.status === 'completed') {
-      actions.append(actionIcon(button('SRT 저장', () => exportJob(job.id), jobActionsInFlight.has(job.id)), 'download'));
+      secondaryActions.append(actionIcon(button('SRT 저장', () => exportJob(job.id), jobActionsInFlight.has(job.id)), 'download'));
       if (pendingDeletionId === job.id) {
         const confirmation = el('p', '저장된 자막과 작업 기록을 삭제합니다. 원본 영상은 삭제하지 않습니다.', 'hint delete-warning');
-        article.append(confirmation);
+        secondaryActions.append(confirmation);
         const remove = button('삭제 확인', () => deleteCompletedJob(job.id), jobActionsInFlight.has(job.id));
-        remove.classList.add('danger'); actions.append(remove);
-        actions.append(button('취소', () => {
+        remove.classList.add('danger'); secondaryActions.append(remove);
+        secondaryActions.append(button('취소', () => {
           pendingDeletionId = '';
           renderJobs();
           focusJobAction(job.id, '기록 삭제');
         }));
       } else {
-        actions.append(button('기록 삭제', () => {
+        secondaryActions.append(button('기록 삭제', () => {
           pendingDeletionId = job.id;
           renderJobs();
           focusJobAction(job.id, '삭제 확인');
@@ -373,6 +377,7 @@ function renderJobs() {
     const featuredAction = actions.querySelector('button.primary:not(:disabled)');
     if (featuredAction) actions.prepend(featuredAction);
     article.append(actions);
+    if (job.status === 'completed') article.append(secondaryActions);
     if (ready) article.append(preparationEditor(job));
     article.append(inspection); nextNodes.push(article);
   }
@@ -608,10 +613,16 @@ function renderResults() {
   $('resultStateBadge').textContent = statusNames[current.status] || current.status;
   $('resultStateBadge').dataset.state = current.status;
   $('resultMeta').textContent = `${statusNames[current.status] || current.status} · 자막 ${history.present.length}개 · ${formatDuration(current.durationMs)}`;
-  $('resultStatus').textContent = loading ? '자막을 불러오는 중입니다…' : !history.present.length ? '아직 저장된 자막이 없습니다. 작업 화면에서 진행 상태를 확인해 주세요.' : !editable() ? '현재까지 저장된 부분 결과입니다. 생성이 완료되면 편집할 수 있습니다.' : !current.uri ? '불러온 자막입니다. 연결된 영상이 없어 미리보기는 사용할 수 없습니다.' : '자막을 확인하고 파일로 저장하세요.';
+  $('resultStatus').textContent = loading ? '자막을 불러오는 중입니다…' : !history.present.length ? '아직 저장된 자막이 없습니다. 작업 화면에서 진행 상태를 확인해 주세요.' : !editable() ? '현재까지 저장된 부분 결과입니다. 생성이 완료되면 편집할 수 있습니다.' : '자막을 확인하고 편집하거나 파일로 저장하세요.';
+  const mediaStatus = $('resultMediaStatus');
+  mediaStatus.dataset.state = loading ? 'checking' : current.uri ? 'linked' : 'missing';
+  mediaStatus.textContent = loading ? '원본 영상 연결 상태를 확인하고 있습니다.' : current.uri
+    ? '원본 영상 정보가 연결되어 있습니다. 미리보기는 Android 플레이어에서 별도로 실행됩니다.'
+    : '연결된 원본 영상이 없어 미리보기를 사용할 수 없습니다. 자막 확인과 저장은 가능합니다.';
   $('resultPreview').disabled = !current.uri || loading;
   $('editResult').querySelector('[data-result-edit-label]').textContent = editable() ? '자막 편집' : '자막 보기';
   $('editResult').disabled = !history.present.length || loading;
+  $('editResult').classList.toggle('primary', Boolean(history.present.length) && !loading);
 
   const preview = $('resultCuePreview');
   const sample = history.present.slice(0, 3);

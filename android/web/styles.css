@@ -1829,3 +1829,52 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
   #videoView .microphone-source .source-prerequisite { font-size: 11px; }
   #videoView #cloudLiveEntryStatus { font-size: 11px; }
 }
+
+/* UI-09-D: separate the completed job's next action from non-destructive exports and record removal. */
+#jobsView .job-secondary-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--es2-space-2);
+  margin-top: var(--es2-space-2);
+  padding: var(--es2-space-2);
+  border: 1px solid var(--es-border);
+  background: var(--es-surface-alt);
+  min-width: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+#jobsView .job-secondary-title {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--es-muted);
+}
+#jobsView .job-secondary-actions button {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: var(--es2-space-2);
+  font-size: 13px;
+  white-space: normal;
+  word-break: keep-all;
+  line-height: 1.35;
+}
+#jobsView .job-secondary-actions .delete-warning {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: var(--es2-space-2);
+}
+#resultsView #editResult.primary { font-weight: 700; }
+#resultsView .result-media-status {
+  margin: var(--es2-space-2) 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--es-muted);
+  overflow-wrap: anywhere;
+}
+#resultsView .result-media-status[data-state="missing"] {
+  padding: var(--es2-space-2);
+  border: 1px solid var(--es-border);
+  background: var(--es-surface-alt);
+}
