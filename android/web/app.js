@@ -925,6 +925,14 @@ function syncConnection() {
   $('connectionSummary').textContent = `${modeLabel} · ${!connection.hasKey ? '연결 정보 저장 필요' : connectionError ? '연결 확인 실패 · 설정을 확인해 주세요.' : matches ? '인증 · 모델 접근 확인됨' : '저장됨 · 연결 미확인'}`;
   $('connectionCard').classList.toggle('connected', connection.hasKey);
   $('connectionCard').dataset.state = !connection.hasKey ? 'missing' : connectionError ? 'error' : matches ? 'verified' : 'saved';
+  $('chooseFile').dataset.state = $('connectionCard').dataset.state;
+  $('chooseFileStatus').textContent = !connection.hasKey ? 'API 연결 필요'
+    : changingConnection ? '연결 변경 중'
+    : connectionError ? '연결 확인 실패 · 설정 필요'
+    : matches ? '연결 확인됨 · 파일 선택 가능' : '연결 저장됨 · 인증 확인 별도';
+  $('cloudLiveEntryStatus').textContent = connection.hasKey
+    ? '연결 저장됨 · 전송·요금은 시작 전에 확인'
+    : '개인 API 또는 테스트 서버 연결 필요';
   $('connectionHeading').hidden = connection.hasKey;
   $('activeModel').hidden = connection.hasKey;
   $('activeModel').textContent = `음성 인식: ${savedSettings.sttModel || DEFAULT_STT_MODEL} · ${savedSettings.translate ? `번역: ${savedSettings.translationModel}` : '번역 안 함'}`;
@@ -1041,24 +1049,30 @@ $('jumpForm').addEventListener('submit', (event) => {
   $('jumpHint').textContent = `자막 ${index + 1}로 이동했습니다. 검색과 필터를 전체로 변경했습니다.`;
 });
 $('dismissFirstRunGuide').addEventListener('click', dismissFirstRunGuide);
-$('guideFile').addEventListener('click', () => {
+function focusFileSource() {
   if ($('pickVideo').disabled) {
     void openSettings().catch((error) => message(error.message || String(error), true));
   } else {
     $('pickVideo').focus();
     $('pickVideo').scrollIntoView({ block: 'center' });
   }
-});
-$('guideMic').addEventListener('click', () => {
+}
+function focusMicrophoneSource() {
   $('openOnDevice').focus();
   $('openOnDevice').scrollIntoView({ block: 'center' });
-});
-$('guideOffline').addEventListener('click', () => {
+}
+function focusOfflineSource() {
   const entry = document.querySelector('.local-offline-entry');
   entry.open = true;
   $('openOfflineModel').focus();
   $('openOfflineModel').scrollIntoView({ block: 'center' });
-});
+}
+$('guideFile').addEventListener('click', focusFileSource);
+$('guideMic').addEventListener('click', focusMicrophoneSource);
+$('guideOffline').addEventListener('click', focusOfflineSource);
+$('chooseFile').addEventListener('click', focusFileSource);
+$('chooseMicrophone').addEventListener('click', focusMicrophoneSource);
+$('chooseOffline').addEventListener('click', focusOfflineSource);
 for (const [id, action] of Object.entries({
   startNewJob: () => show('video'),
   navVideo: () => show('video'), navJobs: () => show('jobs'), navResults: () => show('results'), navSettings: () => show('settings'),
