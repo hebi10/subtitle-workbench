@@ -130,6 +130,13 @@ test('UI-09-H web 3 tabs: 36 configurations, actual SRT download bytes and short
     const report = JSON.parse(await page.locator('#workflowResults').textContent());
     assert.equal(report.failed, 0, JSON.stringify(report.results.filter(r => !r.passed)));
     await page.locator('#workflowResults').evaluate(node => { node.hidden = true; });
+    // The full fixture can finish with a filtered result; use a known editable job.
+    const completedId = await page.locator('#jobResultSelect option').evaluateAll(options =>
+      options.find(option => option.textContent.includes('first.mp4'))?.value);
+    assert.ok(completedId, 'completed fixture result required for short-screen editing');
+    await page.locator('#jobResultSelect').selectOption(completedId);
+    await page.locator('#editorSearch').fill('');
+    await page.locator('#editorStatusFilter').selectOption('all');
 
     const matrix = [];
     await mkdir(output, { recursive: true });
