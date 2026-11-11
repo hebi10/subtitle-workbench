@@ -1,0 +1,229 @@
+{
+  "stage": "STORE-05",
+  "app": "해비 자막",
+  "package": "com.haebi.subtitle",
+  "language": "ko-KR",
+  "generationDate": "2026-11-11",
+  "sourceGitSha": "ede57b4d0c7c6b63d1a0c6e0a679fab1ce13c917",
+  "sourceGitHubRunId": "42987366716",
+  "sourceAndroid": {
+    "api": 35,
+    "device": "Pixel 6 emulator",
+    "screenCount": 60,
+    "verification": "60/60 SHA-256 verified against original device-provenance.json"
+  },
+  "assetType": "phoneScreenshots",
+  "assets": [
+    {
+      "file": "01-video.png",
+      "heading": "영상과 음성 파일로 시작",
+      "tagline": "파일 선택과 자막 생성 준비",
+      "theme": "light",
+      "outputDimensions": [
+        1080,
+        1920
+      ],
+      "sha256": "1469e47b03df3a61d9bb6a74ee23691214dc3e91ceaa6cc814e42cf2750a4cd6",
+      "sizeBytes": 232233,
+      "sourcePath": "device/video-empty-light-font100.png",
+      "sourceDimensions": [
+        1080,
+        2400
+      ],
+      "sourceSha256": "8dd9378afe65206d355fba927fda1fa9a47da70c6b211472c09678eca568bc04",
+      "sourceKind": "Actual Android 15 Pixel 6 emulator screenshot, using synthetic QA sample data; no real paid inference",
+      "rendering": "Uniform fit to 678x1507, no image crop or reconstructed UI; captions outside screen only",
+      "placement": {
+        "x": 201,
+        "y": 343,
+        "width": 678,
+        "height": 1507
+      }
+    },
+    {
+      "file": "02-jobs.png",
+      "heading": "작업 기록을 한눈에",
+      "tagline": "진행 상태와 완료 결과 확인",
+      "theme": "dark",
+      "outputDimensions": [
+        1080,
+        1920
+      ],
+      "sha256": "1742d03b6d5bd9407f45dae78d569a579a10be378beb73d724d39dc0b7042b9a",
+      "sizeBytes": 196293,
+      "sourcePath": "device/jobs-state-first-page-dark-font100.png",
+      "sourceDimensions": [
+        1080,
+        2400
+      ],
+      "sourceSha256": "267a6ecc013a94cfee97430598612830ea10a2009b8183b37c09cf8155817ea3",
+      "sourceKind": "Actual Android 15 Pixel 6 emulator screenshot, using synthetic QA sample data; no real paid inference",
+      "rendering": "Uniform fit to 678x1507, no image crop or reconstructed UI; captions outside screen only",
+      "placement": {
+        "x": 201,
+        "y": 343,
+        "width": 678,
+        "height": 1507
+      }
+    },
+    {
+      "file": "03-results.png",
+      "heading": "결과 확인 후 내보내기",
+      "tagline": "SRT · VTT · JSON 자막 저장",
+      "theme": "light",
+      "outputDimensions": [
+        1080,
+        1920
+      ],
+      "sha256": "0264be62aadf8ac96f1397520c4742a05899c26f630abe7be0ee1ad35c90f9e8",
+      "sizeBytes": 195108,
+      "sourcePath": "device/results-with-real-video-light-font100.png",
+      "sourceDimensions": [
+        1080,
+        2400
+      ],
+      "sourceSha256": "efc94cfd1452a1865fb54b78b6b630364c752385614b3f25ef07e6ee07a74ff7",
+      "sourceKind": "Actual Android 15 Pixel 6 emulator screenshot, using synthetic QA sample data; no real paid inference",
+      "rendering": "Uniform fit to 678x1507, no image crop or reconstructed UI; captions outside screen only",
+      "placement": {
+        "x": 201,
+        "y": 343,
+        "width": 678,
+        "height": 1507
+      }
+    },
+    {
+      "file": "04-editor.png",
+      "heading": "자막 문장과 시간 편집",
+      "tagline": "원문 · 번역 · 타임코드 수정",
+      "theme": "dark",
+      "outputDimensions": [
+        1080,
+        1920
+      ],
+      "sha256": "d7ebcb95bcade3ade3fd6381e234181c5688e13c50dd615768d0c7f5e343db17",
+      "sizeBytes": 192201,
+      "sourcePath": "device/editor-with-27-cues-dark-font100.png",
+      "sourceDimensions": [
+        1080,
+        2400
+      ],
+      "sourceSha256": "0a3907b2984b9d46e5b7110409dcb45180b9b33d6d78dff302824315e09998bf",
+      "sourceKind": "Actual Android 15 Pixel 6 emulator screenshot, using synthetic QA sample data; no real paid inference",
+      "rendering": "Uniform fit to 678x1507, no image crop or reconstructed UI; captions outside screen only",
+      "placement": {
+        "x": 201,
+        "y": 343,
+        "width": 678,
+        "height": 1507
+      }
+    },
+    {
+      "file": "05-settings.png",
+      "heading": "연결과 언어 설정 관리",
+      "tagline": "개인 API와 기본 언어 설정",
+      "theme": "light",
+      "outputDimensions": [
+        1080,
+        1920
+      ],
+      "sha256": "07e53aa0252f4aba1e8a40eb4fd12c79d901ec4ff05e9feffd0a04536fde9831",
+      "sizeBytes": 203853,
+      "sourcePath": "device/settings-expanded-light-font100.png",
+      "sourceDimensions": [
+        1080,
+        2400
+      ],
+      "sourceSha256": "bb244fd29ca12d3b84a68d990e8487cbf81c4cc3838c30e450af6b208fe2ddbf",
+      "sourceKind": "Actual Android 15 Pixel 6 emulator screenshot, using synthetic QA sample data; no real paid inference",
+      "rendering": "Uniform fit to 678x1507, no image crop or reconstructed UI; captions outside screen only",
+      "placement": {
+        "x": 201,
+        "y": 343,
+        "width": 678,
+        "height": 1507
+      }
+    },
+    {
+      "file": "06-on-device.png",
+      "heading": "온디바이스 마이크 자막",
+      "tagline": "기기 음성 인식 준비와 시작",
+      "theme": "light",
+      "outputDimensions": [
+        1080,
+        1920
+      ],
+      "sha256": "3dbda8b7de0a76a176c2d4391910581e6ede899d1a5c51895977f8a4681908f4",
+      "sizeBytes": 170827,
+      "sourcePath": "native/light-font100/on-device-light.png",
+      "sourceDimensions": [
+        1080,
+        2400
+      ],
+      "sourceSha256": "681220461a4ae70844689dd85deb4a166ec737b322a200a40a102d94616b87b2",
+      "sourceKind": "Actual Android 15 Pixel 6 emulator screenshot, using synthetic QA sample data; no real paid inference",
+      "rendering": "Uniform fit to 678x1507, no image crop or reconstructed UI; captions outside screen only",
+      "placement": {
+        "x": 201,
+        "y": 343,
+        "width": 678,
+        "height": 1507
+      }
+    },
+    {
+      "file": "07-cloud-live.png",
+      "heading": "GPT 실시간 마이크 자막",
+      "tagline": "개인 API 연결 및 별도 요금",
+      "theme": "dark",
+      "outputDimensions": [
+        1080,
+        1920
+      ],
+      "sha256": "e13d4d7c0fc8e7c8965d37fa039118ef6087a0d02780cf1b0b5e9907c39a5568",
+      "sizeBytes": 203178,
+      "sourcePath": "native/dark-font100/cloud-live-dark.png",
+      "sourceDimensions": [
+        1080,
+        2400
+      ],
+      "sourceSha256": "a750f6edefa50d09eae27616e6fc9850f56fe1280f914c416d96c020ecdf908b",
+      "sourceKind": "Actual Android 15 Pixel 6 emulator screenshot, using synthetic QA sample data; no real paid inference",
+      "rendering": "Uniform fit to 678x1507, no image crop or reconstructed UI; captions outside screen only",
+      "placement": {
+        "x": 201,
+        "y": 343,
+        "width": 678,
+        "height": 1507
+      }
+    },
+    {
+      "file": "08-vosk-local.png",
+      "heading": "Vosk 오프라인 AI",
+      "tagline": "모델 설치 후 기기 내부 전사",
+      "theme": "light",
+      "outputDimensions": [
+        1080,
+        1920
+      ],
+      "sha256": "47048444b72a2111d404186c9523749409cfb823959a66c246328234e5da7ac2",
+      "sizeBytes": 175850,
+      "sourcePath": "native/light-font100/vosk-local-light.png",
+      "sourceDimensions": [
+        1080,
+        2400
+      ],
+      "sourceSha256": "77b716362bc1a9b0f7e630d13b170304d8ea1acf544492766b16c32f2c464faf",
+      "sourceKind": "Actual Android 15 Pixel 6 emulator screenshot, using synthetic QA sample data; no real paid inference",
+      "rendering": "Uniform fit to 678x1507, no image crop or reconstructed UI; captions outside screen only",
+      "placement": {
+        "x": 201,
+        "y": 343,
+        "width": 678,
+        "height": 1507
+      }
+    }
+  ],
+  "scope": "8 regenerated phone screenshots; existing icon, feature graphic and text must be preserved",
+  "appDataNotice": "Test fixtures: synthetic 40-second test video, seeded jobs and subtitle cues; native screens are pre-inference",
+  "playListingStatus": "not uploaded or verified by this file-generation operation"
+}

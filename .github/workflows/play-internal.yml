@@ -72,6 +72,9 @@ jobs:
           if [[ "$EVENT_TYPE" == 'workflow_run' && "$title" == 'qa: STORE-04 read-only Play listing audit [audit-only]' ]]; then
             echo 'mode=audit' >> "$GITHUB_OUTPUT"
             echo 'target=none' >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT_TYPE" == 'workflow_run' && "$title" == 'store: STORE-05 trusted screenshot registration [listing-only]' ]]; then
+            echo 'mode=listing' >> "$GITHUB_OUTPUT"
+            echo 'target=none' >> "$GITHUB_OUTPUT"
           elif [[ "$EVENT_TYPE" == 'workflow_run' && "$title" == 'store: STORE-03 trusted screenshot registration [listing-only]' ]]; then
             echo 'mode=listing' >> "$GITHUB_OUTPUT"
             echo 'target=none' >> "$GITHUB_OUTPUT"
