@@ -1,0 +1,141 @@
+name: UI-09-A real Android state baseline
+
+on:
+  pull_request:
+    paths:
+      - 'android/app/src/androidTest/java/com/haebi/subtitle/EditorialUi09aStateMatrixDeviceTest.java'
+      - 'scripts/ui09a/**'
+      - '.github/workflows/ui09a-state-baseline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android 15 real video and state capture
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Build a deterministic, non-private, playable video for emulator QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y ffmpeg
+          fi
+          mkdir -p android/app/src/androidTest/assets output/ui09a/device
+          ffmpeg -hide_banner -nostdin -loglevel error -y \
+            -f lavfi -i 'testsrc2=duration=40:size=320x180:rate=5' \
+            -an -c:v mpeg4 -q:v 10 -pix_fmt yuv420p -movflags +faststart \
+            android/app/src/androidTest/assets/ui09a-video.mp4
+          test "$(stat -c '%s' android/app/src/androidTest/assets/ui09a-video.mp4)" -gt 5000
+          sha256sum android/app/src/androidTest/assets/ui09a-video.mp4 > output/ui09a/video-fixture.sha256
+          echo '40s / 320x180 / 5fps / deterministic generated synthetic video; no camera recording' > output/ui09a/video-fixture.txt
+      - name: Enable KVM on GitHub runner
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Capture actual Android app and Native views in four configurations
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          working-directory: android
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            chmod +x gradlew
+            ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            mkdir -p ../output/ui09a/device ../output/ui09a/native
+            for scale in 100 160; do
+              if [[ "$scale" == '100' ]]; then adb shell settings put system font_scale 1.0; else adb shell settings put system font_scale 1.6; fi
+              for mode in light dark; do
+                if [[ "$mode" == 'light' ]]; then adb shell cmd uimode night no; else adb shell cmd uimode night yes; fi
+                label="$mode-font$scale"
+                adb shell pm clear com.haebi.subtitle
+                adb shell am instrument -w -e class com.haebi.subtitle.EditorialUi09aStateMatrixDeviceTest \
+                  com.haebi.subtitle.test/androidx.test.runner.AndroidJUnitRunner \
+                  > ../output/ui09a/device/"$label".log
+                cat ../output/ui09a/device/"$label".log
+                grep -q 'OK (1 test)' ../output/ui09a/device/"$label".log
+                adb pull /sdcard/Android/data/com.haebi.subtitle/files/ui09a-state-matrix/. ../output/ui09a/device/
+                adb shell pm clear com.haebi.subtitle
+                adb shell am instrument -w -e class com.haebi.subtitle.EditorialNativeScreensDeviceTest \
+                  com.haebi.subtitle.test/androidx.test.runner.AndroidJUnitRunner \
+                  > ../output/ui09a/device/native-"$label".log
+                cat ../output/ui09a/device/native-"$label".log
+                grep -q 'OK (3 tests)' ../output/ui09a/device/native-"$label".log
+                mkdir -p ../output/ui09a/native/"$label"
+                adb pull /sdcard/Android/data/com.haebi.subtitle/files/editorial-3c/. ../output/ui09a/native/"$label"/
+              done
+            done
+      - name: Verify exact screen matrix with SHA-256 and provenance
+        env:
+          CAPTURE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 scripts/ui09a/build_manifest.py --mode device --root output/ui09a
+      - name: Upload original Android screenshots and test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui09a-real-android-state-baseline
+          path: |
+            output/ui09a/device/
+            output/ui09a/native/
+            output/ui09a/device-provenance.json
+            output/ui09a/video-fixture.sha256
+            output/ui09a/video-fixture.txt
+          retention-days: 30
+          if-no-files-found: warn
+
+  web:
+    name: Chromium web and state-specific UI reference
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright and Korean fonts
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+      - name: Capture live web editor and Android-like WebView mock states
+        env:
+          PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
+        run: |
+          node --test \
+            android/tests/editorial-4a-web.test.mjs \
+            android/tests/editorial-2-2b-jobs.test.mjs \
+            android/tests/editorial-2-2d-editor.test.mjs
+          mkdir -p output/ui09a/web
+          for name in editorial-4a editorial-2-2b editorial-2-2d; do
+            mkdir -p "output/ui09a/web/$name"
+            cp "output/$name/"*.png "output/ui09a/web/$name/"
+          done
+      - name: Verify web captures and identify browser-only provenance
+        env:
+          CAPTURE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 scripts/ui09a/build_manifest.py --mode web --root output/ui09a
+      - name: Upload web and WebView browser fixture captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui09a-chromium-browser-fixture-reference
+          path: output/ui09a/web/
+          retention-days: 30
+          if-no-files-found: warn
