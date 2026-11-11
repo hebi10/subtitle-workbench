@@ -1,0 +1,98 @@
+name: STORE-02 latest real Android screenshots
+
+on:
+  push:
+    branches: [store/store02-latest-real-screens-20261111]
+    paths:
+      - 'scripts/store02/build_latest_screenshots.py'
+      - '.github/workflows/store02-latest-screenshots.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-store-screenshots:
+    if: ${{ github.repository }} == 'hebi10/subtitle-workbench' && ${{ github.ref }} == 'refs/heads/store/store02-latest-real-screens-20261111'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Verify captured source run and unchanged Android UI source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CAPTURE_SHA: a0116043a2187da368c2cae57c6e8976bf023466
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/42790689154" --jq '.head_sha')"
+          [[ "$actual" == "$CAPTURE_SHA" ]] || { echo "Screenshot source run SHA changed" >&2; exit 1; }
+          gh api "repos/$GITHUB_REPOSITORY/git/trees/$CAPTURE_SHA?recursive=1" > "$RUNNER_TEMP/source-tree.json"
+          python3 - "$RUNNER_TEMP/source-tree.json" <<'PY'
+          import json, subprocess, sys
+          from pathlib import Path
+          original = {x['path']: x['sha'] for x in json.load(open(sys.argv[1], encoding='utf-8'))['tree'] if x['type'] == 'blob'}
+          prefixes = ('android/app/src/main/', 'android/web/', 'src/')
+          found = {str(p) for prefix in prefixes for p in Path(prefix).rglob('*') if p.is_file()}
+          old = {path for path in original if path.startswith(prefixes)}
+          if found != old:
+              raise SystemExit(f'App UI file set differs from the Android screenshot source: added={found-old} removed={old-found}')
+          for path in sorted(found):
+              actual_sha = subprocess.check_output(['git', 'hash-object', path], text=True).strip()
+              if actual_sha != original[path]:
+                  raise SystemExit(f'App UI changed since Android screenshot: {path}')
+          print('Android UI bytes equal the verified source capture commit:', len(found), 'files')
+          PY
+      - name: Download original Android 15 emulator screenshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 42790689154 --repo "$GITHUB_REPOSITORY" \
+            --name subtitle-emulator-integration --dir "$RUNNER_TEMP/source-android"
+          test -d "$RUNNER_TEMP/source-android"
+      - name: Install deterministic screenshot compositor and Korean font
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+          python3 -m pip install --disable-pip-version-check 'Pillow==11.3.0'
+      - name: Compose eight uncropped real Android screenshots and record source hashes
+        run: python3 scripts/store02/build_latest_screenshots.py --capture-root "$RUNNER_TEMP/source-android"
+      - name: Validate PNG dimensions and original capture provenance
+        run: |
+          python3 scripts/release/listing.py check --phone-only
+          node --test android/tests/editorial-5b-store-assets.test.mjs
+      - name: Commit only eight images and their manifests to the STORE-02 review branch
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add assets/play-store/ko-KR/0*.png \
+            assets/play-store/ko-KR/manifest.json \
+            assets/play-store/ko-KR/capture-provenance-5b.json
+          git diff --cached --stat
+          if git diff --cached --quiet; then
+            echo "Latest Android screenshots already committed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "store: STORE-02 latest Android 15 real screens [skip-play]"
+          git push origin "HEAD:$BRANCH_NAME"
+      - name: Preserve the eight ready-to-review screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-02-eight-real-android-screens
+          path: |
+            assets/play-store/ko-KR/0*.png
+            assets/play-store/ko-KR/manifest.json
+            assets/play-store/ko-KR/capture-provenance-5b.json
+          retention-days: 30
+          if-no-files-found: warn

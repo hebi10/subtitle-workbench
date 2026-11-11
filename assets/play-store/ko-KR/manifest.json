@@ -50,15 +50,16 @@
       "purpose": "영상과 음성 파일로 시작",
       "width": 1080,
       "height": 1920,
-      "sha256": "6f426c1bbc9f9b3b727e037ec798e930a464dad08f647430841673d5cf144e69",
+      "sha256": "26babec4888d3bdcc9b5c59cd12d859f9615b3265cf99fb847989455a8684d12",
       "source": {
         "type": "android-15-emulator-screenshot-with-editorial-caption",
         "stage": "Editorial Studio 5-A",
-        "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+        "sourceCommit": "a0116043a2187da368c2cae57c6e8976bf023466",
+        "sourceRunId": 42790689154,
         "sourcePath": "output/editorial-5a/webview-light-font100/video-light-font100.png",
-        "sourceSHA256": "5c9079ce7457f8b0d0a0019494e8ae6e78a2d0101124c021eb751668aa300d9c",
+        "sourceSHA256": "a3a62befc8c38a67a0eec3e1a4f20580406252b63ee883fefb6d43e87305edb4",
         "provenanceFile": "capture-provenance-5b.json",
-        "export": "Real Android API35 emulator screen (UI pixels preserved, uniformly scaled without crop); fixture data is illustrative; label/header is added."
+        "export": "Actual Android 15 emulator screenshot, uniformly scaled with no crop or synthetic UI; static caption outside the original screenshot"
       }
     },
     {
@@ -66,15 +67,16 @@
       "purpose": "작업 기록을 한눈에",
       "width": 1080,
       "height": 1920,
-      "sha256": "f76318093dd0236525b00015ee3bf1346d9dc6bdbad5ad15cbac021554b8814b",
+      "sha256": "a80dc6ef29de6788a6f25acfd66f4c60bfa377571c17a90de286862f27e1f591",
       "source": {
         "type": "android-15-emulator-screenshot-with-editorial-caption",
         "stage": "Editorial Studio 5-A",
-        "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+        "sourceCommit": "a0116043a2187da368c2cae57c6e8976bf023466",
+        "sourceRunId": 42790689154,
         "sourcePath": "output/editorial-5a/webview-dark-font100/jobs-dark-font100.png",
-        "sourceSHA256": "7ef81465664add21336feab34431e44ec2c40817c9085d143780bde8a28549ee",
+        "sourceSHA256": "bdc33dfd576a687a4e76151fd56d9bda81685226c357bcc4eb0d187b2da8904d",
         "provenanceFile": "capture-provenance-5b.json",
-        "export": "Real Android API35 emulator screen (UI pixels preserved, uniformly scaled without crop); fixture data is illustrative; label/header is added."
+        "export": "Actual Android 15 emulator screenshot, uniformly scaled with no crop or synthetic UI; static caption outside the original screenshot"
       }
     },
     {
@@ -82,15 +84,16 @@
       "purpose": "원하는 형식으로 저장",
       "width": 1080,
       "height": 1920,
-      "sha256": "149659c8abc0009dea091af60a87a1b668827dfc1ab13d3644f9126ca654e7e9",
+      "sha256": "2bc5a7409bd0a977fd491f59a3c0c762b949cb8ccfb3e1283383a65d5d1b41dc",
       "source": {
         "type": "android-15-emulator-screenshot-with-editorial-caption",
         "stage": "Editorial Studio 5-A",
-        "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+        "sourceCommit": "a0116043a2187da368c2cae57c6e8976bf023466",
+        "sourceRunId": 42790689154,
         "sourcePath": "output/editorial-5a/webview-light-font100/results-light-font100.png",
-        "sourceSHA256": "3018c9ab243269f178a442029dc4e07f1847d25f7a3a9e22fa28aef04941ee87",
+        "sourceSHA256": "f7ec82293d3a9948806d78295c20c0ee7f3f0eb92b5f39a83fd841599a826caa",
         "provenanceFile": "capture-provenance-5b.json",
-        "export": "Real Android API35 emulator screen (UI pixels preserved, uniformly scaled without crop); fixture data is illustrative; label/header is added."
+        "export": "Actual Android 15 emulator screenshot, uniformly scaled with no crop or synthetic UI; static caption outside the original screenshot"
       }
     },
     {
@@ -98,15 +101,16 @@
       "purpose": "문장과 시간을 직접 편집",
       "width": 1080,
       "height": 1920,
-      "sha256": "719bd1b2473ea9d1323e5e88912b20bed2ca2a1d3d754b53720f7bf84cf1cded",
+      "sha256": "b2527d096c2b4ce28bfcfaa403853c8f7e23746a33336c91c29dd624319217e9",
       "source": {
         "type": "android-15-emulator-screenshot-with-editorial-caption",
         "stage": "Editorial Studio 5-A",
-        "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+        "sourceCommit": "a0116043a2187da368c2cae57c6e8976bf023466",
+        "sourceRunId": 42790689154,
         "sourcePath": "output/editorial-5a/webview-dark-font100/editor-dark-font100.png",
-        "sourceSHA256": "59024e31ff26795fce5dbfed35972d9421a68d657538bc1a3ecff528dd666265",
+        "sourceSHA256": "e8a51a50a08b45a15ee61e9332ed8365541e85964b18c4728924a01c7a86b51d",
         "provenanceFile": "capture-provenance-5b.json",
-        "export": "Real Android API35 emulator screen (UI pixels preserved, uniformly scaled without crop); fixture data is illustrative; label/header is added."
+        "export": "Actual Android 15 emulator screenshot, uniformly scaled with no crop or synthetic UI; static caption outside the original screenshot"
       }
     },
     {
@@ -114,15 +118,16 @@
       "purpose": "연결과 언어 설정 관리",
       "width": 1080,
       "height": 1920,
-      "sha256": "78b58fa8fc9b861dd24aeff8c8866b895637782f93dcd9efe6d3b7d9b3661a5e",
+      "sha256": "7793030dc2a2d2f41b53c37564e7a1d61ef2fa453c4a5a5b5e5ed468d584fdef",
       "source": {
         "type": "android-15-emulator-screenshot-with-editorial-caption",
         "stage": "Editorial Studio 5-A",
-        "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+        "sourceCommit": "a0116043a2187da368c2cae57c6e8976bf023466",
+        "sourceRunId": 42790689154,
         "sourcePath": "output/editorial-5a/webview-light-font100/settings-expanded-light-font100.png",
-        "sourceSHA256": "92de157dcae0b3f09231664d7bca4afd32c9da7a1a441f6c2c989016935a691f",
+        "sourceSHA256": "f75fe7889ff998d9ef91aa64e80bae394404d4518dcbfe795a03c752a59c81b2",
         "provenanceFile": "capture-provenance-5b.json",
-        "export": "Real Android API35 emulator screen (UI pixels preserved, uniformly scaled without crop); fixture data is illustrative; label/header is added."
+        "export": "Actual Android 15 emulator screenshot, uniformly scaled with no crop or synthetic UI; static caption outside the original screenshot"
       }
     },
     {
@@ -130,15 +135,16 @@
       "purpose": "온디바이스 마이크 자막",
       "width": 1080,
       "height": 1920,
-      "sha256": "edbd2035eb455b893229f164017d988383432f950a60f2a0baa10001f4d57f5d",
+      "sha256": "ba7dbc3a757660e8c4dba896b6be571b7e35052df583a54d98888affe8585915",
       "source": {
         "type": "android-15-emulator-screenshot-with-editorial-caption",
         "stage": "Editorial Studio 5-A",
-        "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+        "sourceCommit": "a0116043a2187da368c2cae57c6e8976bf023466",
+        "sourceRunId": 42790689154,
         "sourcePath": "output/editorial-native-3c/editorial-3c/on-device-light.png",
-        "sourceSHA256": "2eb03dc861bd57df00992eb0c71ad755cde9a844561b3c4db207bf9de29787bd",
+        "sourceSHA256": "94dd6b9d92a2dbe4288505fd0061c2f74eece02d27a9c10f51748d30486b0e92",
         "provenanceFile": "capture-provenance-5b.json",
-        "export": "Real Android API35 emulator screen (UI pixels preserved, uniformly scaled without crop); fixture data is illustrative; label/header is added."
+        "export": "Actual Android 15 emulator screenshot, uniformly scaled with no crop or synthetic UI; static caption outside the original screenshot"
       }
     },
     {
@@ -146,15 +152,16 @@
       "purpose": "GPT 실시간 마이크 자막",
       "width": 1080,
       "height": 1920,
-      "sha256": "c6204eb592b429fcad4d4218686f826fcad0e2ee0ca4968747bda7863ab7093d",
+      "sha256": "2eac0fb64594e8fec7e82b7c1a5e2f124f90d62bddb3b7795abfddecd43c873c",
       "source": {
         "type": "android-15-emulator-screenshot-with-editorial-caption",
         "stage": "Editorial Studio 5-A",
-        "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+        "sourceCommit": "a0116043a2187da368c2cae57c6e8976bf023466",
+        "sourceRunId": 42790689154,
         "sourcePath": "output/editorial-native-3c/editorial-3c/cloud-live-dark.png",
-        "sourceSHA256": "347fc74480d56d061b27ea608d63e0e5d12ddc470906357960139135fe07e642",
+        "sourceSHA256": "f1cc6dc6d5522d4be585d43b351a7e3d53a55798f0f20888bd2cb3961757de13",
         "provenanceFile": "capture-provenance-5b.json",
-        "export": "Real Android API35 emulator screen (UI pixels preserved, uniformly scaled without crop); fixture data is illustrative; label/header is added."
+        "export": "Actual Android 15 emulator screenshot, uniformly scaled with no crop or synthetic UI; static caption outside the original screenshot"
       }
     },
     {
@@ -162,35 +169,37 @@
       "purpose": "Vosk 오프라인 로컬 AI",
       "width": 1080,
       "height": 1920,
-      "sha256": "14639449604120f309a41b6848f868987ccb6c607baf97355f760e167988ee91",
+      "sha256": "8b694dba62ede0861f280e297ee31a5eb8bff69e8f2925d46918fcdca9322359",
       "source": {
         "type": "android-15-emulator-screenshot-with-editorial-caption",
         "stage": "Editorial Studio 5-A",
-        "sourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+        "sourceCommit": "a0116043a2187da368c2cae57c6e8976bf023466",
+        "sourceRunId": 42790689154,
         "sourcePath": "output/editorial-native-3c/editorial-3c/vosk-local-light.png",
-        "sourceSHA256": "a85e0b01c646edb58f50d82524eb46b2659686497bfd3119e65f25ecf61bdd70",
+        "sourceSHA256": "2723aaccc14ed0860fab23b1676b1fa676e03441a603a8ddf2f9edfe1404bb78",
         "provenanceFile": "capture-provenance-5b.json",
-        "export": "Real Android API35 emulator screen (UI pixels preserved, uniformly scaled without crop); fixture data is illustrative; label/header is added."
+        "export": "Actual Android 15 emulator screenshot, uniformly scaled with no crop or synthetic UI; static caption outside the original screenshot"
       }
     }
   ],
   "screenshotCapture": {
-    "status": "prepared-for-5-B-Play-submission",
-    "created": "2026-11-09",
+    "status": "prepared-for-STORE-03-Play-submission",
+    "created": "2026-11-11",
     "count": 8,
-    "source": "Android 15 API35 emulator screenshots captured in Editorial Studio 5-A",
-    "originalSourceCommit": "e58b43eece586bc13a5932e889a502c1f4e69f33",
+    "source": "Actual Android 15 API35 emulator capture, UI equivalent to main 85faa5a",
+    "originalSourceCommit": "a0116043a2187da368c2cae57c6e8976bf023466",
+    "sourceWorkflowRun": 42790689154,
     "provenanceFile": "capture-provenance-5b.json",
-    "note": "Screenshots 1-5 depict real application WebView backed by deterministic test jobs; 6-8 depict actual native activities prior to recording. No fabricated app UI or paid model inference claim.",
+    "note": "Five live Android WebView screens with deterministic QA data; three live native screens before microphone recording or paid inference. Not a claim of Play publication.",
     "visualReview": {
-      "status": "verified",
+      "status": "automated-source-and-integrity-verified",
       "imageCount": 8,
       "canvas": "1080x1920",
       "unchangedCategories": [
         "icon",
         "featureGraphic"
       ],
-      "notes": "Header copy plus uniformly scaled intact Android screenshot, no cropping or reconstruction."
+      "notes": "Screenshots uniformly scaled whole-frame; no crop or reconstruction. Visual reviewer confirmation is separate."
     }
   }
 }
