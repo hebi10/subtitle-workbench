@@ -961,6 +961,7 @@ function syncConnection() {
   $('cloudTransmissionNotice').hidden = !relay;
   $('cloudTransmissionNotice').textContent = relayTransmissionNotice(connection.reviewRelay.url);
   $('cloudLiveNotice').textContent = relay ? relayTransmissionNotice(connection.reviewRelay.url, true) : '개인 API 연결: 마이크 음성을 OpenAI로 전송합니다. 본인의 API 키와 별도 이용 요금이 필요하며 인식 시작 전 안내를 제공합니다.';
+  if (relay) $('cloudLiveNotice').closest('.source-help').open = true;
   if (!checkingConnection) $('connectionStatus').textContent = `${modeLabel} · ${connectionError || (matches ? `인증 · 모델 접근 확인 (${formatSavedAt(checked.checkedAt)}). 결제 상태나 잔액을 확인한 것은 아닙니다.` : '연결 확인은 현재 연결의 인증과 선택 모델 접근만 검사합니다. 결제 상태나 잔액은 확인하지 않습니다.')}`;
   $('connectionStatus').classList.toggle('error-text', Boolean(connectionError));
   for (const [node, disabled] of [[$('pickVideo'), !connection.hasKey || changingConnection], [$('checkConnection'), !connection.hasKey || checkingConnection || changingConnection], [$('requestClearKey'), !connection.hasPersonalKey || locked], [$('clearKey'), !connection.hasPersonalKey || locked], [$('apiKey'), locked], [$('keyForm').querySelector('[type="submit"]'), locked], [$('cloudMode'), running || checkingConnection || changingConnection], [$('reviewRelayUrl'), locked], [$('reviewRelayCode'), locked], [$('reviewRelayForm').querySelector('[type="submit"]'), locked], [$('requestClearReviewRelay'), !connection.reviewRelay.hasCode || locked], [$('clearReviewRelay'), !connection.reviewRelay.hasCode || locked]]) {
