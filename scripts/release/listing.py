@@ -26,6 +26,12 @@ def load_inputs(listing_path, manifest_path):
     images = manifest.get('images', {})
     if set(images) != CATEGORIES:
         raise ReleaseError('Manifest must explicitly contain icon, featureGraphic and phoneScreenshots')
+    manifest_hashes = {
+        item['file']: item['sha256'].lower()
+        for item in manifest.get('assets', [])
+        if isinstance(item, dict) and isinstance(item.get('file'), str)
+        and isinstance(item.get('sha256'), str)
+    }
     prepared = {}
     for kind, names in images.items():
         if not isinstance(names, list) or (len(names) != 1 if kind != 'phoneScreenshots' else not 2 <= len(names) <= 8):
@@ -46,7 +52,10 @@ def load_inputs(listing_path, manifest_path):
                 valid = 320 <= min(width, height) and max(width, height) <= 3840 and max(width, height) <= 2 * min(width, height)
             if not valid or len(raw) > 8 * 1024 * 1024:
                 raise ReleaseError('Store image dimensions or file size are outside the supported Play bounds')
-            prepared[kind].append({'data': raw, 'sha256': hashlib.sha256(raw).hexdigest(), 'name': name})
+            sha256 = hashlib.sha256(raw).hexdigest()
+            if manifest_hashes and manifest_hashes.get(name) != sha256:
+                raise ReleaseError('Manifest SHA-256 mismatch for ' + name)
+            prepared[kind].append({'data': raw, 'sha256': sha256, 'name': name})
     return {'listing': {key: text[key] for key in ('language', *FIELDS)}, 'images': prepared}
 
 
@@ -90,9 +99,22 @@ def apply_phone_screenshots(client, plan, changes_not_sent_for_review=True):
             for kind in protected
         }
         target = edit + listing_path + '/phoneScreenshots'
+        before_screenshots = [
+            image.get('sha256', '').lower()
+            for image in client.request('GET', target).get('images', [])
+        ]
+        desired_screenshots = [image['sha256'] for image in prepared]
+        if before_screenshots == desired_screenshots:
+            return {'package': PACKAGE, 'language': 'ko-KR', 'status': 'already_matching_no_write',
+                    'availability': 'requires_console_check', 'changesNotSentForReview': None,
+                    'imageCounts': {'phoneScreenshots': len(prepared)},
+                    'preserved': ['title', 'shortDescription', 'fullDescription', 'icon', 'featureGraphic']}
         client.request('DELETE', target)
         for item in prepared:
-            client.request('POST', target + '?uploadType=media', item['data'], 'image/png')
+            uploaded = client.request('POST', target + '?uploadType=media', item['data'], 'image/png')
+            server_sha = uploaded.get('image', {}).get('sha256', '').lower()
+            if server_sha and server_sha != item['sha256']:
+                raise ReleaseError('Play screenshot upload hash mismatch; edit was not committed')
         client.commit(edit, changes_not_sent_for_review)
     try:
         with client.edit() as edit:
@@ -122,9 +144,13 @@ def main():
     parser.add_argument('--report', type=Path)
     parser.add_argument('--send-for-review', action='store_true')
     parser.add_argument('--phone-only', action='store_true', help='Only upload phone screenshots, preserving text/icon/feature graphic')
+    parser.add_argument('--require-eight-screenshots', action='store_true',
+                        help='STORE-03 gate: reject any image set other than eight screenshots')
     args = parser.parse_args()
     try:
         plan = load_inputs(args.listing, args.manifest)
+        if args.require_eight_screenshots and (not args.phone_only or len(plan['images']['phoneScreenshots']) != 8):
+            raise ReleaseError('STORE-03 requires exactly eight phone screenshots and --phone-only')
         result = {'package': PACKAGE, 'language': 'ko-KR', 'status': 'validated_not_submitted',
                   'imageCounts': {kind: len(items) for kind, items in plan['images'].items()}}
         if args.mode == 'apply':
@@ -138,6 +164,13 @@ def main():
         return 0
     except (ReleaseError, OSError, ValueError, KeyError) as error:
         message = str(error) if isinstance(error, ReleaseError) else 'Listing input or API response is invalid'
+        if args.report:
+            args.report.parent.mkdir(parents=True, exist_ok=True)
+            args.report.write_text(json.dumps({
+                'package': PACKAGE, 'language': 'ko-KR', 'status': 'failed',
+                'operation': 'phoneScreenshots' if args.phone_only else 'listing',
+                'error': message
+            }, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
         print('Listing failed: ' + message, file=sys.stderr)
         return 1
 
