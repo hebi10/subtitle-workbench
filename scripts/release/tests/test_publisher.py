@@ -177,5 +177,27 @@ class PublisherTests(unittest.TestCase):
         self.assertIn('403', str(error.exception))
 
 
+    def test_store_image_403_reports_permission_stage_without_leaking_response(self):
+        import io
+        import json
+        import urllib.error
+        secret = 'never-expose-user-credentials'
+        payload = {'error': {'status': 'PERMISSION_DENIED', 'message': secret,
+                             'errors': [{'reason': 'forbidden', 'message': secret}]}}
+        def fail(request, **kwargs):
+            raise urllib.error.HTTPError(request.full_url, 403, secret, {},
+                                         io.BytesIO(json.dumps(payload).encode()))
+        client = publisher.HttpTransport(secret, opener=fail)
+        with self.assertRaises(publisher.ReleaseError) as error:
+            client('POST', '/edits/123/listings/ko-KR/phoneScreenshots?uploadType=media',
+                   b'placeholder', 'image/png')
+        message = str(error.exception)
+        self.assertIn('upload_store_image HTTP 403', message)
+        self.assertIn('Manage store presence', message)
+        self.assertIn('status=PERMISSION_DENIED', message)
+        self.assertNotIn(secret, message)
+
+
+
 if __name__ == '__main__':
     unittest.main()
