@@ -32,6 +32,11 @@ test('2-C uses original result selection and formats with an accessible export s
   assert.match(js, /await exportCues\(job, history\.present, format\)/);
   assert.match(css, /#resultsView \.export-section \.export-actions \[data-export="srt"\]/);
   assert.match(css, /#resultsView \.result-export-status\.error-text/);
+  assert.match(html, /id="resultMediaStatus"[^>]*role="status"/);
+  assert.match(html, /id="resultPreview"[^>]*aria-describedby="resultMediaStatus"/);
+  assert.match(js, /secondaryActions\.setAttribute\('role', 'group'\)/);
+  assert.match(css, /#jobsView \.job-secondary-actions/);
+  assert.match(js, /mediaStatus\.dataset\.state = loading/);
 });
 
 async function withApp(action) {
@@ -148,5 +153,67 @@ test('2-C export failures are visible without marking a failed save as successfu
     await page.locator('[data-export="srt"]').click();
     await page.waitForFunction(() => document.getElementById('resultExportStatus').textContent.includes('SRT 파일을 저장했습니다.'));
     assert.equal(await page.locator('#resultExportStatus').evaluate(el => el.classList.contains('error-text')), false);
+  });
+});
+
+test('UI-09-D keeps completed job actions separate and explains missing video independently of subtitle export', { skip: !enabled }, async () => {
+  await withApp(async (page) => {
+    const completed = page.locator('#jobList .job[data-job-id="complete-1"]');
+    await completed.waitFor({ state: 'visible' });
+    assert.deepEqual(await completed.locator('.job-actions > button').allTextContents(), ['자막 편집', '결과 보기']);
+    const secondary = completed.locator('.job-secondary-actions');
+    assert.equal(await secondary.getAttribute('role'), 'group');
+    assert.match(await secondary.getAttribute('aria-label'), /파일 저장/);
+    assert.deepEqual(await secondary.locator('button').allTextContents(), ['SRT 저장', '기록 삭제']);
+    assert.equal(await completed.locator('.job-actions > button').first().evaluate(node => node.classList.contains('primary')), true);
+    const paused = page.locator('#jobList .job[data-job-id="partial-1"]');
+    assert.equal(await paused.locator('.job-secondary-actions').count(), 0);
+    assert.equal(await paused.locator('.job-actions > button').first().textContent(), '이어하기');
+
+    await page.locator('#navResults').click();
+    await page.waitForFunction(() => document.getElementById('resultName').textContent === '150분 인터뷰 테스트.mp4');
+    assert.equal(await page.locator('#resultMediaStatus').getAttribute('data-state'), 'linked');
+    assert.match(await page.locator('#resultMediaStatus').innerText(), /Android 플레이어/);
+    assert.equal(await page.locator('#resultPreview').isEnabled(), true);
+    assert.equal(await page.locator('#resultContent .result-actions button').first().getAttribute('id'), 'editResult');
+    assert.equal(await page.locator('#editResult').evaluate(node => node.classList.contains('primary')), true);
+    await page.locator('#resultPreview').click();
+    await page.waitForFunction(() => window.mockNative.calls.some(call => call.method === 'preview' && call.params.jobId === 'complete-1'));
+    await mkdir(output, { recursive: true });
+    for (const width of [320, 390, 800]) {
+      for (const theme of ['light', 'dark']) {
+        await page.setViewportSize({ width, height: 844 });
+        await page.emulateMedia({ colorScheme: theme });
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false,
+          'UI-09-D results horizontal overflow at ' + width + ' ' + theme);
+        if (width === 390) {
+          await page.screenshot({ path: join(output, 'ui09d-results-' + width + '-' + theme + '.png'),
+            fullPage: true, animations: 'disabled' });
+        }
+      }
+    }
+
+    await page.locator('#navVideo').click();
+    await page.locator('#importSubtitles').click();
+    await page.locator('#editorView').waitFor({ state: 'visible' });
+    await page.locator('#navResults').click();
+    await page.waitForFunction(() => document.getElementById('resultName').textContent === '가져온 자막.srt');
+    assert.equal(await page.locator('#resultMediaStatus').getAttribute('data-state'), 'missing');
+    assert.match(await page.locator('#resultMediaStatus').innerText(), /영상이 없어 미리보기를 사용할 수 없습니다/);
+    assert.equal(await page.locator('#resultPreview').isDisabled(), true);
+    assert.equal(await page.locator('#editResult').isEnabled(), true);
+    await page.locator('[data-export="srt"]').click();
+    await page.waitForFunction(() => document.getElementById('resultExportStatus').textContent.includes('SRT 파일을 저장했습니다.'));
+    const exports = await page.evaluate(() => window.mockNative.calls.filter(call => call.method === 'export'));
+    assert.ok(exports.some(call => call.params.name === '가져온 자막.srt'));
+    assert.equal(await page.evaluate(() => window.mockNative.calls.filter(call => call.method === 'deleteJob').length), 0,
+      'visual grouping must not delete any job');
+
+    await page.locator('#resultJobSelector').selectOption('partial-1');
+    await page.waitForFunction(() => document.getElementById('resultName').textContent === '이어하기 테스트.mp4');
+    assert.match(await page.locator('#resultStatus').innerText(), /부분 결과/);
+    assert.equal(await page.locator('#editResult [data-result-edit-label]').innerText(), '자막 보기');
+    assert.equal(await page.locator('#resultMediaStatus').getAttribute('data-state'), 'linked');
+    assert.equal(await page.locator('#resultExportStatus').isVisible(), false);
   });
 });
