@@ -95,5 +95,18 @@ class StoreAuditTests(unittest.TestCase):
             store_audit.audit(publisher.Publisher(FakePlay(*input_data())), manifest, listing)
 
 
+    def test_trusted_workflow_routes_exact_audit_marker_and_has_no_write_steps_for_audit(self):
+        workflow = (ROOT.parents[1] / '.github/workflows/play-internal.yml').read_text(encoding='utf-8')
+        self.assertIn("title\" == 'qa: STORE-04 read-only Play listing audit [audit-only]'", workflow)
+        self.assertIn("echo 'mode=audit' >> \"$GITHUB_OUTPUT\"", workflow)
+        self.assertIn("python3 scripts/release/store_audit.py --report output/play-store-audit.json", workflow)
+        self.assertIn("if: needs.source.outputs.mode == 'audit'", workflow)
+        self.assertIn("mode == 'build' || needs.source.outputs.mode == 'deploy'", workflow)
+        self.assertIn("if: needs.source.outputs.mode == 'listing'", workflow)
+        self.assertIn("if: needs.source.outputs.mode == 'deploy'", workflow)
+        self.assertIn("if: needs.source.outputs.mode != 'check'", workflow)
+
+
+
 if __name__ == '__main__':
     unittest.main()
