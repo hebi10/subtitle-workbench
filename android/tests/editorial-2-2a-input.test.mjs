@@ -36,6 +36,13 @@ test('2-A separates file, microphone, and Vosk without changing Native IDs', asy
   assert.match(js, /pickVideo/);
   assert.match(css, /#videoView \.es2-input-options/);
   assert.match(css, /#videoView \.offline-source/);
+  for (const id of ['sourceChoices', 'sourceChoicesHeading', 'chooseFile', 'chooseMicrophone',
+    'chooseOffline', 'chooseFileStatus', 'cloudLiveEntryStatus']) {
+    assert.equal((html.match(new RegExp('id="' + id + '"', 'g')) || []).length, 1, id);
+  }
+  assert.ok(view.indexOf('id="sourceChoices"') < file);
+  assert.match(js, /\$\('chooseFileStatus'\)\.textContent/);
+  assert.match(css, /#videoView #firstRunGuide:not\(\[hidden\]\) \+ #sourceChoices/);
 });
 
 test('2-A real browser has usable file action, source cards and original native actions', { skip: !enabled }, async () => {
@@ -69,6 +76,20 @@ test('2-A real browser has usable file action, source cards and original native 
     await page.locator('#navVideo').click();
     assert.equal(await page.locator('#firstRunGuide').isVisible(), false, 'existing jobs hide onboarding');
     assert.equal(await page.locator('#connectionCard').getAttribute('data-state'), 'saved');
+    assert.equal(await page.locator('#sourceChoices').isVisible(), true);
+    assert.match(await page.locator('#chooseFileStatus').innerText(), /연결 저장됨/);
+    assert.match(await page.locator('#cloudLiveEntryStatus').innerText(), /전송·요금/);
+    await page.locator('#chooseFile').click();
+    assert.equal(await page.locator('#pickVideo').evaluate(node => node === document.activeElement),
+      true, 'file choice moves focus to the existing enabled picker');
+    await page.locator('#chooseMicrophone').click();
+    assert.equal(await page.locator('#openOnDevice').evaluate(node => node === document.activeElement),
+      true, 'microphone choice focuses the API-free entry point');
+    await page.locator('#chooseOffline').click();
+    assert.equal(await page.locator('#videoView .local-offline-entry').getAttribute('open'), '',
+      'offline choice expands the existing Vosk controls');
+    assert.equal(await page.locator('#openOfflineModel').evaluate(node => node === document.activeElement),
+      true);
     await mkdir(join(root, 'output/editorial-2-2a'), { recursive: true });
     for (const width of [320, 390, 800]) {
       for (const theme of ['light', 'dark']) {
@@ -93,7 +114,9 @@ test('2-A real browser has usable file action, source cards and original native 
     await page.locator('#openConnection').click();
     assert.equal(await page.locator('#settingsView').isVisible(), true);
     await page.locator('#navVideo').click();
-    await page.locator('#videoView .offline-source summary').click();
+    if (!(await page.locator('#videoView .local-offline-entry').evaluate(node => node.open))) {
+      await page.locator('#videoView .local-offline-entry > summary').click();
+    }
     await page.locator('#openOfflineModel').click();
     await page.waitForFunction(() => window.mockNative.calls.some(c => c.method === 'openOfflineModel'));
     assert.deepEqual(await page.locator('.app-nav button').allTextContents(), ['영상 추가','작업','결과','설정']);
@@ -101,5 +124,61 @@ test('2-A real browser has usable file action, source cards and original native 
   } finally {
     await browser?.close();
     await new Promise((done) => server.close(done));
+  }
+});
+
+test('UI-09-C identifies API prerequisites without changing original launch gates', { skip: !enabled }, async () => {
+  const routes = {
+    '/': 'android/web/index.html', '/app.js': 'android/web/app.js',
+    '/styles.css': 'android/web/styles.css', '/editorial-mark-white.png': 'android/web/editorial-mark-white.png',
+    '/shared/core.js': 'src/core.js', '/shared/subtitle-editor.js': 'src/subtitle-editor.js',
+    '/shared/edit-history.js': 'src/edit-history.js', '/shared/subtitle-player.js': 'src/subtitle-player.js',
+  };
+  const server = createServer(async (req, res) => {
+    const path = routes[new URL(req.url, 'http://localhost').pathname];
+    if (!path) { res.writeHead(404).end(); return; }
+    try {
+      res.setHeader('Content-Type', path.endsWith('.js') ? 'text/javascript; charset=utf-8' :
+        path.endsWith('.css') ? 'text/css; charset=utf-8' : path.endsWith('.png') ? 'image/png' : 'text/html; charset=utf-8');
+      res.end(await readFile(join(root, path)));
+    } catch { res.writeHead(500).end(); }
+  });
+  await new Promise(done => server.listen(0, '127.0.0.1', done));
+  let browser;
+  try {
+    const { chromium } = require(process.env.PLAYWRIGHT_MODULE);
+    browser = await chromium.launch({ headless: true });
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'ko-KR' });
+    const page = await context.newPage();
+    page.setDefaultTimeout(15000);
+    await page.addInitScript({ path: join(root, 'android/web/mock-bridge.js') });
+    await page.goto('http://127.0.0.1:' + server.address().port + '/');
+    await page.waitForFunction(() => window.mockNative?.calls.some(c => c.method === 'status') && document.querySelector('.job'));
+    await page.locator('#navVideo').click();
+    await page.evaluate(() => {
+      window.mockNative.hasKey = false;
+      window.nativeEvent({ type: 'status' });
+    });
+    await page.waitForFunction(() => document.querySelector('#pickVideo').disabled);
+    assert.match(await page.locator('#chooseFileStatus').innerText(), /API 연결 필요/);
+    assert.match(await page.locator('#cloudLiveEntryStatus').innerText(), /연결 필요/);
+    assert.equal(await page.locator('#importSubtitles').isEnabled(), true, 'existing subtitle import is API-free');
+    assert.equal(await page.locator('#openOnDevice').isEnabled(), true, 'device microphone remains available');
+    assert.equal(await page.locator('#openOfflineModel').isEnabled(), true, 'Vosk management remains available');
+    await page.locator('#chooseFile').click();
+    await page.locator('#settingsView').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#apiSettings').getAttribute('open'), '');
+    assert.equal(await page.evaluate(() => window.mockNative.calls.some(c => c.method === 'pickVideo')),
+      false, 'connection needed: must not launch picker');
+    await page.locator('#navVideo').click();
+    await page.locator('#importSubtitles').click();
+    await page.waitForFunction(() => window.mockNative.calls.some(c => c.method === 'importSubtitles'));
+    await page.locator('#editorView').waitFor({ state: 'visible' });
+    assert.equal(await page.evaluate(() => window.mockNative.calls.some(c => c.method === 'pickVideo')),
+      false, 'import is independent of cloud connection');
+    await context.close();
+  } finally {
+    await browser?.close();
+    await new Promise(done => server.close(done));
   }
 });

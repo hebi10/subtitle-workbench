@@ -925,6 +925,14 @@ function syncConnection() {
   $('connectionSummary').textContent = `${modeLabel} · ${!connection.hasKey ? '연결 정보 저장 필요' : connectionError ? '연결 확인 실패 · 설정을 확인해 주세요.' : matches ? '인증 · 모델 접근 확인됨' : '저장됨 · 연결 미확인'}`;
   $('connectionCard').classList.toggle('connected', connection.hasKey);
   $('connectionCard').dataset.state = !connection.hasKey ? 'missing' : connectionError ? 'error' : matches ? 'verified' : 'saved';
+  $('chooseFile').dataset.state = $('connectionCard').dataset.state;
+  $('chooseFileStatus').textContent = !connection.hasKey ? 'API 연결 필요'
+    : changingConnection ? '연결 변경 중'
+    : connectionError ? '연결 확인 실패 · 설정 필요'
+    : matches ? '연결 확인됨 · 파일 선택 가능' : '연결 저장됨 · 인증 확인 별도';
+  $('cloudLiveEntryStatus').textContent = connection.hasKey
+    ? '연결 저장됨 · 전송·요금은 시작 전에 확인'
+    : '개인 API 또는 테스트 서버 연결 필요';
   $('connectionHeading').hidden = connection.hasKey;
   $('activeModel').hidden = connection.hasKey;
   $('activeModel').textContent = `음성 인식: ${savedSettings.sttModel || DEFAULT_STT_MODEL} · ${savedSettings.translate ? `번역: ${savedSettings.translationModel}` : '번역 안 함'}`;
@@ -953,6 +961,7 @@ function syncConnection() {
   $('cloudTransmissionNotice').hidden = !relay;
   $('cloudTransmissionNotice').textContent = relayTransmissionNotice(connection.reviewRelay.url);
   $('cloudLiveNotice').textContent = relay ? relayTransmissionNotice(connection.reviewRelay.url, true) : '개인 API 연결: 마이크 음성을 OpenAI로 전송합니다. 본인의 API 키와 별도 이용 요금이 필요하며 인식 시작 전 안내를 제공합니다.';
+  if (relay) $('cloudLiveNotice').closest('.source-help').open = true;
   if (!checkingConnection) $('connectionStatus').textContent = `${modeLabel} · ${connectionError || (matches ? `인증 · 모델 접근 확인 (${formatSavedAt(checked.checkedAt)}). 결제 상태나 잔액을 확인한 것은 아닙니다.` : '연결 확인은 현재 연결의 인증과 선택 모델 접근만 검사합니다. 결제 상태나 잔액은 확인하지 않습니다.')}`;
   $('connectionStatus').classList.toggle('error-text', Boolean(connectionError));
   for (const [node, disabled] of [[$('pickVideo'), !connection.hasKey || changingConnection], [$('checkConnection'), !connection.hasKey || checkingConnection || changingConnection], [$('requestClearKey'), !connection.hasPersonalKey || locked], [$('clearKey'), !connection.hasPersonalKey || locked], [$('apiKey'), locked], [$('keyForm').querySelector('[type="submit"]'), locked], [$('cloudMode'), running || checkingConnection || changingConnection], [$('reviewRelayUrl'), locked], [$('reviewRelayCode'), locked], [$('reviewRelayForm').querySelector('[type="submit"]'), locked], [$('requestClearReviewRelay'), !connection.reviewRelay.hasCode || locked], [$('clearReviewRelay'), !connection.reviewRelay.hasCode || locked]]) {
@@ -1041,24 +1050,30 @@ $('jumpForm').addEventListener('submit', (event) => {
   $('jumpHint').textContent = `자막 ${index + 1}로 이동했습니다. 검색과 필터를 전체로 변경했습니다.`;
 });
 $('dismissFirstRunGuide').addEventListener('click', dismissFirstRunGuide);
-$('guideFile').addEventListener('click', () => {
+function focusFileSource() {
   if ($('pickVideo').disabled) {
     void openSettings().catch((error) => message(error.message || String(error), true));
   } else {
     $('pickVideo').focus();
     $('pickVideo').scrollIntoView({ block: 'center' });
   }
-});
-$('guideMic').addEventListener('click', () => {
+}
+function focusMicrophoneSource() {
   $('openOnDevice').focus();
   $('openOnDevice').scrollIntoView({ block: 'center' });
-});
-$('guideOffline').addEventListener('click', () => {
+}
+function focusOfflineSource() {
   const entry = document.querySelector('.local-offline-entry');
   entry.open = true;
   $('openOfflineModel').focus();
   $('openOfflineModel').scrollIntoView({ block: 'center' });
-});
+}
+$('guideFile').addEventListener('click', focusFileSource);
+$('guideMic').addEventListener('click', focusMicrophoneSource);
+$('guideOffline').addEventListener('click', focusOfflineSource);
+$('chooseFile').addEventListener('click', focusFileSource);
+$('chooseMicrophone').addEventListener('click', focusMicrophoneSource);
+$('chooseOffline').addEventListener('click', focusOfflineSource);
 for (const [id, action] of Object.entries({
   startNewJob: () => show('video'),
   navVideo: () => show('video'), navJobs: () => show('jobs'), navResults: () => show('results'), navSettings: () => show('settings'),
