@@ -85,6 +85,12 @@ jobs:
             echo 'mode=listing' >> "$GITHUB_OUTPUT"
             echo 'target=none' >> "$GITHUB_OUTPUT"
           elif [[ "$EVENT_TYPE" == 'workflow_run' ]]; then
+            if [[ "$title" == 'release: RELEASE-03 promote verified internal 23 to closed alpha [promote-existing-23]' ]]; then
+              echo 'mode=promote' >> "$GITHUB_OUTPUT"
+              echo 'target=alpha' >> "$GITHUB_OUTPUT"
+              echo 'promotion_code=23' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             if [[ "$title" == 'fix(play): resume existing internal 21 to closed [promote-existing-21]' ]]; then
               echo 'mode=promote' >> "$GITHUB_OUTPUT"
               echo 'target=alpha' >> "$GITHUB_OUTPUT"
