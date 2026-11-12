@@ -1950,3 +1950,104 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
   }
   #settingsView .settings-edit-heading { margin-top: var(--es2-space-2); }
 }
+
+
+/* UI-10-A · action-first new-task layout, keeping existing section and bridge contracts. */
+#videoView .first-run-guide {
+  margin-bottom: var(--es2-space-3);
+  padding: var(--es2-space-3);
+}
+#videoView .first-run-guide > .es2-supporting-text {
+  margin: var(--es2-space-1) 0 var(--es2-space-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+#videoView .first-run-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--es2-space-2);
+}
+#videoView .first-run-actions button {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 4px;
+  min-width: 0;
+  min-height: 72px;
+  padding: var(--es2-space-2);
+  text-align: left;
+  color: var(--es-ink);
+  background: var(--es-surface);
+  border: 1px solid var(--es-border);
+  border-radius: 0;
+  box-shadow: none;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+#videoView .first-run-actions button strong {
+  font-size: 13px;
+  line-height: 1.35;
+}
+#videoView .first-run-actions button span {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--es-muted);
+}
+#videoView .first-run-requirements {
+  margin-top: var(--es2-space-1);
+}
+#videoView .first-run-requirements > summary {
+  min-height: 48px;
+  padding: var(--es2-space-2) 0;
+  color: var(--es-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+#videoView .first-run-requirements .es2-supporting-text {
+  margin: 0 0 var(--es2-space-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+#videoView .first-run-actions button[aria-pressed="true"],
+#videoView .source-choice-grid button[aria-pressed="true"] {
+  border-color: var(--es-border-strong);
+  background: var(--es-surface-alt);
+}
+#videoView .source-selected {
+  outline: 1px solid var(--es-border-strong);
+  outline-offset: 0;
+}
+#videoView .file-source,
+#videoView .microphone-source,
+#videoView .offline-source {
+  scroll-margin-block: 12px 110px;
+}
+#videoView .prepared-jobs-heading {
+  margin: var(--es2-space-3) 0 var(--es2-space-1);
+  color: var(--es-ink);
+  font-size: 14px;
+  line-height: 1.4;
+}
+#videoView .file-source #keyHint {
+  margin-top: var(--es2-space-1);
+}
+#videoView .file-source .source-description {
+  margin-bottom: var(--es2-space-2);
+}
+@media (max-width: 360px) {
+  #videoView .first-run-actions {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--es2-space-1);
+  }
+  #videoView .first-run-actions button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 48px;
+    gap: var(--es2-space-2);
+  }
+  #videoView .first-run-actions button span {
+    text-align: right;
+  }
+}
