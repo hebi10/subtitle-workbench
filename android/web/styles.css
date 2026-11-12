@@ -1950,3 +1950,71 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
   }
   #settingsView .settings-edit-heading { margin-top: var(--es2-space-2); }
 }
+
+
+/* UI-10-B: the active cue fields precede secondary context, search and review tools. */
+#editorView .editor-primary-workspace {
+  min-width: 0;
+  margin-top: var(--es2-space-2);
+}
+#editorView .editor-primary-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--es2-space-1) var(--es2-space-3);
+  margin: 0 0 var(--es2-space-2);
+}
+#editorView .editor-primary-heading h3 {
+  margin: 0;
+  color: var(--es-ink);
+  font-size: 14px;
+  line-height: 1.4;
+}
+#editorView .editor-primary-heading p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--es-muted);
+}
+#editorView .editor-primary-workspace .editor-cue-context-actions {
+  margin-bottom: var(--es2-space-2);
+}
+#editorView .editor-primary-workspace .cue-list {
+  margin-top: 0;
+}
+#editorView .editor-primary-workspace .cue.selected .cue-summary {
+  min-height: 48px;
+  padding: var(--es2-space-2) var(--es2-space-3);
+}
+#editorView .editor-primary-workspace .cue.selected .cue-detail {
+  gap: var(--es2-space-2);
+  padding: var(--es2-space-2) var(--es2-space-3) var(--es2-space-3);
+}
+#editorView .editor-primary-workspace .cue.selected .cue-detail > label {
+  min-width: 0;
+}
+#editorView .editor-primary-workspace .cue.selected .cue-times input {
+  width: 100%;
+  min-width: 0;
+}
+#editorView .editor-cue-context {
+  margin-top: var(--es2-space-3);
+}
+#editorView .editor-cue-context:not([open]) {
+  padding-bottom: 0;
+}
+#editorView .editor-tools {
+  margin-top: var(--es2-space-2);
+}
+@media (max-width: 360px) {
+  #editorView .editor-primary-heading {
+    align-items: flex-start;
+    gap: var(--es2-space-1);
+  }
+  #editorView .editor-primary-workspace .editor-cue-context-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #editorView .editor-primary-workspace #previewSelectedCue {
+    grid-column: 1 / -1;
+  }
+}
