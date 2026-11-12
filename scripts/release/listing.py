@@ -136,6 +136,70 @@ def apply_phone_screenshots(client, plan, changes_not_sent_for_review=True):
             'preserved': ['title', 'shortDescription', 'fullDescription', 'icon', 'featureGraphic']}
 
 
+def reconcile_brand_description(client, plan, changes_not_sent_for_review=True):
+    """Repair only approved fullDescription, icon and featureGraphic; preserve STORE-05 screenshots."""
+    listing_suffix = '/listings/ko-KR'
+    brand_kinds = ('icon', 'featureGraphic')
+    expected_screenshots = [item['sha256'] for item in plan['images']['phoneScreenshots']]
+    expected_brand = {kind: [item['sha256'] for item in plan['images'][kind]] for kind in brand_kinds}
+
+    def hashes(edit, category):
+        response = client.request('GET', edit + listing_suffix + '/' + category)
+        return [item.get('sha256', '').lower() for item in response.get('images', [])]
+
+    def verify(edit):
+        remote = client.request('GET', edit + listing_suffix)
+        if any(remote.get(key) != plan['listing'][key] for key in
+               ('title', 'shortDescription', 'fullDescription')):
+            raise ReleaseError('Reviewed listing text differs from Play readback')
+        if hashes(edit, 'phoneScreenshots') != expected_screenshots:
+            raise ReleaseError('STORE-05 phone screenshot hashes changed')
+        for kind in brand_kinds:
+            if hashes(edit, kind) != expected_brand[kind]:
+                raise ReleaseError('Approved ' + kind + ' hashes differ from Play readback')
+
+    with client.edit() as edit:
+        current = client.request('GET', edit + listing_suffix)
+        if any(current.get(key) != plan['listing'][key] for key in ('title', 'shortDescription')):
+            raise ReleaseError('Live title or shortDescription differs from approved source; manual review required')
+        if hashes(edit, 'phoneScreenshots') != expected_screenshots:
+            raise ReleaseError('STORE-05 screenshot set differs from approved source; manual review required')
+        changes = [kind for kind in brand_kinds if hashes(edit, kind) != expected_brand[kind]]
+        change_description = current.get('fullDescription') != plan['listing']['fullDescription']
+        if not changes and not change_description:
+            return {'package': PACKAGE, 'language': 'ko-KR', 'status': 'already_matching_no_write',
+                    'availability': 'requires_console_check', 'changesNotSentForReview': None,
+                    'reconciled': [], 'preserved': ['title', 'shortDescription', 'phoneScreenshots',
+                                                  'bundles', 'internal', 'alpha']}
+        if change_description:
+            client.request('PATCH', edit + listing_suffix, {
+                'fullDescription': plan['listing']['fullDescription']})
+        for kind in changes:
+            target = edit + listing_suffix + '/' + kind
+            client.request('DELETE', target)
+            for item in plan['images'][kind]:
+                uploaded = client.request('POST', target + '?uploadType=media', item['data'], 'image/png')
+                remote_sha = uploaded.get('image', {}).get('sha256', '').lower()
+                if remote_sha and remote_sha != item['sha256']:
+                    raise ReleaseError('Play ' + kind + ' upload hash mismatch; edit not committed')
+        verify(edit)
+        client.commit(edit, changes_not_sent_for_review)
+
+    try:
+        with client.edit() as edit:
+            verify(edit)
+    except ReleaseError:
+        raise ReleaseError('Brand/description edit committed but fresh readback failed; inspect Console before retrying') from None
+
+    return {'package': PACKAGE, 'language': 'ko-KR', 'status': 'api_committed_and_verified',
+            'availability': 'requires_console_check',
+            'changesNotSentForReview': changes_not_sent_for_review,
+            'reconciled': (['fullDescription'] if change_description else []) + changes,
+            'preserved': ['title', 'shortDescription', 'phoneScreenshots',
+                          'bundles', 'internal', 'alpha']}
+
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['check', 'apply'])
@@ -144,19 +208,28 @@ def main():
     parser.add_argument('--report', type=Path)
     parser.add_argument('--send-for-review', action='store_true')
     parser.add_argument('--phone-only', action='store_true', help='Only upload phone screenshots, preserving text/icon/feature graphic')
+    parser.add_argument('--reconcile-brand', action='store_true', help='Repair only fullDescription and approved icon/featureGraphic')
     parser.add_argument('--require-eight-screenshots', action='store_true',
                         help='STORE-03 gate: reject any image set other than eight screenshots')
     args = parser.parse_args()
     try:
         plan = load_inputs(args.listing, args.manifest)
-        if args.require_eight_screenshots and (not args.phone_only or len(plan['images']['phoneScreenshots']) != 8):
-            raise ReleaseError('STORE-03 requires exactly eight phone screenshots and --phone-only')
+        if args.phone_only and args.reconcile_brand:
+            raise ReleaseError('Phone-only and brand reconciliation modes are mutually exclusive')
+        if args.require_eight_screenshots and (
+                not (args.phone_only or args.reconcile_brand) or len(plan['images']['phoneScreenshots']) != 8):
+            raise ReleaseError('STORE-03/RELEASE-01-FIX requires eight screenshots and a scoped mode')
         result = {'package': PACKAGE, 'language': 'ko-KR', 'status': 'validated_not_submitted',
                   'imageCounts': {kind: len(items) for kind, items in plan['images'].items()}}
         if args.mode == 'apply':
             client = Publisher(HttpTransport(os.environ.get('PLAY_ACCESS_TOKEN', '')))
-            result = (apply_phone_screenshots(client, plan, changes_not_sent_for_review=not args.send_for_review)
-                      if args.phone_only else apply(client, plan, changes_not_sent_for_review=not args.send_for_review))
+            if args.phone_only:
+                result = apply_phone_screenshots(client, plan, changes_not_sent_for_review=not args.send_for_review)
+            elif args.reconcile_brand:
+                result = reconcile_brand_description(client, plan,
+                                                     changes_not_sent_for_review=not args.send_for_review)
+            else:
+                result = apply(client, plan, changes_not_sent_for_review=not args.send_for_review)
         if args.report:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
@@ -168,7 +241,8 @@ def main():
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(json.dumps({
                 'package': PACKAGE, 'language': 'ko-KR', 'status': 'failed',
-                'operation': 'phoneScreenshots' if args.phone_only else 'listing',
+                'operation': ('phoneScreenshots' if args.phone_only else
+                              'brandAndDescription' if args.reconcile_brand else 'listing'),
                 'error': message
             }, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
         print('Listing failed: ' + message, file=sys.stderr)
