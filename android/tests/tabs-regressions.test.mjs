@@ -420,7 +420,7 @@ regression('four tabs and the editor remain usable at 320, 390 and 800 pixels', 
     assert.equal(await page.locator('.cue-detail').count(), 1);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `editor overflow at ${width}px`);
     measurements.push({ width, view: 'editorView', height: await page.evaluate(() => document.documentElement.scrollHeight) });
-    await assertFirstFold(page, '#jumpToExport');
+    await assertFirstFold(page, '#previewSelectedCue');
     await page.screenshot({ path: join(artifacts, `editorView-${width}.png`), fullPage: true });
     if (width === 390) await page.screenshot({ path: join(artifacts, `editorView-viewport-${width}.png`) });
   }
