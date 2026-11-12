@@ -48,6 +48,9 @@ class ListingServer:
             if method == 'PUT':
                 self.text = body
                 return body
+            if method == 'PATCH':
+                self.text.update(body)
+                return self.text
             return self.text if self.readback else {}
         kind = path.split('?')[0].rsplit('/', 1)[1]
         if method == 'POST':
@@ -196,6 +199,125 @@ class ListingTests(unittest.TestCase):
                     '--listing', str(root / 'listing.json'), '--manifest', str(root / 'manifest.json')]
             with patch.object(sys, 'argv', args):
                 self.assertEqual(listing.main(), 1)
+
+
+
+    def test_reconcile_brand_and_description_preserves_store05_phone_images_and_track(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            inputs(root)
+            plan = listing.load_inputs(root / 'listing.json', root / 'manifest.json')
+            server = ListingServer()
+            server.text = {**plan['listing'], 'fullDescription': 'old description'}
+            approved_screens = [
+                {'sha256': hashlib.sha256(item['data']).hexdigest()}
+                for item in plan['images']['phoneScreenshots']
+            ]
+            server.images = {'icon': [{'sha256': 'old icon'}],
+                             'featureGraphic': [{'sha256': 'old feature'}],
+                             'phoneScreenshots': approved_screens}
+            result = listing.reconcile_brand_description(
+                publisher.Publisher(server), plan, changes_not_sent_for_review=False)
+            self.assertEqual(result['status'], 'api_committed_and_verified')
+            self.assertEqual(result['reconciled'], ['fullDescription', 'icon', 'featureGraphic'])
+            self.assertFalse(result['changesNotSentForReview'])
+            self.assertTrue(server.committed)
+            self.assertEqual(server.text, plan['listing'])
+            self.assertEqual(server.images['phoneScreenshots'], approved_screens)
+            self.assertEqual(sum(method == 'PATCH' for method, _ in server.calls), 1)
+            self.assertEqual(sum(method == 'DELETE' and path.endswith(('/icon', '/featureGraphic'))
+                                 for method, path in server.calls), 2)
+            self.assertFalse(any(method == 'DELETE' and path.endswith('/phoneScreenshots')
+                                 for method, path in server.calls))
+            self.assertFalse(any(method == 'PUT' for method, _ in server.calls))
+            self.assertFalse(any('/tracks/' in path or '/bundles' in path for _, path in server.calls))
+
+    def test_reconcile_matching_listing_does_not_commit_or_reupload(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            inputs(root)
+            plan = listing.load_inputs(root / 'listing.json', root / 'manifest.json')
+            server = ListingServer()
+            server.text = dict(plan['listing'])
+            server.images = {
+                kind: [{'sha256': hashlib.sha256(item['data']).hexdigest()} for item in items]
+                for kind, items in plan['images'].items()
+            }
+            result = listing.reconcile_brand_description(publisher.Publisher(server), plan)
+            self.assertEqual(result['status'], 'already_matching_no_write')
+            self.assertFalse(server.committed)
+            self.assertFalse(any(method in ('PUT', 'PATCH') or
+                                 (method == 'POST' and 'uploadType=media' in path)
+                                 for method, path in server.calls))
+
+    def test_reconcile_rejects_changes_to_protected_title_or_screenshots(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            inputs(root)
+            plan = listing.load_inputs(root / 'listing.json', root / 'manifest.json')
+            server = ListingServer()
+            server.text = dict(plan['listing'])
+            server.text['title'] = 'changed in Play Console'
+            server.images = {'icon': [], 'featureGraphic': [], 'phoneScreenshots': []}
+            with self.assertRaisesRegex(publisher.ReleaseError, 'title or shortDescription'):
+                listing.reconcile_brand_description(publisher.Publisher(server), plan)
+            server.text = dict(plan['listing'])
+            with self.assertRaisesRegex(publisher.ReleaseError, 'screenshot set'):
+                listing.reconcile_brand_description(publisher.Publisher(server), plan)
+            self.assertFalse(server.committed)
+            self.assertFalse(any(method == 'DELETE' and path.endswith('/phoneScreenshots')
+                                 for method, path in server.calls))
+
+    def test_reconcile_refuses_wrong_uploaded_brand_hash_before_commit(self):
+        import hashlib
+        class AlteredUpload(ListingServer):
+            def __call__(self, method, path, body=None, content_type=None):
+                if method == 'POST' and path.endswith('/icon?uploadType=media'):
+                    return {'image': {'sha256': '0' * 64}}
+                return super().__call__(method, path, body, content_type)
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            inputs(root)
+            plan = listing.load_inputs(root / 'listing.json', root / 'manifest.json')
+            server = AlteredUpload()
+            server.text = dict(plan['listing'])
+            server.images = {
+                'icon': [], 'featureGraphic': [],
+                'phoneScreenshots': [
+                    {'sha256': hashlib.sha256(item['data']).hexdigest()}
+                    for item in plan['images']['phoneScreenshots']
+                ],
+            }
+            with self.assertRaisesRegex(publisher.ReleaseError, 'edit not committed'):
+                listing.reconcile_brand_description(publisher.Publisher(server), plan)
+            self.assertFalse(server.committed)
+
+    def test_reconcile_reports_post_commit_readback_failure(self):
+        import hashlib
+        class BrokenFreshRead(ListingServer):
+            def __call__(self, method, path, body=None, content_type=None):
+                if self.committed and method == 'GET' and path.endswith('/icon'):
+                    return {'images': []}
+                return super().__call__(method, path, body, content_type)
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            inputs(root)
+            plan = listing.load_inputs(root / 'listing.json', root / 'manifest.json')
+            server = BrokenFreshRead()
+            server.text = {**plan['listing'], 'fullDescription': 'old'}
+            server.images = {
+                'icon': [], 'featureGraphic': [],
+                'phoneScreenshots': [
+                    {'sha256': hashlib.sha256(item['data']).hexdigest()}
+                    for item in plan['images']['phoneScreenshots']
+                ],
+            }
+            with self.assertRaisesRegex(publisher.ReleaseError, 'committed but fresh readback failed'):
+                listing.reconcile_brand_description(publisher.Publisher(server), plan)
+            self.assertTrue(server.committed)
 
 
 
