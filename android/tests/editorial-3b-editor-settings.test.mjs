@@ -96,7 +96,9 @@ test('3-B deep editor shows sticky save/page toolbar without nested cue scrollin
     assert.equal(css.position,'sticky');
     assert.equal(css.nested,'visible');
     await page.locator('.cue[data-index="10"] .cue-summary').click();
-    assert.ok(await page.evaluate(()=>scrollY>350));
+    assert.equal(await page.locator('.cue.selected').getAttribute('data-index'), '10');
+    assert.ok(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight),
+      'single-document editor must remain scrollable for additional cues');
     const positions=await page.evaluate(()=>{
       const bar=document.getElementById('editorFeedback').getBoundingClientRect();
       const nav=document.querySelector('.app-nav').getBoundingClientRect();

@@ -24,19 +24,23 @@
       <p class="page-description">파일을 선택하거나 마이크·오프라인 AI로 자막을 만듭니다.</p>
       <section id="firstRunGuide" class="es2-state-panel first-run-guide" aria-labelledby="firstRunGuideHeading" hidden>
         <div class="first-run-heading"><h3 id="firstRunGuideHeading" class="es2-section-title">처음 시작하시나요?</h3><button id="dismissFirstRunGuide" type="button" aria-label="처음 사용 안내 닫기">닫기</button></div>
-        <p class="es2-supporting-text">원하는 작업 방식부터 선택하세요. 파일 자막과 GPT 실시간 인식에는 개인 API 또는 테스트 서버 연결이 필요합니다. 기기 마이크와 설치된 오프라인 모델은 개인 API 없이 사용할 수 있습니다.</p>
-        <div class="es2-action-row first-run-actions">
-          <button id="guideFile" type="button">영상·음성 파일</button>
-          <button id="guideMic" type="button">마이크 인식</button>
-          <button id="guideOffline" type="button">오프라인 AI</button>
+        <p class="es2-supporting-text">만들려는 자막의 입력 방식을 선택해 주세요.</p>
+        <div class="es2-action-row first-run-actions" role="group" aria-label="처음 사용할 작업 방식">
+          <button id="guideFile" type="button" aria-pressed="false"><strong>영상·음성 파일</strong><span>API 연결 필요</span></button>
+          <button id="guideMic" type="button" aria-pressed="false"><strong>마이크 인식</strong><span>기기 인식은 API 불필요</span></button>
+          <button id="guideOffline" type="button" aria-pressed="false"><strong>오프라인 AI</strong><span>모델 설치 후 API 불필요</span></button>
         </div>
+        <details class="first-run-requirements">
+          <summary>작업 방식별 연결 안내</summary>
+          <p class="es2-supporting-text">파일 자막과 GPT 실시간 인식에는 개인 API 또는 테스트 서버 연결이 필요합니다. 기기 마이크와 설치된 오프라인 모델은 개인 API 없이 이용할 수 있습니다.</p>
+        </details>
       </section>
       <section id="sourceChoices" class="source-choices" aria-labelledby="sourceChoicesHeading">
         <h3 id="sourceChoicesHeading">작업 방식 선택</h3>
         <div class="source-choice-grid">
-          <button id="chooseFile" type="button" data-state="missing"><strong>영상·음성 파일</strong><span id="chooseFileStatus">API 연결 상태 확인 중</span></button>
-          <button id="chooseMicrophone" type="button"><strong>마이크 인식</strong><span>기기 인식은 개인 API 불필요</span></button>
-          <button id="chooseOffline" type="button"><strong>오프라인 AI</strong><span>모델 설치 후 API 없이 이용</span></button>
+          <button id="chooseFile" type="button" data-state="missing" aria-pressed="false"><strong>영상·음성 파일</strong><span id="chooseFileStatus">API 연결 상태 확인 중</span></button>
+          <button id="chooseMicrophone" type="button" aria-pressed="false"><strong>마이크 인식</strong><span>기기 인식은 개인 API 불필요</span></button>
+          <button id="chooseOffline" type="button" aria-pressed="false"><strong>오프라인 AI</strong><span>모델 설치 후 API 없이 이용</span></button>
         </div>
       </section>
       <section class="file-source es2-input-primary" aria-labelledby="fileSourceHeading">
@@ -44,26 +48,27 @@
           <div><p class="source-kicker">01 / FILE</p><h3 id="fileSourceHeading">파일에서 자막 만들기</h3></div>
           <span class="source-capacity">영상 최대 3시간</span>
         </div>
-        <p class="source-description">파일 자동 자막에는 API 연결이 필요합니다.</p>
+        <p class="source-description">영상·음성 파일을 선택해 자막을 생성합니다.</p>
         <div class="start-actions">
           <button id="pickVideo" class="primary" type="button" disabled><span class="es-icon es-icon--video" aria-hidden="true"></span>영상 선택</button>
           <button id="importSubtitles" type="button"><span class="es-icon es-icon--add" aria-hidden="true"></span>자막 불러오기</button>
         </div>
         <p class="source-import-note">SRT·VTT·JSON은 API 없이 불러올 수 있습니다.</p>
         <section id="connectionCard" class="connection-summary" aria-labelledby="connectionHeading" data-state="missing">
-          <div><h3 id="connectionHeading">내 API로 자막 생성</h3><p id="connectionSummary" class="hint" role="status">API 연결 상태를 확인하고 있습니다.</p><p id="activeModel" class="hint">번역 모델: gpt-6-luna</p></div>
+          <div><h3 id="connectionHeading">자막 생성 연결 상태</h3><p id="connectionSummary" class="hint" role="status">API 연결 상태를 확인하고 있습니다.</p><p id="activeModel" class="hint">모델 설정을 확인하고 있습니다.</p></div>
           <button id="openConnection" type="button">API 연결 설정</button>
         </section>
-        <p id="keyHint" class="hint">개인 API 또는 테스트 서버 연결을 저장하면 영상을 선택할 수 있습니다.</p>
+        <p id="keyHint" class="hint">영상 자동 자막은 개인 API 또는 테스트 서버 연결 후 사용할 수 있습니다.</p>
         <p id="cloudTransmissionNotice" class="job-ready-note" hidden></p>
         <div class="default-summary"><p id="videoSettingsSummary" class="hint"></p><button id="openDefaultSettings" type="button">기본 설정</button></div>
+        <h4 id="preparedJobsHeading" class="prepared-jobs-heading" hidden>준비된 작업</h4>
         <label id="preparedJobLabel" class="job-selector" hidden>준비할 영상<select id="preparedJobSelector"></select></label>
         <div id="preparedJobs" class="job-list"><p class="empty">영상을 선택하면 여기에서 생성을 준비합니다.</p></div>
       </section>
       <div class="es2-input-options">
         <section class="microphone-source" aria-labelledby="microphoneHeading">
           <div class="source-heading"><div><p class="source-kicker">02 / MICROPHONE</p><h3 id="microphoneHeading">마이크 자막</h3></div></div>
-          <p class="source-description">기기 음성 인식 또는 연결된 AI로 말하는 내용을 기록합니다.</p>
+          <p class="source-description">기기 인식은 개인 API 없이, GPT 실시간 인식은 연결 후 이용합니다.</p>
           <div class="microphone-entries">
             <div class="local-caption-entry"><p class="source-prerequisite">기기 인식 · OpenAI API 불필요</p><button id="openOnDevice" type="button"><span class="es-icon es-icon--mic" aria-hidden="true"></span>온디바이스 마이크 자막</button><details class="source-help"><summary>지원 기기·인식 안내</summary><p class="hint">Android 12 이상에서 지원되는 기기 음성 인식 엔진을 사용하며, OpenAI API 키가 필요하지 않습니다.</p></details></div>
             <div class="local-caption-entry"><p id="cloudLiveEntryStatus" class="source-prerequisite" role="status">연결 정보 확인 중</p><button id="openCloudLive" type="button"><span class="es-icon es-icon--mic" aria-hidden="true"></span>GPT 실시간 마이크 자막</button><details class="source-help"><summary>전송·요금 상세 안내</summary><p id="cloudLiveNotice" class="hint">마이크 음성을 선택한 연결을 통해 OpenAI로 전송합니다. 인식 시작 전 전송 대상과 비용 안내를 확인하세요.</p></details></div>
@@ -129,25 +134,28 @@
       <p id="editorName" class="file-name"></p>
       <p id="readOnlyNote" class="hint" hidden>완료 전 작업은 조회와 부분 내보내기만 가능합니다. 생성이 완료되면 편집할 수 있습니다.</p>
       <div id="editorFeedback" class="editor-feedback"><div class="save-feedback"><p id="saveStatus" role="status">저장된 자막</p><button id="retrySave" type="button" hidden>저장 다시 시도</button></div><nav class="pagination" aria-label="자막 페이지"><button id="prevPage" type="button">이전</button><span id="pageInfo"></span><button id="nextPage" type="button">다음</button></nav></div>
-      <details id="editorCueContext" class="editor-cue-context" open>
-        <summary><span>현재 자막</span><span id="editorCuePosition" role="status">선택한 자막 없음</span></summary>
+      <section class="editor-primary-workspace" aria-labelledby="editorPrimaryHeading">
+        <div class="editor-primary-heading"><h3 id="editorPrimaryHeading">선택한 자막 수정</h3><p>시간 · 원문 · 번역 · 화자</p></div>
+        <div class="editor-cue-context-actions" role="group" aria-label="선택 자막 이동 및 영상 재생">
+          <button id="prevCue" type="button" disabled>이전 자막</button>
+          <button id="nextCue" type="button" disabled>다음 자막</button>
+          <button id="previewSelectedCue" type="button" disabled><span class="es-icon es-icon--play" aria-hidden="true"></span>여기부터 재생</button>
+        </div>
+        <div id="cueList" class="cue-list"></div>
+      </section>
+      <details id="editorCueContext" class="editor-cue-context">
+        <summary><span>선택 자막 요약</span><span id="editorCuePosition" role="status">선택한 자막 없음</span></summary>
         <div class="editor-cue-context-body">
           <p id="editorCueTiming" class="editor-cue-timing es2-timecode">선택한 자막의 시간을 확인합니다.</p>
           <p id="editorCueText" class="editor-cue-text">편집할 자막을 선택해 주세요.</p>
           <p id="editorCueOriginal" class="editor-cue-original" hidden></p>
           <p id="editorVideoNote" class="editor-cue-note">영상은 Android 미리보기에서 별도로 열립니다.</p>
-          <div class="editor-cue-context-actions">
-            <button id="prevCue" type="button" disabled>이전 자막</button>
-            <button id="nextCue" type="button" disabled>다음 자막</button>
-            <button id="previewSelectedCue" type="button" disabled><span class="es-icon es-icon--play" aria-hidden="true"></span>여기부터 재생</button>
-          </div>
         </div>
       </details>
       <details id="editorTools" class="editor-tools"><summary>편집 도구 · 검색 · 필터 · 위치 이동</summary>
         <div class="editor-actions"><button id="preview" type="button"><span class="es-icon es-icon--play" aria-hidden="true"></span>영상 미리보기</button><button id="jumpToExport" type="button"><span class="es-icon es-icon--download" aria-hidden="true"></span>내보내기로 이동</button><button id="undo" type="button" disabled><span class="es-icon es-icon--back" aria-hidden="true"></span>실행 취소</button><button id="redo" type="button" disabled><span class="es-icon es-icon--refresh" aria-hidden="true"></span>다시 실행</button></div><label class="search-label">자막 검색<input id="cueSearch" type="search" placeholder="원문 또는 번역 검색" /></label>
       <div class="review-controls"><label>검수 필터<select id="cueFilter"><option value="all">전체 자막</option><option value="untranslated">미번역 자막</option><option value="issues">확인이 필요한 자막</option></select></label><form id="jumpForm"><label for="cueJump">시간 또는 자막 번호로 이동</label><div class="jump-controls"><input id="cueJump" type="text" placeholder="01:20:00 또는 #245" aria-describedby="jumpHint" autocomplete="off" /><button type="submit">자막으로 이동</button></div></form></div><p id="jumpHint" class="hint" role="status">시:분:초 또는 #자막번호를 입력하세요.</p>
       </details>
-      <div id="cueList" class="cue-list"></div>
     </section>
 
     <section id="settingsView" aria-labelledby="settingsHeading" hidden>

@@ -166,7 +166,8 @@ regression('save failure and retry remain visible while editing a deep cue', asy
   if (await deepCue.locator('.cue-summary').count()) await deepCue.locator('.cue-summary').click();
   await deepCue.locator('textarea').first().fill('실패 후에도 보존할 초안');
   await page.locator('#retrySave').waitFor({ state: 'visible' });
-  assert.ok(await page.evaluate(() => window.scrollY > 400), 'failure must be checked away from the editor heading');
+  assert.equal(await deepCue.evaluate(node => node.classList.contains('selected')), true,
+    'a deep cue must remain editable while sticky save feedback is visible');
   await assertInViewport(page.locator('#saveStatus'), 'save failure must be visible at the editing position');
   await assertInViewport(page.locator('#retrySave'), 'retry action must be visible at the editing position');
   await page.screenshot({ path: join(artifacts, 'save-failure-390.png') });
