@@ -72,6 +72,9 @@ jobs:
           if [[ "$EVENT_TYPE" == 'workflow_run' && "$title" == 'qa: STORE-04 read-only Play listing audit [audit-only]' ]]; then
             echo 'mode=audit' >> "$GITHUB_OUTPUT"
             echo 'target=none' >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT_TYPE" == 'workflow_run' && "$title" == 'store: RELEASE-01-FIX approved brand and description [listing-reconcile]' ]]; then
+            echo 'mode=reconcile' >> "$GITHUB_OUTPUT"
+            echo 'target=none' >> "$GITHUB_OUTPUT"
           elif [[ "$EVENT_TYPE" == 'workflow_run' && "$title" == 'store: STORE-05 trusted screenshot registration [listing-only]' ]]; then
             echo 'mode=listing' >> "$GITHUB_OUTPUT"
             echo 'target=none' >> "$GITHUB_OUTPUT"
@@ -160,7 +163,7 @@ jobs:
         run: python3 scripts/release/preflight.py signing
       - name: Check Play authentication configuration
         id: credentials
-        if: needs.source.outputs.mode == 'deploy' || needs.source.outputs.mode == 'listing' || needs.source.outputs.mode == 'promote' || needs.source.outputs.mode == 'audit'
+        if: needs.source.outputs.mode == 'deploy' || needs.source.outputs.mode == 'listing' || needs.source.outputs.mode == 'reconcile' || needs.source.outputs.mode == 'promote' || needs.source.outputs.mode == 'audit'
         env:
           PLAY_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
           PLAY_SERVICE_ACCOUNT: ${{ vars.PLAY_SERVICE_ACCOUNT }}
@@ -168,7 +171,7 @@ jobs:
         run: python3 scripts/release/preflight.py auth
       - name: Authenticate with Workload Identity Federation
         id: wif
-        if: (needs.source.outputs.mode == 'deploy' || needs.source.outputs.mode == 'listing' || needs.source.outputs.mode == 'promote' || needs.source.outputs.mode == 'audit') && steps.credentials.outputs.auth_mode == 'wif'
+        if: (needs.source.outputs.mode == 'deploy' || needs.source.outputs.mode == 'listing' || needs.source.outputs.mode == 'reconcile' || needs.source.outputs.mode == 'promote' || needs.source.outputs.mode == 'audit') && steps.credentials.outputs.auth_mode == 'wif'
         uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
@@ -178,7 +181,7 @@ jobs:
           create_credentials_file: false
       - name: Authenticate with legacy service-account JSON
         id: json
-        if: (needs.source.outputs.mode == 'deploy' || needs.source.outputs.mode == 'listing' || needs.source.outputs.mode == 'promote' || needs.source.outputs.mode == 'audit') && steps.credentials.outputs.auth_mode == 'json'
+        if: (needs.source.outputs.mode == 'deploy' || needs.source.outputs.mode == 'listing' || needs.source.outputs.mode == 'reconcile' || needs.source.outputs.mode == 'promote' || needs.source.outputs.mode == 'audit') && steps.credentials.outputs.auth_mode == 'json'
         uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
@@ -260,6 +263,22 @@ jobs:
         env:
           PLAY_ACCESS_TOKEN: ${{ steps.wif.outputs.access_token || steps.json.outputs.access_token }}
         run: python3 scripts/release/listing.py apply --phone-only --require-eight-screenshots --send-for-review --report output/play-listing-store03.json
+      - name: Validate RELEASE-01-FIX approved brand, description and STORE-05 screenshots
+        if: needs.source.outputs.mode == 'reconcile'
+        run: |
+          python3 scripts/release/listing.py check --reconcile-brand --require-eight-screenshots --report output/play-listing-reconcile-check.json
+          python3 -m unittest discover -s scripts/release/tests -p test_listing.py -v
+      - name: Reject superseded main before approved listing reconciliation
+        if: needs.source.outputs.mode == 'reconcile'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.source.outputs.sha }}
+        run: python3 scripts/release/source.py --assert-current "$SOURCE_SHA"
+      - name: Reconcile only approved full description, icon and feature graphic
+        if: needs.source.outputs.mode == 'reconcile'
+        env:
+          PLAY_ACCESS_TOKEN: ${{ steps.wif.outputs.access_token || steps.json.outputs.access_token }}
+        run: python3 scripts/release/listing.py apply --reconcile-brand --require-eight-screenshots --send-for-review --report output/play-listing-reconcile.json
       - name: Confirm current main before STORE-04 read-only Play audit
         if: needs.source.outputs.mode == 'audit'
         env:
