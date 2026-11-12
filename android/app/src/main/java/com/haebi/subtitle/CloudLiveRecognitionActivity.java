@@ -40,7 +40,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        setTitle("해비 자막 · GPT 실시간 인식");
+        setTitle("자막라인 · GPT 실시간 인식");
         buildView();
         try {
             updateDisclosure(new CloudAccessStore(this).current());

@@ -58,7 +58,7 @@ test('UI-09-B browser, Android adaptive, colors, typography and icon-generation 
     text('assets/play-store/ko-KR/generation-prompts.json'),
   ]);
   for (const markup of [web, mobile]) {
-    assert.match(markup, /<h1>해비 자막<\/h1>/);
+    assert.match(markup, /<h1>자막라인<\/h1>/);
     assert.match(markup, /brand-mark/);
     assert.match(markup, /alt=""/);
     assert.doesNotMatch(markup, /brand-symbol" aria-hidden="true">HB/);
@@ -163,7 +163,7 @@ test('UI-09-B web and WebView live marks remain visible at 320/390/800px light/d
             };
           });
           assert.equal(info.loaded, true, layout + ' mark loaded');
-          assert.equal(info.heading, '해비 자막');
+          assert.equal(info.heading, '자막라인');
           assert.ok(info.imageWidth >= 20 && info.imageHeight >= 20, layout + ' mark too small');
           assert.ok(info.containerWidth >= 40 && info.containerHeight >= 40, layout + ' brand container');
           assert.equal(info.background, theme === 'light' ? 'rgb(23, 23, 23)' : 'rgb(242, 242, 242)');

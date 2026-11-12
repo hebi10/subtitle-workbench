@@ -41,7 +41,7 @@ public final class OfflineVoskActivity extends Activity {
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
-        setTitle("해비 자막 · 독립 로컬 AI");
+        setTitle("자막라인 · 독립 로컬 AI");
         installer = new OfflineModelInstaller(this);
         createView();
         render();

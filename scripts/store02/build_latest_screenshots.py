@@ -54,7 +54,7 @@ def render(source, heading, tagline, mode, index):
     small = font(27, True)
     title = font(61, True)
     sub = font(33)
-    draw.text((72, 66), 'SUBTITLE WORKBENCH', fill=secondary, font=small)
+    draw.text((72, 66), '자막라인', fill=secondary, font=small)
     draw.text((W-160, 65), index, fill=secondary, font=small)
     draw.text((72, 132), heading, fill=fg, font=title)
     draw.text((74, 238), tagline, fill=secondary, font=sub)
