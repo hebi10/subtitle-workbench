@@ -86,7 +86,7 @@ test('2-D synchronizes context, navigation and Native playback with actual cue t
   await withApp(async page => {
     await openEditor(page);
     assert.match(await page.locator('#editorCuePosition').innerText(), /자막 1 \/ 27개/);
-    assert.match(await page.locator('#editorCueText').innerText(), /테스트 번역 자막 1/);
+    assert.match(await page.locator('#editorCueText').textContent(), /테스트 번역 자막 1/);
     assert.equal(await page.locator('#prevCue').isDisabled(), true);
     assert.equal(await page.locator('#previewSelectedCue').isEnabled(), true);
     await page.locator('#nextCue').click();
@@ -108,13 +108,13 @@ test('2-D synchronizes context, navigation and Native playback with actual cue t
       'updating subtitle context must not replace the focused textarea');
     const translation = page.locator('#editorView .cue.selected textarea').nth(1);
     await translation.fill('고친 번역 텍스트');
-    assert.match(await page.locator('#editorCueText').innerText(), /고친 번역 텍스트/);
+    assert.match(await page.locator('#editorCueText').textContent(), /고친 번역 텍스트/);
     assert.equal(await translation.evaluate(node => node === document.activeElement), true);
     await page.locator('#editorTools > summary').click();
     await page.locator('#undo').click();
-    assert.match(await page.locator('#editorCueText').innerText(), /테스트 번역 자막 1/);
+    assert.match(await page.locator('#editorCueText').textContent(), /테스트 번역 자막 1/);
     await page.locator('#redo').click();
-    assert.match(await page.locator('#editorCueText').innerText(), /고친 번역 텍스트/);
+    assert.match(await page.locator('#editorCueText').textContent(), /고친 번역 텍스트/);
 
     for (const width of [320, 390, 800]) {
       for (const theme of ['light', 'dark']) {
@@ -165,7 +165,7 @@ test('2-D cue navigation honors search and does not invent video availability', 
     await page.locator('#editorView').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#previewSelectedCue').isDisabled(), true,
       'imported subtitle has no video URI');
-    assert.match(await page.locator('#editorVideoNote').innerText(), /연결된 영상이 없어/);
+    assert.match(await page.locator('#editorVideoNote').textContent(), /연결된 영상이 없어/);
     assert.equal(await page.locator('#editorCueContext').isVisible(), true);
   });
 });
