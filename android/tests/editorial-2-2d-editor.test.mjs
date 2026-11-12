@@ -23,10 +23,10 @@ test('2-D retains existing editing IDs, Native bridge, feedback toolbar and new 
     'preview', 'undo', 'redo', 'saveStatus', 'retrySave', 'prevPage', 'nextPage']) {
     assert.equal((html.match(new RegExp('id="' + id + '"', 'g')) || []).length, 1, id);
   }
-  assert.ok(html.indexOf('id="editorFeedback"') < html.indexOf('id="editorCueContext"'));
+  assert.ok(html.indexOf('id="editorFeedback"') < html.indexOf('id="cueList"'));
+  assert.ok(html.indexOf('id="cueList"') < html.indexOf('id="editorCueContext"'));
   assert.ok(html.indexOf('id="editorCueContext"') < html.indexOf('id="editorTools"'));
-  assert.ok(html.indexOf('id="editorTools"') < html.indexOf('id="cueList"'));
-  assert.ok(html.indexOf('id="editorCueContext"') < html.indexOf('id="cueList"'));
+  assert.match(html, /id="editorPrimaryHeading"/);
   assert.match(js, /prevCue: \(\) => moveSelectedCue\(-1\)/);
   assert.match(js, /nextCue: \(\) => moveSelectedCue\(1\)/);
   assert.match(js, /previewSelectedCue: \(\) => previewAt\(Math\.round\(history\.present\[selectedIndex\]\.start \* 1000\)\)/);
@@ -153,8 +153,11 @@ test('2-D cue navigation honors search and does not invent video availability', 
     assert.match(await page.locator('#editorCuePosition').innerText(), /자막 20 \/ 27개/);
     await page.locator('#prevCue').click();
     assert.equal(await page.locator('.cue.selected').getAttribute('data-index'), '1');
+    assert.equal(await page.locator('#editorCueContext').getAttribute('open'), null,
+      'selected cue summary starts collapsed to prioritize editing');
     await page.locator('#editorCueContext > summary').click();
-    assert.equal(await page.locator('#editorCueContext').getAttribute('open'), null);
+    assert.equal(await page.locator('#editorCueContext').getAttribute('open'), '',
+      'summary expands on demand');
     await page.locator('#editorCueContext > summary').click();
 
     await page.locator('#navVideo').click();
