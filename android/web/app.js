@@ -61,6 +61,19 @@ function dismissFirstRunGuide() {
   updateFirstRunGuide();
 }
 
+function selectSource(mode) {
+  const sources = {
+    file: { buttons: ['guideFile', 'chooseFile'], section: '.file-source' },
+    microphone: { buttons: ['guideMic', 'chooseMicrophone'], section: '.microphone-source' },
+    offline: { buttons: ['guideOffline', 'chooseOffline'], section: '.offline-source' },
+  };
+  for (const [key, source] of Object.entries(sources)) {
+    const selected = key === mode;
+    for (const id of source.buttons) $(id).setAttribute('aria-pressed', String(selected));
+    document.querySelector('#videoView ' + source.section).classList.toggle('source-selected', selected);
+  }
+}
+
 
 export function nativeCall(method, params = {}) {
   return new Promise((resolve, reject) => {
@@ -387,6 +400,7 @@ function renderJobs() {
   if (!prepared.some((job) => job.id === preparedJobId)) preparedJobId = prepared[0]?.id || '';
   updateSelector($('preparedJobSelector'), prepared, preparedJobId);
   $('preparedJobLabel').hidden = prepared.length < 2;
+  $('preparedJobsHeading').hidden = prepared.length === 0;
   reconcileChildren($('preparedJobs'), preparedJobId ? [jobCards.get(preparedJobId)] : [el('p', '영상을 선택하면 여기에서 생성을 준비합니다.', 'empty')]);
   const pages = Math.max(1, Math.ceil(ordered.length / JOBS_PAGE_SIZE));
   jobsPage = Math.max(0, Math.min(jobsPage, pages - 1));
@@ -931,7 +945,10 @@ function syncConnection() {
   $('reviewRelaySettings').hidden = draftMode !== 'relay';
   $('connectionModeStatus').textContent = `현재 연결: ${modeLabel}${relay ? ` · ${connection.reviewRelay.url || '주소 미설정'}` : ''}.${connectionModeDraft === 'relay' && !relay ? ' 테스트 서버 연결 저장을 눌러야 전환됩니다.' : ''}${running ? ' 실행 또는 대기 중인 작업을 일시정지해야 연결을 변경할 수 있습니다.' : ''}`;
   $('reviewRelayStatus').textContent = connection.reviewRelay.hasCode ? '테스트 코드가 암호화되어 저장되어 있습니다. 같은 서버 주소에서만 빈 코드로 저장된 코드를 재사용할 수 있습니다. 다른 서버는 새 코드를 입력하세요.' : '전용 테스트 접근 코드를 입력하세요. 기기에서 암호화해 보관하며 다시 표시하지 않습니다.';
-  $('keyHint').hidden = connection.hasKey;
+  $('keyHint').hidden = connection.hasKey && !connectionError;
+  $('keyHint').textContent = connection.hasKey && connectionError
+    ? '연결 확인에 실패했습니다. API 연결 설정에서 인증과 모델을 다시 확인해 주세요.'
+    : '영상 자동 자막은 개인 API 또는 테스트 서버 연결 후 사용할 수 있습니다.';
   $('keyStatus').textContent = connection.hasPersonalKey ? `API 키가 암호화되어 저장되어 있습니다.${running ? ' 키를 바꾸거나 삭제하려면 작업을 일시정지해 주세요.' : ''}` : '저장된 API 키가 없습니다. 본인의 키를 입력해 주세요.';
   $('connectionSummary').textContent = `${modeLabel} · ${!connection.hasKey ? '연결 정보 저장 필요' : connectionError ? '연결 확인 실패 · 설정을 확인해 주세요.' : matches ? '인증 · 모델 접근 확인됨' : '저장됨 · 연결 미확인'}`;
   $('connectionCard').classList.toggle('connected', connection.hasKey);
@@ -1062,6 +1079,7 @@ $('jumpForm').addEventListener('submit', (event) => {
 });
 $('dismissFirstRunGuide').addEventListener('click', dismissFirstRunGuide);
 function focusFileSource() {
+  selectSource('file');
   if ($('pickVideo').disabled) {
     void openSettings().catch((error) => message(error.message || String(error), true));
   } else {
@@ -1070,10 +1088,12 @@ function focusFileSource() {
   }
 }
 function focusMicrophoneSource() {
+  selectSource('microphone');
   $('openOnDevice').focus();
   $('openOnDevice').scrollIntoView({ block: 'center' });
 }
 function focusOfflineSource() {
+  selectSource('offline');
   const entry = document.querySelector('.local-offline-entry');
   entry.open = true;
   $('openOfflineModel').focus();
@@ -1085,6 +1105,7 @@ $('guideOffline').addEventListener('click', focusOfflineSource);
 $('chooseFile').addEventListener('click', focusFileSource);
 $('chooseMicrophone').addEventListener('click', focusMicrophoneSource);
 $('chooseOffline').addEventListener('click', focusOfflineSource);
+selectSource('file');
 for (const [id, action] of Object.entries({
   startNewJob: () => show('video'),
   navVideo: () => show('video'), navJobs: () => show('jobs'), navResults: () => show('results'), navSettings: () => show('settings'),
