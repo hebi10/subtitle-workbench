@@ -154,18 +154,11 @@ test('UI-10-A returning user gets one source selector, real prepared jobs and re
     await page.locator('#chooseFile').click();
     assert.equal(await page.locator('#pickVideo').evaluate(x => x === document.activeElement), true);
 
-    await page.evaluate(() => {
-      const template = window.mockNative.jobs.find(x => x.id === 'partial-1');
-      window.mockNative.jobs.push({
-        ...template, id: 'ready-ui10', name: '준비된 영상.mp4', status: 'paused',
-        stage: 'ready', completedChunks: 0, totalChunks: 0,
-        progress: { ...template.progress, percent: 0 },
-      });
-      window.nativeEvent({ type: 'status' });
-    });
-    await page.waitForFunction(() => !document.querySelector('#preparedJobsHeading').hidden);
+    await page.locator('#pickVideo').click();
+    await page.waitForFunction(() => window.mockNative.calls.some(x => x.method === 'pickVideo') &&
+      !document.querySelector('#preparedJobsHeading').hidden);
     assert.equal(await page.locator('#preparedJobsHeading').isVisible(), true);
-    assert.match(await page.locator('#preparedJobs').innerText(), /준비된 영상\.mp4/);
+    assert.match(await page.locator('#preparedJobs').innerText(), /선택한 영상\.mp4/);
 
     await mkdir(output, { recursive: true });
     for (const width of [320, 390, 800]) {
