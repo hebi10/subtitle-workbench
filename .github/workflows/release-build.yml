@@ -53,6 +53,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
+          python3 - <<'PY'
           import json, os, re, subprocess, sys
           from datetime import date
           from zoneinfo import ZoneInfo
@@ -84,6 +85,7 @@ jobs:
           print("Validated source SHA:",sha)
           print("KST batch:",batch)
           print("This job requests a downstream signed AAB build. Play will not be changed by this job.")
+          PY
       - name: Dispatch existing signed AAB build-only mode
         env:
           GH_TOKEN: ${{ github.token }}
@@ -109,7 +111,7 @@ jobs:
           PY
           {
             echo "## OPS-03 build request accepted, AAB result NOT verified"
-            echo "Batch: `$BATCH_ID` / source SHA: `$EXPECTED_MAIN_SHA`"
+            echo "Batch: $BATCH_ID / source SHA: $EXPECTED_MAIN_SHA"
             echo "Review downstream build: https://github.com/$GITHUB_REPOSITORY/actions/workflows/$BUILD_WORKFLOW"
             echo "Only the build-only input was dispatched. This request result is not proof of signed AAB success."
             echo "Do not submit anything to Play; verify downstream output and checksum first."
