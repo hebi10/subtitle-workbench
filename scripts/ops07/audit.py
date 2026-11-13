@@ -496,6 +496,25 @@ def findings():
                 continue
             if not any(approved.fullmatch(atom) for atom in _guaranteed_atoms(job_condition(body))):
                 problems.append("APPROVAL: " + filename + ": " + job + " lacks mandatory OPS-01 approval")
+    if REPOSITORY == "hebi10/subtitle-workbench":
+        listing = read(".github/workflows/play-listing.yml")
+        apply_job = jobs(listing).get("apply") if listing else None
+        steps = _workflow_steps(apply_job or "")
+        approval_steps = [step for step in steps if re.search(
+            r"(?m)^[ \t]*(?:-[ \t]+)?run:[ \t]*python3[ \t]+scripts/ops06/store_gate\.py[ \t]+apply[ \t]*(?:#.*)?$", step)]
+        if len(approval_steps) != 1:
+            problems.append("STORE_BINDING: listing publisher must run a unique OPS-06 guard")
+        else:
+            guard = approval_steps[0]
+            for key, field in (("OPS06_STORE_APPROVED", "ops06_store_approved"),
+                               ("OPS06_CONFIRMATION", "ops06_confirmation"),
+                               ("OPS06_EXPECTED_MAIN_SHA", "ops06_expected_main_sha"),
+                               ("OPS06_BATCH_ID", "ops06_batch_id")):
+                expected = "$" + "{{ inputs." + field + " }}"
+                actual = re.findall(r"(?m)^[ \t]+" + re.escape(key) + r":[ \t]*([^\n#]+)", guard)
+                if len(actual) != 1 or actual[0].strip() != expected:
+                    problems.append("STORE_BINDING: Subtitle Workbench " + key
+                                    + " must bind to an approved dispatch input")
     if REPOSITORY == "hebi10/HomeCrew":
         source = read(".github/workflows/play-internal.yml")
         release = jobs(source).get("release") if source else None
