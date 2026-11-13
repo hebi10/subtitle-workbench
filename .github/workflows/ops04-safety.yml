@@ -1,0 +1,35 @@
+name: OPS-04 offline internal-release safety tests
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/play-internal-release.yml'
+      - '.github/workflows/ops04-safety.yml'
+      - 'scripts/ops04/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  safety:
+    name: Offline approval, provenance and Python syntax checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Validate isolated Play publisher Python (never contacts Play)
+        run: |
+          python3 -m py_compile scripts/ops04/internal.py
+          python3 -m unittest discover -v -s scripts/ops04 -p 'test_*.py'
+      - name: Validate optional signed-JAR verification helper syntax
+        run: |
+          if [[ -f scripts/ops04/VerifyBundleSignatures.java ]]; then
+            javac -d "$RUNNER_TEMP" scripts/ops04/VerifyBundleSignatures.java
+          fi
