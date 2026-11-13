@@ -3,6 +3,11 @@ name: Play Korean store listing
 on:
   workflow_dispatch:
     inputs:
+      ops01_release_approved:
+        description: 'Explicit approval for Play mutation after final QA'
+        required: true
+        type: boolean
+        default: false
       mode:
         description: 'check = local validation only; apply = replace reviewed Korean listing and explicit image categories'
         type: choice
@@ -45,7 +50,9 @@ jobs:
 
   apply:
     needs: source
-    if: inputs.mode == 'apply'
+    if: >-
+      github.event_name == 'workflow_dispatch' && inputs.ops01_release_approved == true &&
+      (inputs.mode == 'apply')
     runs-on: ubuntu-latest
     environment: google-play
     permissions:

@@ -3,6 +3,11 @@ name: Play closed promotion
 on:
   workflow_dispatch:
     inputs:
+      ops01_release_approved:
+        description: 'Explicit approval for Play mutation after final QA'
+        required: true
+        type: boolean
+        default: false
       mode:
         description: 'check = validate only; promote = move exact completed internal code to closed alpha'
         type: choice
@@ -63,7 +68,9 @@ jobs:
 
   promote:
     needs: [source, gates]
-    if: inputs.mode == 'promote'
+    if: >-
+      github.event_name == 'workflow_dispatch' && inputs.ops01_release_approved == true &&
+      (inputs.mode == 'promote')
     runs-on: ubuntu-latest
     environment: google-play
     permissions:
