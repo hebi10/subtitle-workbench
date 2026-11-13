@@ -68,7 +68,7 @@ env:
   ANDROID_UPLOAD_CERT_SHA256: ${{ secrets.ANDROID_UPLOAD_CERT_SHA256 }}
 jobs:
   verify:
-    if: github.repository == 'hebi10/SubtitleWorkbench' && github.ref == 'refs/heads/main'
+    if: github.repository == 'hebi10/subtitle-workbench' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       result: ${{ steps.verify.outputs.aab }}
