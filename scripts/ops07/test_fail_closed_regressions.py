@@ -341,5 +341,40 @@ class WorkflowDispatchBypassRegressionTests(unittest.TestCase):
         self.assertTrue(any("BUILD:" in issue for issue in issues), issues)
 
 
+class ApprovedStoreSourceBindingRegressionTests(unittest.TestCase):
+    def test_store_guard_uses_approved_dispatch_source_sha(self):
+        read_file = audit.read
+        path = ".github/workflows/play-listing.yml"
+        source = read_file(path)
+        expected = "OPS06_EXPECTED_MAIN_SHA: ${{ inputs.ops06_expected_main_sha }}"
+        self.assertIn(expected, source)
+        altered = source.replace(expected, "OPS06_EXPECTED_MAIN_SHA: ${{ github.sha }}")
+        with patch.object(audit, "read", side_effect=lambda name:
+                          altered if name == path else read_file(name)):
+            issues = audit.findings()
+        self.assertTrue(any("STORE_BINDING: Subtitle Workbench OPS06_EXPECTED_MAIN_SHA"
+                            in issue for issue in issues), issues)
+
+    def test_unrelated_step_cannot_supply_approval_to_guard(self):
+        read_file = audit.read
+        path = ".github/workflows/play-listing.yml"
+        source = read_file(path)
+        expected = "OPS06_EXPECTED_MAIN_SHA: ${{ inputs.ops06_expected_main_sha }}"
+        self.assertIn(expected, source)
+        altered = source.replace(expected, "OPS06_EXPECTED_MAIN_SHA: ${{ github.sha }}")
+        altered = altered.replace(
+            "      - name: OPS-06 verify approved store metadata scope and source",
+            "      - name: Unrelated check\n"
+            "        env:\n"
+            "          OPS06_EXPECTED_MAIN_SHA: ${{ inputs.ops06_expected_main_sha }}\n"
+            "        run: echo check\n"
+            "      - name: OPS-06 verify approved store metadata scope and source", 1)
+        with patch.object(audit, "read", side_effect=lambda name:
+                          altered if name == path else read_file(name)):
+            issues = audit.findings()
+        self.assertTrue(any("STORE_BINDING: Subtitle Workbench OPS06_EXPECTED_MAIN_SHA"
+                            in issue for issue in issues), issues)
+
+
 if __name__ == "__main__":
     unittest.main()
