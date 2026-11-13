@@ -253,7 +253,8 @@ def main():
         if sys.argv[1] == "guard":
             print("Manual version-only closed-test request and exact main source verified")
             return 0
-        require(sys.argv[1] == req["mode"], "Selected promotion mode changed")
+        require(sys.argv[1] == "check" or sys.argv[1] == req["mode"],
+                "A check-only request cannot be promoted")
         receipt = execute(sys.argv[1], req, env.get("PLAY_ACCESS_TOKEN"), env)
         persist(receipt)
         print("OPS-05:", receipt["status"], "same existing AAB code", req["code"])

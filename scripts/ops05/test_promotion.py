@@ -44,6 +44,10 @@ class PromotionTests(unittest.TestCase):
         env["APPROVAL_PHRASE"] = ""
         self.assertEqual(p.parse_request(env)["mode"], "check")
 
+    def test_promote_request_can_run_readonly_check_first(self):
+        source = Path(SCRIPT).read_text(encoding="utf-8")
+        self.assertIn('sys.argv[1] == "check" or sys.argv[1] == req["mode"]', source)
+
     def test_forbidden_destination_rejected(self):
         for track in ("production","beta","internal","qa","open","internalsharing"):
             with self.subTest(track=track):
@@ -97,6 +101,63 @@ class PromotionTests(unittest.TestCase):
         tracks,bundles=self.snapshot()
         with self.assertRaises(p.Stop):
             p.make_plan(tracks,bundles+bundles,req)
+
+    def test_check_mode_never_writes_or_commits_a_play_track(self):
+        from unittest.mock import patch
+        env = self.env("check")
+        req = p.parse_request(env)
+        tracks, bundles = self.snapshot()
+        calls = []
+        class FakePlay:
+            def __init__(self, token, package):
+                self.package = package
+            def start(self):
+                calls.append("start")
+                return "/temporary"
+            def inventory(self, edit):
+                calls.append("inventory")
+                return tracks, bundles
+            def discard(self, edit):
+                calls.append("discard")
+            def request(self, method, suffix, data=None):
+                raise AssertionError("check must not PUT or commit")
+        with patch.object(p, "Play", FakePlay):
+            receipt = p.execute("check", req, "redacted-fixture", env)
+        self.assertEqual(receipt["status"], "verified_ready_for_manual_promotion")
+        self.assertEqual(calls, ["start", "inventory", "discard"])
+
+    def test_promote_updates_only_closed_track_with_same_code_and_review_protection(self):
+        from unittest.mock import patch
+        env = self.env("promote")
+        req = p.parse_request(env)
+        before_tracks, bundles = self.snapshot()
+        after_tracks, _ = self.snapshot(closed=[{"status":"completed","versionCodes":["19"]}])
+        calls = []
+        class FakePlay:
+            def __init__(self, token, package):
+                self.starts = 0
+            def start(self):
+                self.starts += 1
+                return "/temporary" + str(self.starts)
+            def inventory(self, edit):
+                return (before_tracks, bundles) if self.starts == 1 else (after_tracks, bundles)
+            def discard(self, edit):
+                calls.append(("DELETE",edit))
+            def request(self, method, suffix, data=None):
+                calls.append((method,suffix))
+                if method == "PUT":
+                    self.assert_only_closed = suffix.endswith("/tracks/alpha")
+                    if not self.assert_only_closed:
+                        raise AssertionError("attempt to write non-closed track")
+                    if data["releases"][0]["versionCodes"] != ["19"]:
+                        raise AssertionError("different AAB version")
+                return {}
+        with patch.object(p, "Play", FakePlay), patch.object(p,"verify_main"), patch.object(p,"persist"):
+            result=p.execute("promote",req,"redacted-fixture",env)
+        self.assertEqual(result["status"],"committed_and_read_back")
+        self.assertEqual([v[0] for v in calls].count("PUT"),1)
+        self.assertIn(("POST","/temporary1:commit?changesInReviewBehavior=ERROR_IF_IN_REVIEW"),calls)
+        self.assertNotIn(("POST","/temporary1/bundles"),calls)
 
     def test_homecrew_requires_existing_special_final_approval(self):
         env=self.env()
