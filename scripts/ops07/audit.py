@@ -301,7 +301,7 @@ def _step_condition(body):
     match = re.search(r"(?m)^\s+if:\s*([^\n]+)", body)
     if not match:
         return ""
-    return match.group(1).strip().strip("'\"")
+    return match.group(1).strip()
 
 
 def _safe_store_step(guard_step, mutation_steps, body, filename):
