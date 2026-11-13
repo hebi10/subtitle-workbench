@@ -417,14 +417,32 @@ def findings():
     for file in sorted(list(folder.glob("*.yml")) + list(folder.glob("*.yaml"))):
         problems.extend(automatic_mutations(file.name, file.read_text(encoding="utf-8")))
     problems.extend(store_guard_findings())
-    if REPOSITORY == "hebi10/TalkSullae":
-        for filename in ("play-internal.yml", "play-promote-closed.yml"):
-            workflow = read(".github/workflows/" + filename)
-            for job, body in jobs(workflow).items():
-                if is_disabled(job_condition(body)):
-                    continue
-                if _publishing_command(body) and "inputs.ops01_release_approved == true" not in job_condition(body):
-                    problems.append("APPROVAL: " + filename + ": job " + job + " lacks explicit OPS-01 approval")
+    if REPOSITORY in {"hebi10/GalliPick", "hebi10/TalkSullae"}:
+        approved = re.compile(r"inputs[.]ops01_release_approved\s*==\s*true")
+        workflows = (("play-deploy.yml", "deploy"),) if REPOSITORY.endswith("GalliPick") else (
+            ("play-internal.yml", "internal-publish"),
+            ("play-promote-closed.yml", "closed-publish"),
+            ("play-closed.yml", "closed-publish"),
+        )
+        for filename, job in workflows:
+            source = read(".github/workflows/" + filename)
+            body = jobs(source).get(job)
+            if source is None or body is None:
+                problems.append("APPROVAL: " + filename + ": publisher job missing")
+                continue
+            if not any(approved.fullmatch(atom) for atom in _guaranteed_atoms(job_condition(body))):
+                problems.append("APPROVAL: " + filename + ": " + job + " lacks mandatory OPS-01 approval")
+    if REPOSITORY == "hebi10/HomeCrew":
+        source = read(".github/workflows/play-internal.yml")
+        release = jobs(source).get("release") if source else None
+        guard = ("Require full-project release authorization before any Play mutation")
+        if not release or guard not in release or not re.search(
+                r'if \[\[ "\$FINAL_RELEASE_APPROVAL" != "HOMECREW_FINAL_RELEASE_APPROVED" \]\]; then', release):
+            problems.append("APPROVAL: HomeCrew final release authorization gate missing")
+    if REPOSITORY == "hebi10/TripCanvas":
+        internal = read(".github/workflows/play-internal-release.yml") or ""
+        if internal.count("scripts/ops04/internal.py guard") < 2:
+            problems.append("PROVENANCE: OPS-04 requires guard in both verify and publish jobs")
     return problems
 
 
