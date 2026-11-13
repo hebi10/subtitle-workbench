@@ -88,45 +88,120 @@ def job_condition(body):
     return ""
 
 
+def _split_boolean(expr, op):
+    parts, depth, quote, start = [], 0, None, 0
+    for i, char in enumerate(expr):
+        if quote:
+            if char == quote and (i == 0 or expr[i - 1] != "\\"):
+                quote = None
+        elif char in ("'", '"'):
+            quote = char
+        elif char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+        elif depth == 0 and expr.startswith(op, i):
+            parts.append(expr[start:i].strip())
+            start = i + len(op)
+    parts.append(expr[start:].strip())
+    return parts
+
+
+def _unwrap(expr):
+    expr = expr.strip()
+    while expr.startswith("(") and expr.endswith(")"):
+        depth, quote, matches = 0, None, True
+        for i, char in enumerate(expr):
+            if quote:
+                if char == quote and (i == 0 or expr[i - 1] != "\\"):
+                    quote = None
+            elif char in ("'", '"'):
+                quote = char
+            elif char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+                if depth == 0 and i < len(expr) - 1:
+                    matches = False
+                    break
+        if not matches or depth != 0:
+            break
+        expr = expr[1:-1].strip()
+    return expr
+
+
+def _guaranteed_atoms(condition):
+    expr = _unwrap(condition.replace("$" + "{{", "").replace("}}", "").strip())
+    if not expr or expr.startswith("!") or re.match(r"^not\b", expr):
+        return set()
+    alternatives = _split_boolean(expr, "||")
+    if len(alternatives) > 1:
+        return set.intersection(*(_guaranteed_atoms(part) for part in alternatives))
+    conjuncts = _split_boolean(expr, "&&")
+    if len(conjuncts) > 1:
+        return set().union(*(_guaranteed_atoms(part) for part in conjuncts))
+    return {expr.replace('"', "'").strip()}
+
+
 def is_disabled(condition):
-    return re.match(r"^false(?:\s*&&|\s*$)", condition.strip()) is not None
+    return "false" in _guaranteed_atoms(condition)
 
 
 def is_manual_only(condition):
-    cond = condition.replace('"', "'").strip()
-    # A leading conjunctive manual gate dominates nested legacy push/dispatch ORs.
-    if cond.startswith("github.event_name == 'workflow_dispatch' &&"):
+    atoms = _guaranteed_atoms(condition)
+    return any(re.fullmatch(r"github\.event_name\s*==\s*'workflow_dispatch'", atom) for atom in atoms)
+
+
+def _publishing_command(body):
+    commands = "\n".join(line for line in body.splitlines()
+                         if not line.lstrip().startswith(("- name:", "name:", "#")))
+    if re.search(r"(?i)\bgh\s+release\s+create\b|softprops/action-gh-release|upload-google-play@", commands):
         return True
-    return ("github.event_name == 'workflow_dispatch'" in cond
-            and not re.search(r"(\|\||\bor\b)\s*\(?\s*github\.event_name", cond)
-            and not re.search(r"github\.event_name == '(push|workflow_run|issue_comment|pull_request)'", cond))
+    if "androidpublisher.googleapis.com" in commands and re.search(
+            r"(?i)\b(?:POST|PUT|PATCH)\b|:commit", commands):
+        return True
+    if "/dispatches" in commands and re.search(r"(?i)play|closed|store|publish|release", commands):
+        return True
+    for line in commands.splitlines():
+        match = re.search(r"\b(?:python(?:3(?:\.\d+)?)?|node|bash|sh)\s+([^\s;|]+)([^\n]*)", line)
+        if not match:
+            continue
+        script, args = match.group(1).lower(), match.group(2).lower()
+        if not re.search(r"publish[-_]?play|play[-_]?publish|play_publish|publisher\.py|listing_images\.py|store[_-]?refresh|promotion\.py|play[-_]?release|publish-play|play[-_]?store", script):
+            continue
+        if re.search(r"--check(?:-only)?\b|\b(?:check|verify|validate|download-bundled|test|dry-run)\b", args) and not re.search(
+                r"--(?:publish|apply|upload|r09-final)\b|\b(?:publish|deploy|promote|reconcile-alpha-draft)\b", args):
+            continue
+        if re.search(r"--(?:publish|apply|upload|r09-final)\b|\b(?:publish|deploy|promote|upload|apply|reconcile-alpha-draft)\b", args):
+            return True
+        if re.search(r"publish[_-]?play[_-]?store[_-]?refresh", script) and not args.strip():
+            return True
+    return False
 
 
 def automatic_mutations(filename, source):
     events = triggers(source) & AUTO
     if not events:
         return []
-    # Limit publish-job detection to Play/store and explicit GitHub APK release workflows.
-    # Web/Firebase/privacy/compatibility QA jobs named 'deploy' or 'release' are unrelated.
-    relevant_name = (re.search(r"play|store|closed|promote|alpha|listing|publisher", filename, re.I)
+    relevant_file = (re.search(r"play|store|closed|promote|alpha|listing|publisher", filename, re.I)
                      or filename in {"release.yml", "mobile-release.yml", "android-release.yml",
                                      "public-release.yml", "ui-r09-full-release.yml"})
-    if not relevant_name and "androidpublisher.googleapis.com" not in source:
-        return []
     issues = []
-    for name, body in jobs(source).items():
-        # Unsigned release smoke/compile is QA, not an Android Publisher mutation.
-        if name.endswith("-smoke") and "androidpublisher" not in body and not any(
-                token in body for token in ("publish_play", "play_publish", "--publish", "--apply")):
+    workflow_jobs = jobs(source)
+    for name, body in workflow_jobs.items():
+        explicit = _publishing_command(body)
+        possible = explicit or (relevant_file and MUTATOR.search(name) is not None
+                                and not name.endswith("-smoke"))
+        if not possible:
             continue
-        mutates = MUTATOR.search(name) is not None
-        dispatches_publisher = ("/dispatches" in body and
-                                re.search(r"play|closed|store|release", body, re.I))
-        if not mutates and not dispatches_publisher:
+        condition = job_condition(body)
+        if is_disabled(condition) or is_manual_only(condition):
             continue
-        cond = job_condition(body)
-        if is_disabled(cond) or is_manual_only(cond):
-            continue
+        need = re.search(r"(?m)^    needs:\s*([A-Za-z][\w-]*)\s*$", body)
+        if need and not re.search(r"\b(?:always|failure|cancelled)\s*\(", condition):
+            predecessor = workflow_jobs.get(need.group(1))
+            if predecessor is not None and is_disabled(job_condition(predecessor)):
+                continue
         issues.append(filename + ": job " + name + " may publish from automatic events "
                       + ",".join(sorted(events)))
     return issues
