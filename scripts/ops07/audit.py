@@ -423,6 +423,19 @@ def findings():
             if re.search(r"(?i)inputs\[(?:mode|deploy)\]\s*=\s*(?:deploy|initialize|publish|promote|apply|upload|true)\b", source):
                 problems.append("BUILD: Play publishing mode is forbidden in build-only dispatch")
             for body in jobs(source).values():
+                steps = _workflow_steps(body)
+                for step in steps:
+                    if not re.search(r"(?i)\bgh\s+api\b[^\n]*/dispatches\b", step):
+                        continue
+                    active_lines = [line.strip() for line in step.splitlines()
+                                    if line.lstrip().startswith(("args+=", "gh api", "gh workflow"))]
+                    mode_fields = []
+                    for line in active_lines:
+                        mode_fields.extend(re.findall(
+                            r"""(?:^|[\s(])(?:-f|-F|--field)\s+['"]?inputs\[mode\]=([^'"\s)]+)""",
+                            line))
+                    if mode_fields != ["build"]:
+                        problems.append("BUILD: API dispatch must pass exactly one literal build-only mode")
                 local_only = "\n".join(line for line in body.splitlines()
                                        if "/dispatches" not in line)
                 if _publishing_command(local_only):
