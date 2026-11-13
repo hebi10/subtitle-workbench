@@ -206,7 +206,7 @@ def _publishing_command(body):
     commands = "\n".join(line for line in body.splitlines()
                          if not line.lstrip().startswith(("- name:", "name:", "#")))
     commands = re.sub(r"\\\s*\n\s*", " ", commands)
-    commands = commands.replace(" && ", "\n").replace("; ", "\n").replace(" | ", "\n")
+    commands = re.sub(r"\s*(?:&&|\|\||;|\|)\s*", "\n", commands)
     if re.search(r"(?i)\bgh\s+release\s+create\b|softprops/action-gh-release|upload-google-play@", commands):
         return True
     if "androidpublisher.googleapis.com" in commands and re.search(
@@ -274,6 +274,7 @@ def automatic_mutations(filename, source):
 
 def _store_mutating_command(body):
     normalized = re.sub(r"\\\s*\n\s*", " ", body)
+    normalized = re.sub(r"\s*(?:&&|\|\||;)\s*", "\n", normalized)
     for line in normalized.splitlines():
         if line.lstrip().startswith(("- name:", "name:", "#")):
             continue
@@ -311,20 +312,32 @@ def _workflow_steps(body):
 
 
 def _step_condition(body):
-    match = re.search(r"(?m)^\s+if:\s*([^\n]+)", body)
+    match = re.search(r"(?m)^([ \t]+)(-[ \t]+)?if:[ \t]*([^\n]+)", body)
     if not match:
         return ""
-    return match.group(1).strip()
+    condition = match.group(3).strip().split(" #", 1)[0].strip()
+    if condition not in (">", ">-", ">+", "|", "|-", "|+"):
+        return condition
+    indent = len(match.group(1)) + len(match.group(2) or "")
+    parts = []
+    for line in body[match.end():].splitlines():
+        if not line.strip():
+            continue
+        if len(line) - len(line.lstrip()) <= indent:
+            break
+        parts.append(line.strip())
+    return " ".join(parts) if parts else "__unparsed_condition__"
 
 
 def _safe_store_step(guard_step, mutation_steps, body, filename):
     if re.search(r"(?m)^\s+continue-on-error\s*:\s*(?!false\s*$)[^\n]+", guard_step):
         return False
-    executable = re.search(r"(?m)^\s*(?:run:\s*)?python(?:3)?\s+scripts/ops06/store_gate\.py\s+apply(?:\s|$)",
-                           guard_step)
-    if not executable:
+    guard_command = r"(?m)^[ \t]*(?:-[ \t]+)?(?:run:[ \t]*)?python(?:3)?\s+scripts/ops06/store_gate\.py\s+apply"
+    if not re.search(guard_command + r"(?:\s|$)", guard_step):
         return False
-    if re.search(r"(?m)^\s*(?:run:\s*)?python(?:3)?\s+scripts/ops06/store_gate\.py\s+apply[^\n]*(?:\|\||;\s*true\b|\|\s*cat)", guard_step):
+    if re.search(guard_command + r"[^\n]*(?:\|\||;[ \t]*true\b|\|(?!\|))", guard_step):
+        return False
+    if re.search(r"(?m)^[ \t]*(?:run:[ \t]*)?set[ \t]+\+e\b", guard_step):
         return False
     guard_cond = _step_condition(guard_step)
     if not guard_cond:
@@ -472,13 +485,21 @@ def findings():
     if internal is not None:
         for stage in ("verify", "publish"):
             body = jobs(internal).get(stage)
-            guards = [step for step in _workflow_steps(body or "")
-                      if "scripts/ops04/internal.py guard" in step]
+            steps = _workflow_steps(body or "")
+            guard_command = r"(?m)^[ \t]*(?:-[ \t]+)?(?:run:[ \t]*)?python3\s+scripts/ops04/internal\.py\s+guard\b"
+            guards = [(index, step) for index, step in enumerate(steps)
+                      if re.search(guard_command, step)]
             if len(guards) != 1:
-                problems.append("PROVENANCE: OPS-04 " + stage + " requires a signed-source guard")
+                problems.append("PROVENANCE: OPS-04 " + stage + " requires an executable signed-source guard")
                 continue
-            if _step_condition(guards[0]) or re.search(r"(?m)^\s+continue-on-error\s*:", guards[0]):
+            index, guard = guards[0]
+            if (_step_condition(guard) or re.search(r"(?m)^\s+continue-on-error\s*:", guard)
+                    or re.search(guard_command + r"[^\n]*(?:\|\||;[ \t]*true\b|\|(?!\|))", guard)
+                    or re.search(r"(?m)^[ \t]*(?:run:[ \t]*)?set[ \t]+\+e\b", guard)):
                 problems.append("PROVENANCE: OPS-04 " + stage + " guard must run and stop on failure")
+            if any("actions/download-artifact@" in step or "google-github-actions/auth@" in step
+                   for step in steps[:index]):
+                problems.append("PROVENANCE: OPS-04 " + stage + " guard must precede artifact access")
     if REPOSITORY == "hebi10/TripCanvas":
         promote = jobs(read(".github/workflows/play-promote.yml")).get("promote")
         if not promote or "inputs.final_release_confirmed == true" not in _guaranteed_atoms(job_condition(promote)):
