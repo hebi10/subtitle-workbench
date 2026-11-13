@@ -260,7 +260,10 @@ def automatic_mutations(filename, source):
 def store_guard_findings():
     problems = []
     names = ("android-play-store-images.yml", "pushoffice-store-refresh-20261111.yml",
-             "play-listing-images.yml")
+             "play-listing-images.yml", "play-listing.yml", "store-01-images.yml",
+             "play-listing-ko-asset02.yml", "play-store-icon.yml", "store-icon-sync.yml",
+             "invitation-store-screenshots.yml", "play-store-01.yml",
+             "store02-latest-screenshots.yml")
     guard = "scripts/ops06/store_gate.py apply"
     for filename in names:
         source = read(".github/workflows/" + filename)
@@ -269,24 +272,33 @@ def store_guard_findings():
         for name, body in jobs(source).items():
             if is_disabled(job_condition(body)):
                 continue
-            if not (_publishing_command(body) or MUTATOR.search(name)):
+            if not (_publishing_command(body) or (MUTATOR.search(name)
+                    and re.search(r"(?i)play|store|listing|image|icon", body))):
                 continue
             if guard not in body:
                 problems.append("STORE_GUARD: " + filename + ": job " + name
                                 + " does not invoke separate store approval")
                 continue
-            guard_index = body.index(guard)
+            index = body.index(guard)
+            steps = list(re.finditer(r"(?m)^\s+- (?:name|run|uses):", body))
+            before = [step for step in steps if step.start() < index]
+            if not before:
+                problems.append("STORE_GUARD: " + filename + ": cannot locate required guard step")
+                continue
+            position = before[-1].start()
+            after = next((step.start() for step in steps if step.start() > index), len(body))
+            guard_step = body[position:after]
+            if re.search(r"(?m)^\s+if\s*:", guard_step) or re.search(
+                    r"(?m)^\s+continue-on-error\s*:\s*true", guard_step):
+                problems.append("STORE_OPTIONAL: " + filename + ": approval is optional or skipped")
             auth_index = body.find("google-github-actions/auth@")
-            if auth_index != -1 and auth_index < guard_index:
-                problems.append("STORE_ORDER: " + filename + ": job " + name
-                                + " authenticates Play before approval")
+            if auth_index != -1 and auth_index < index:
+                problems.append("STORE_ORDER: " + filename + ": Play authentication precedes approval")
             for match in re.finditer(
                 r"(?im)^\s*(?:-\s*)?(?:run:\s*)?(?:python(?:3)?|node)\s+\S+"
-                r"[^\n]*(?:--apply\b|--publish\b|--r09-final\b|\s+publish(?:\s|$))", body
-            ):
-                if match.start() < guard_index:
-                    problems.append("STORE_ORDER: " + filename + ": job " + name
-                                    + " can mutate Play before approval")
+                r"[^\n]*(?:--apply\b|--publish\b|--r09-final\b|\s+publish(?:\s|$))", body):
+                if match.start() < index:
+                    problems.append("STORE_ORDER: " + filename + ": Play mutation precedes approval")
                     break
     return problems
 
