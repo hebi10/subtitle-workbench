@@ -300,5 +300,26 @@ class ClosedPromotionRegressionTests(unittest.TestCase):
         self.assertTrue(any("CLOSED_BINARY" in issue for issue in issues), issues)
 
 
+
+class WorkflowDispatchBypassRegressionTests(unittest.TestCase):
+    def test_gh_workflow_run_play_publisher_is_automatic_mutation(self):
+        command = ("gh workflow run play-internal.yml --ref main "
+                   "-f mode=deploy -F ops01_release_approved=true")
+        source = publish_on("on:\n  push:", command)
+        self.assertTrue(audit.automatic_mutations("sync.yml", source))
+        self.assertTrue(audit._publishing_command(command))
+
+    def test_build_only_request_must_not_dispatch_play_publisher(self):
+        workflow = ("on:\n  workflow_dispatch:\njobs:\n  build:\n"
+                    "    runs-on: ubuntu-latest\n"
+                    "    steps:\n"
+                    "      - run: gh workflow run play-internal.yml --ref main -f mode=deploy\n")
+        with patch.object(audit, "read", side_effect=lambda p:
+                          workflow if p == ".github/workflows/release-build.yml"
+                          else None):
+            issues = audit.findings()
+        self.assertTrue(any("BUILD:" in issue for issue in issues), issues)
+
+
 if __name__ == "__main__":
     unittest.main()
