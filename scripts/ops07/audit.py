@@ -438,6 +438,13 @@ def findings():
                 problems.append("CLOSED: separate approved same-version promotion missing")
             if any(k in source for k in ("bundleRelease", "assembleRelease", "uploadType")):
                 problems.append("CLOSED: no binary upload/build permitted")
+            for body in jobs(source).values():
+                normalized = re.sub(r"\\\s*\n\s*", " ", body)
+                if re.search(
+                        r"(?im)\bpython(?:3(?:\.\d+)?)?\s+(?:(?:-[uBIESOqv]+|--unbuffered)\s+)*"
+                        r"[^\s;|]*publisher\.py\b[^\n]*\b(?:deploy|upload|initialize)\b[^\n]*--bundle\b",
+                        normalized):
+                    problems.append("CLOSED_BINARY: closed promotion may invoke a new AAB publisher")
     manual = read("AGENTS.md")
     if manual is not None and not all(k in manual for k in ("Release Batch", "Play")):
         problems.append("AGENTS: common release freeze and daily batch policy missing")
