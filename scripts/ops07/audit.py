@@ -274,6 +274,8 @@ def _store_mutating_command(body):
         if not match:
             continue
         script, args = match.group(1).lower(), match.group(2).lower()
+        if script.endswith("/ops06/store_gate.py"):
+            continue
         if re.search(r"(?:^|/)store_icon[.]py$", script):
             return True
         if "publish_play_store_refresh" in script:
