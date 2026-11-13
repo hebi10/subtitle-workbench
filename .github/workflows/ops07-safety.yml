@@ -1,9 +1,6 @@
 name: OPS-07 integrated offline Play release policy QA
 on:
   pull_request:
-    paths:
-      - 'scripts/ops07/**'
-      - '.github/workflows/ops07-safety.yml'
   workflow_dispatch:
 permissions:
   contents: read
