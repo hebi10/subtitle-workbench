@@ -207,6 +207,40 @@ def automatic_mutations(filename, source):
     return issues
 
 
+def store_guard_findings():
+    problems = []
+    names = ("android-play-store-images.yml", "pushoffice-store-refresh-20261111.yml",
+             "play-listing-images.yml")
+    guard = "scripts/ops06/store_gate.py apply"
+    for filename in names:
+        source = read(".github/workflows/" + filename)
+        if source is None:
+            continue
+        for name, body in jobs(source).items():
+            if is_disabled(job_condition(body)):
+                continue
+            if not (_publishing_command(body) or MUTATOR.search(name)):
+                continue
+            if guard not in body:
+                problems.append("STORE_GUARD: " + filename + ": job " + name
+                                + " does not invoke separate store approval")
+                continue
+            guard_index = body.index(guard)
+            auth_index = body.find("google-github-actions/auth@")
+            if auth_index != -1 and auth_index < guard_index:
+                problems.append("STORE_ORDER: " + filename + ": job " + name
+                                + " authenticates Play before approval")
+            for match in re.finditer(
+                r"(?im)^\s*(?:-\s*)?(?:run:\s*)?(?:python(?:3)?|node)\s+\S+"
+                r"[^\n]*(?:--apply\b|--publish\b|--r09-final\b|\s+publish(?:\s|$))", body
+            ):
+                if match.start() < guard_index:
+                    problems.append("STORE_ORDER: " + filename + ": job " + name
+                                    + " can mutate Play before approval")
+                    break
+    return problems
+
+
 def findings():
     problems = []
     for path, label in REQUIRED.items():
@@ -252,6 +286,7 @@ def findings():
     folder = ROOT / ".github/workflows"
     for file in sorted(list(folder.glob("*.yml")) + list(folder.glob("*.yaml"))):
         problems.extend(automatic_mutations(file.name, file.read_text(encoding="utf-8")))
+    problems.extend(store_guard_findings())
     return problems
 
 
