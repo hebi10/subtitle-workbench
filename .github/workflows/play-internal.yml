@@ -1,12 +1,13 @@
 name: Play internal release
 
 on:
-  workflow_run:
-    workflows: ["Verify web and Android"]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
     inputs:
+      ops01_release_approved:
+        description: 'OPS-01 manual Play publish approval after final QA'
+        required: true
+        type: boolean
+        default: false
       mode:
         description: 'check, audit (read-only), build, deploy, or promote existing internal version'
         required: true
@@ -48,6 +49,13 @@ jobs:
       target: ${{ steps.route.outputs.target }}
       promotion_code: ${{ steps.route.outputs.promotion_code }}
     steps:
+      - name: OPS-01 enforce manual Play release approval
+        if: inputs.mode == 'deploy' || inputs.mode == 'promote'
+        env:
+          OPS01_RELEASE_APPROVED: ${{ inputs.ops01_release_approved }}
+        run: |
+          test "$GITHUB_EVENT_NAME" = workflow_dispatch
+          test "$OPS01_RELEASE_APPROVED" = true
       - uses: actions/checkout@v4
         with:
           ref: main
