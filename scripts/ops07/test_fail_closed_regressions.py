@@ -171,5 +171,66 @@ class FailClosedRegressionTests(unittest.TestCase):
 
 
 
+
+class SharedHardeningRegressionTests(unittest.TestCase):
+    def test_if_first_and_folded_step_conditions(self):
+        self.assertEqual(audit._step_condition(
+            "      - if: false\n        run: echo skipped\n"), "false")
+        self.assertEqual(audit._step_condition(
+            "      - if: >-\n          always()\n        run: echo unsafe\n"),
+            "always()")
+        self.assertEqual(audit._step_condition(
+            "      - name: release\n        if: >-\n          inputs.mode == 'publish'\n"
+            "        run: echo release\n"), "inputs.mode == 'publish'")
+
+    def test_chained_store_mutation_requires_approval(self):
+        workflow = store_workflow(guard=False).replace(
+            "python3 scripts/play/listing_images.py --mode upload",
+            "python3 scripts/ops07/preflight.py check&&python3 scripts/play/listing_images.py --mode upload")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            folder = root / ".github/workflows"
+            folder.mkdir(parents=True)
+            (folder / "renamed-store.yml").write_text(workflow, encoding="utf-8")
+            with patch.object(audit, "ROOT", root):
+                issues = audit.store_guard_findings()
+        self.assertTrue(any("STORE_GUARD" in issue for issue in issues), issues)
+
+    def test_run_first_approval_and_masked_pipeline(self):
+        valid = store_workflow().replace(
+            "      - name: Verify immutable approved batch\n"
+            "        run: python3 scripts/ops06/store_gate.py apply\n",
+            "      - run: python3 scripts/ops06/store_gate.py apply\n")
+        bad = store_workflow(guard_run="python3 scripts/ops06/store_gate.py apply | tee approval.log")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            folder = root / ".github/workflows"
+            folder.mkdir(parents=True)
+            filename = folder / "play-listing-images.yml"
+            with patch.object(audit, "ROOT", root):
+                filename.write_text(valid, encoding="utf-8")
+                self.assertEqual(audit.store_guard_findings(), [])
+                filename.write_text(bad, encoding="utf-8")
+                issues = audit.store_guard_findings()
+        self.assertTrue(any("STORE_OPTIONAL" in issue for issue in issues), issues)
+
+    def test_provenance_guards_must_not_ignore_failed_checks(self):
+        workflow = ("on:\n  workflow_dispatch:\njobs:\n"
+                    "  verify:\n    steps:\n"
+                    "      - run: python3 scripts/ops04/internal.py guard || true\n"
+                    "  publish:\n    steps:\n"
+                    "      - run: python3 scripts/ops04/internal.py guard || true\n")
+        with patch.object(audit, "read", side_effect=lambda path:
+                          workflow if path == ".github/workflows/play-internal-release.yml"
+                          else None):
+            issues = audit.findings()
+        self.assertTrue(any("PROVENANCE" in issue for issue in issues), issues)
+
+    def test_compound_automatic_publisher_is_detected(self):
+        workflow = publish_on("on:\n  push:",
+            "python3 scripts/play/preflight.py auth&&python3 scripts/play/publisher.py deploy")
+        self.assertTrue(audit.automatic_mutations("custom.yml", workflow))
+
+
 if __name__ == "__main__":
     unittest.main()
