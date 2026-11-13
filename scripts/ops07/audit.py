@@ -93,7 +93,10 @@ def is_disabled(condition):
 
 
 def is_manual_only(condition):
-    cond = condition.replace('"', "'")
+    cond = condition.replace('"', "'").strip()
+    # A leading conjunctive manual gate dominates nested legacy push/dispatch ORs.
+    if cond.startswith("github.event_name == 'workflow_dispatch' &&"):
+        return True
     return ("github.event_name == 'workflow_dispatch'" in cond
             and not re.search(r"(\|\||\bor\b)\s*\(?\s*github\.event_name", cond)
             and not re.search(r"github\.event_name == '(push|workflow_run|issue_comment|pull_request)'", cond))
@@ -112,6 +115,10 @@ def automatic_mutations(filename, source):
         return []
     issues = []
     for name, body in jobs(source).items():
+        # Unsigned release smoke/compile is QA, not an Android Publisher mutation.
+        if name.endswith("-smoke") and "androidpublisher" not in body and not any(
+                token in body for token in ("publish_play", "play_publish", "--publish", "--apply")):
+            continue
         mutates = MUTATOR.search(name) is not None
         dispatches_publisher = ("/dispatches" in body and
                                 re.search(r"play|closed|store|release", body, re.I))
