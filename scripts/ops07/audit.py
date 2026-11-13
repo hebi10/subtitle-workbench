@@ -219,7 +219,7 @@ def _publishing_command(body):
             continue
         script, args = match.group(1).lower(), match.group(2).lower()
         # Existing publishers mutate even without an explicit operation flag.
-        if re.search(r"(?:store_icon|publish-mobile-play|publish_mobile_play)[.]py$", script):
+        if re.search(r"(?:^|/)(?:store_icon|publish-mobile-play|publish_mobile_play)[.]py$", script):
             return True
         if not re.search(script_names, script):
             continue
@@ -274,9 +274,9 @@ def _store_mutating_command(body):
         if not match:
             continue
         script, args = match.group(1).lower(), match.group(2).lower()
-        if re.search(r"store_icon\.py|store-icon\.py", script):
+        if re.search(r"(?:^|/)store_icon[.]py$", script):
             return True
-        if re.search(r"publish_play_store_refresh|store_refresh_.*\.py", script):
+        if "publish_play_store_refresh" in script:
             return True
         if not re.search(r"listing|store|screenshot|play_images\.py|sync-play-store-icon|play-icon", script):
             continue
