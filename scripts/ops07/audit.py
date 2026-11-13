@@ -89,6 +89,14 @@ def jobs(source):
     indentation = min((depth for depth, match in candidates if match is not None), default=None)
     if indentation is None:
         return {"__unparsed_jobs__": source}
+    # Mixed block and flow job mappings must be rejected, not attached to prior jobs.
+    for line in children:
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        depth = len(line) - len(line.lstrip())
+        if depth == indentation and not re.fullmatch(
+                r"""(['"]?)[A-Za-z][\w-]*\1\s*:\s*(?:#.*)?""", line.strip()):
+            return {"__unparsed_jobs__": source}
     result, name, buffer = {}, None, []
     for line in children:
         depth = len(line) - len(line.lstrip())
@@ -242,6 +250,8 @@ def automatic_mutations(filename, source):
                                      "public-release.yml", "ui-r09-full-release.yml"})
     issues = []
     workflow_jobs = jobs(source)
+    if "__unparsed_jobs__" in workflow_jobs:
+        return [filename + ": unsupported job mapping may contain Play publisher"]
     for name, body in workflow_jobs.items():
         explicit = _publishing_command(body)
         possible = explicit or (relevant_file and MUTATOR.search(name) is not None
@@ -290,7 +300,7 @@ def _store_mutating_command(body):
 
 
 def _workflow_steps(body):
-    found = list(re.finditer(r"(?m)^( +)- (?:name|uses|run):", body))
+    found = list(re.finditer(r"(?m)^( +)- [A-Za-z][\w-]*:", body))
     if not found:
         return []
     depth = min(len(item.group(1)) for item in found)
