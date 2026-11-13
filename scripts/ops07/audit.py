@@ -218,6 +218,9 @@ def _publishing_command(body):
         if not match:
             continue
         script, args = match.group(1).lower(), match.group(2).lower()
+        # Existing publishers mutate even without an explicit operation flag.
+        if re.search(r"(?:store_icon|publish-mobile-play|publish_mobile_play)[.]py$", script):
+            return True
         if not re.search(script_names, script):
             continue
         mutating = re.search(r"--(?:publish|apply|upload|r09-final)\b"
