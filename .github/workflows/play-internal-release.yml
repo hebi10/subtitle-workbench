@@ -1,0 +1,186 @@
+name: OPS-04 verified AAB internal testing
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'check validates an existing AAB, publish updates only the existing internal track'
+        type: choice
+        required: true
+        default: check
+        options: [check, publish]
+      expected_main_sha:
+        description: 'Approved exact current main SHA (40 characters)'
+        type: string
+        required: true
+      build_run_id:
+        description: 'Successful downstream signed-AAB build workflow run ID, not OPS-03 request ID'
+        type: string
+        required: true
+      artifact_name:
+        description: 'Exact signed-AAB artifact name in that build run'
+        type: string
+        required: true
+      aab_sha256:
+        description: 'SHA-256 of the approved AAB bytes'
+        type: string
+        required: true
+      version_code:
+        description: 'Exactly the signed AAB versionCode'
+        type: string
+        required: true
+      version_name:
+        description: 'Exactly the signed AAB versionName'
+        type: string
+        required: true
+      batch_id:
+        description: 'Asia/Seoul batch ID (YYYY-MM-DD-app)'
+        type: string
+        required: true
+      final_release_approved:
+        description: 'Approve this separate Play internal upload only after all QA'
+        type: boolean
+        default: false
+        required: true
+      approval_phrase:
+        description: 'For publish only, enter PUBLISH_VERIFIED_INTERNAL_AAB'
+        type: string
+        required: false
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: play-com-haebi-subtitle
+  cancel-in-progress: false
+env:
+  EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+  BUILD_RUN_ID: ${{ inputs.build_run_id }}
+  ARTIFACT_NAME: ${{ inputs.artifact_name }}
+  AAB_SHA256: ${{ inputs.aab_sha256 }}
+  VERSION_CODE: ${{ inputs.version_code }}
+  VERSION_NAME: ${{ inputs.version_name }}
+  BATCH_ID: ${{ inputs.batch_id }}
+  DEPLOY_MODE: ${{ inputs.mode }}
+  FINAL_RELEASE_APPROVED: ${{ inputs.final_release_approved }}
+  APPROVAL_PHRASE: ${{ inputs.approval_phrase }}
+  APP_PACKAGE: com.haebi.subtitle
+  BUILD_WORKFLOW_FILE: .github/workflows/play-internal.yml
+  PINNED_UPLOAD_CERT: ${{ secrets.ANDROID_UPLOAD_CERT_SHA256 }}
+  ANDROID_UPLOAD_CERT_SHA256: ${{ secrets.ANDROID_UPLOAD_CERT_SHA256 }}
+jobs:
+  verify:
+    if: github.repository == 'hebi10/SubtitleWorkbench' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.verify.outputs.aab }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify current main, explicit authorization, source run and artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ops04/internal.py guard
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.build_run_id }}
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+          path: ops04-input
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Download pinned bundletool
+        run: |
+          curl --fail --silent --show-error --location --retry 2 https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar --output "$RUNNER_TEMP/bundletool.jar"
+          printf '%s  %s\n' a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29 "$RUNNER_TEMP/bundletool.jar" | sha256sum --check
+      - name: Independently verify AAB identity, signer and source digest
+        id: verify
+        env:
+          BUNDLETOOL_JAR: ${{ runner.temp }}/bundletool.jar
+        run: python3 scripts/ops04/internal.py verify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ops04-subtitle-verified-${{ github.run_id }}
+          path: ops04-verified/verified.json
+          retention-days: 30
+          if-no-files-found: error
+  publish:
+    needs: verify
+    if: inputs.mode == 'publish' && needs.verify.result == 'success'
+    environment: google-play
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Revalidate approval and source run immediately before release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ops04/internal.py guard
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.build_run_id }}
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+          path: ops04-input
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Retrieve signed AAB validation utility
+        run: |
+          curl --fail --silent --show-error --location --retry 2 https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar --output "$RUNNER_TEMP/bundletool.jar"
+          printf '%s  %s\n' a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29 "$RUNNER_TEMP/bundletool.jar" | sha256sum --check
+      - name: Verify identical signer, package and AAB SHA-256 again
+        id: verified
+        env:
+          BUNDLETOOL_JAR: ${{ runner.temp }}/bundletool.jar
+        run: python3 scripts/ops04/internal.py verify
+      - name: Require existing app-scoped Play WIF
+        env:
+          PROVIDER: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
+          ACCOUNT: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$PROVIDER"
+          test -n "$ACCOUNT"
+      - uses: google-github-actions/auth@v3
+        id: auth
+        with:
+          workload_identity_provider: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+      - name: Verify Play app has a registered internal binary (read only)
+        id: ready
+        env:
+          PLAY_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: python3 scripts/release/publisher.py --report ops04-verified/play-readiness.json allocate
+      - name: Publish exactly the downloaded AAB into internal only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_APPROVAL: verified
+          PLAY_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          VERIFIED_AAB: ${{ steps.verified.outputs.aab }}
+        run: |
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)" = "$EXPECTED_MAIN_SHA"
+          test "$FINAL_RELEASE_APPROVED" = true
+          test "$APPROVAL_PHRASE" = PUBLISH_VERIFIED_INTERNAL_AAB
+          python3 scripts/release/publisher.py --report ops04-verified/play-release.json deploy --bundle "$VERIFIED_AAB" --version-code "$VERSION_CODE" --status completed
+          echo 'Play API accepted and track readback completed; Console review and tester installation remain separate.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve sanitized publisher receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ops04-subtitle-publish-${{ github.run_id }}
+          path: ops04-verified/*.json
+          retention-days: 30
+          if-no-files-found: warn
