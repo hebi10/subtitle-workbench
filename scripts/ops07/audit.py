@@ -206,6 +206,7 @@ def _publishing_command(body):
     commands = "\n".join(line for line in body.splitlines()
                          if not line.lstrip().startswith(("- name:", "name:", "#")))
     commands = re.sub(r"\\\s*\n\s*", " ", commands)
+    commands = commands.replace(" && ", "\n").replace("; ", "\n").replace(" | ", "\n")
     if re.search(r"(?i)\bgh\s+release\s+create\b|softprops/action-gh-release|upload-google-play@", commands):
         return True
     if "androidpublisher.googleapis.com" in commands and re.search(
@@ -227,7 +228,7 @@ def _publishing_command(body):
             continue
         script, args = match.group(1).lower(), match.group(2).lower()
         # Existing publishers mutate even without an explicit operation flag.
-        if re.search(r"(?:^|/)(?:store_icon|publish-mobile-play|publish_mobile_play)[.]py$", script):
+        if re.search(r"(?:^|/)(?:store_icon|images_only|publish-mobile-play|publish_mobile_play)[.]py$", script):
             return True
         if not re.search(script_names, script):
             continue
@@ -286,7 +287,7 @@ def _store_mutating_command(body):
         script, args = match.group(1).lower(), match.group(2).lower()
         if script.endswith("/ops06/store_gate.py"):
             continue
-        if re.search(r"(?:^|/)store_icon[.]py$", script):
+        if re.search(r"(?:^|/)(?:store_icon|images_only)[.]py$", script):
             return True
         if "publish_play_store_refresh" in script:
             return True
