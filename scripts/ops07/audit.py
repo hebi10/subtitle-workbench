@@ -317,8 +317,14 @@ def findings():
         if "github.ref" not in source and "GITHUB_REF" not in source:
             problems.append("SOURCE: " + file + " missing main ref gate")
         if file == "release-build.yml":
-            if "inputs[mode]=deploy" in source or "inputs[deploy]=true" in source:
-                problems.append("BUILD: Play deployment must never run in release-build.yml")
+            if re.search(r"(?i)inputs\[(?:mode|deploy)\]\s*=\s*(?:deploy|initialize|publish|promote|apply|upload|true)\b", source):
+                problems.append("BUILD: Play publishing mode is forbidden in build-only dispatch")
+            for body in jobs(source).values():
+                local_only = "\n".join(line for line in body.splitlines()
+                                       if "/dispatches" not in line)
+                if _publishing_command(local_only):
+                    problems.append("BUILD: build-only workflow contains a direct Play mutation")
+                    break
         elif file == "play-internal-release.yml":
             if not all(k in source for k in ("PUBLISH_VERIFIED_INTERNAL_AAB",
                                              "ops04/internal.py verify", "inputs.mode == 'publish'")):
@@ -349,6 +355,14 @@ def findings():
     for file in sorted(list(folder.glob("*.yml")) + list(folder.glob("*.yaml"))):
         problems.extend(automatic_mutations(file.name, file.read_text(encoding="utf-8")))
     problems.extend(store_guard_findings())
+    if REPOSITORY == "hebi10/TalkSullae":
+        for filename in ("play-internal.yml", "play-promote-closed.yml"):
+            workflow = read(".github/workflows/" + filename)
+            for job, body in jobs(workflow).items():
+                if is_disabled(job_condition(body)):
+                    continue
+                if _publishing_command(body) and "inputs.ops01_release_approved == true" not in job_condition(body):
+                    problems.append("APPROVAL: " + filename + ": job " + job + " lacks explicit OPS-01 approval")
     return problems
 
 
