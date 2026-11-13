@@ -258,49 +258,107 @@ def automatic_mutations(filename, source):
     return issues
 
 
+def _store_mutating_command(body):
+    normalized = re.sub(r"\\\s*\n\s*", " ", body)
+    for line in normalized.splitlines():
+        if line.lstrip().startswith(("- name:", "name:", "#")):
+            continue
+        if re.search(r"(?i)androidpublisher\.googleapis\.com", line) and re.search(
+                r"(?i)(?:/images|/listings/|:commit)\b", line) and re.search(
+                r"(?i)\b(?:POST|PUT|PATCH|DELETE)\b", line):
+            return True
+        match = re.search(r"\b(?:python(?:3(?:\.\d+)?)?|node)\s+([^\s;|]+)([^\n]*)", line)
+        if not match:
+            continue
+        script, args = match.group(1).lower(), match.group(2).lower()
+        if re.search(r"store_icon\.py|store-icon\.py", script):
+            return True
+        if re.search(r"publish_play_store_refresh|store_refresh_.*\.py", script):
+            return True
+        if not re.search(r"listing|store|screenshot|play_images\.py|sync-play-store-icon|play-icon", script):
+            continue
+        if re.search(r"--(?:apply|publish|upload|r09-final)\b"
+                     r"|--mode\s*(?:=|\s)\s*(?:apply|upload|publish)\b"
+                     r"|\b(?:apply|publish|upload)\b", args):
+            return True
+    return False
+
+
+def _workflow_steps(body):
+    found = list(re.finditer(r"(?m)^( +)- (?:name|uses|run):", body))
+    if not found:
+        return []
+    depth = min(len(item.group(1)) for item in found)
+    roots = [item for item in found if len(item.group(1)) == depth]
+    return [body[item.start(): (roots[i + 1].start() if i + 1 < len(roots) else len(body))]
+            for i, item in enumerate(roots)]
+
+
+def _step_condition(body):
+    match = re.search(r"(?m)^\s+if:\s*([^\n]+)", body)
+    if not match:
+        return ""
+    return match.group(1).strip().strip("'\"")
+
+
+def _safe_store_step(guard_step, mutation_steps, body, filename):
+    if re.search(r"(?m)^\s+continue-on-error\s*:\s*(?!false\s*$)[^\n]+", guard_step):
+        return False
+    executable = re.search(r"(?m)^\s*(?:run:\s*)?python(?:3)?\s+scripts/ops06/store_gate\.py\s+apply(?:\s|$)",
+                           guard_step)
+    if not executable:
+        return False
+    if re.search(r"(?m)^\s*(?:run:\s*)?python(?:3)?\s+scripts/ops06/store_gate\.py\s+apply[^\n]*(?:\|\||;\s*true\b|\|\s*cat)", guard_step):
+        return False
+    guard_cond = _step_condition(guard_step)
+    if not guard_cond:
+        return True
+    if all(_step_condition(step) == guard_cond for step in mutation_steps):
+        return True
+    if (filename == "store-icon-sync.yml" and guard_cond == "inputs.apply == true"
+            and "APPLY_MANUAL:" in body and "inputs.apply" in body
+            and re.search(r'if \[\[ "\$APPLY_MANUAL" == "true" \]\]; then', body)):
+        return True
+    return False
+
+
 def store_guard_findings():
     problems = []
-    names = ("android-play-store-images.yml", "pushoffice-store-refresh-20261111.yml",
+    folder = ROOT / ".github/workflows"
+    known = {"android-play-store-images.yml", "pushoffice-store-refresh-20261111.yml",
              "play-listing-images.yml", "play-listing.yml", "store-01-images.yml",
              "play-listing-ko-asset02.yml", "play-store-icon.yml", "store-icon-sync.yml",
              "invitation-store-screenshots.yml", "play-store-01.yml",
-             "store02-latest-screenshots.yml")
-    guard = "scripts/ops06/store_gate.py apply"
-    for filename in names:
+             "store02-latest-screenshots.yml"}
+    discovered = {path.name for glob in ("*.yml", "*.yaml") for path in folder.glob(glob)}
+    for filename in sorted(known | discovered):
         source = read(".github/workflows/" + filename)
         if source is None:
             continue
         for name, body in jobs(source).items():
-            if is_disabled(job_condition(body)):
+            if is_disabled(job_condition(body)) or not _store_mutating_command(body):
                 continue
-            if not (_publishing_command(body) or (MUTATOR.search(name)
-                    and re.search(r"(?i)play|store|listing|image|icon", body))):
-                continue
-            if guard not in body:
+            steps = _workflow_steps(body)
+            mutations = [i for i, step in enumerate(steps) if _store_mutating_command(step)]
+            guards = [i for i, step in enumerate(steps) if "scripts/ops06/store_gate.py apply" in step]
+            if not guards:
                 problems.append("STORE_GUARD: " + filename + ": job " + name
-                                + " does not invoke separate store approval")
+                                + " does not enforce separate store approval")
                 continue
-            index = body.index(guard)
-            steps = list(re.finditer(r"(?m)^\s+- (?:name|run|uses):", body))
-            before = [step for step in steps if step.start() < index]
-            if not before:
-                problems.append("STORE_GUARD: " + filename + ": cannot locate required guard step")
+            if len(guards) != 1 or not mutations:
+                problems.append("STORE_GUARD: " + filename + ": cannot identify unique approval and publishing steps")
                 continue
-            position = before[-1].start()
-            after = next((step.start() for step in steps if step.start() > index), len(body))
-            guard_step = body[position:after]
-            if re.search(r"(?m)^\s+if\s*:", guard_step) or re.search(
-                    r"(?m)^\s+continue-on-error\s*:\s*true", guard_step):
-                problems.append("STORE_OPTIONAL: " + filename + ": approval is optional or skipped")
-            auth_index = body.find("google-github-actions/auth@")
-            if auth_index != -1 and auth_index < index:
+            index = guards[0]
+            guard = steps[index]
+            if not _safe_store_step(guard, [steps[i] for i in mutations], body, filename):
+                problems.append("STORE_OPTIONAL: " + filename + ": approval is optional, ignored or not executable")
+            if any(i < index for i in mutations):
+                problems.append("STORE_ORDER: " + filename + ": publication precedes approval")
+            if any("google-github-actions/auth@" in step for step in steps[:index]):
                 problems.append("STORE_ORDER: " + filename + ": Play authentication precedes approval")
-            for match in re.finditer(
-                r"(?im)^\s*(?:-\s*)?(?:run:\s*)?(?:python(?:3)?|node)\s+\S+"
-                r"[^\n]*(?:--apply\b|--publish\b|--r09-final\b|\s+publish(?:\s|$))", body):
-                if match.start() < index:
-                    problems.append("STORE_ORDER: " + filename + ": Play mutation precedes approval")
-                    break
+            if any(_publishing_command(step) and ("androidpublisher.googleapis.com" in step
+                    or _store_mutating_command(step)) for step in steps[:index]):
+                problems.append("STORE_ORDER: " + filename + ": Play mutation precedes approval")
     return problems
 
 
