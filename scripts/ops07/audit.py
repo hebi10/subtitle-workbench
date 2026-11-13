@@ -415,7 +415,10 @@ def findings():
             problems.append("GATE: " + path + " has missing approval/hash/review safeguards")
     folder = ROOT / ".github/workflows"
     for file in sorted(list(folder.glob("*.yml")) + list(folder.glob("*.yaml"))):
-        problems.extend(automatic_mutations(file.name, file.read_text(encoding="utf-8")))
+        workflow_source = file.read_text(encoding="utf-8")
+        if "__unparsed_jobs__" in jobs(workflow_source):
+            problems.append("UNPARSED_JOBS: " + file.name + " has unsupported job syntax")
+        problems.extend(automatic_mutations(file.name, workflow_source))
     problems.extend(store_guard_findings())
     if REPOSITORY in {"hebi10/GalliPick", "hebi10/TalkSullae"}:
         approved = re.compile(r"inputs[.]ops01_release_approved\s*==\s*true")
