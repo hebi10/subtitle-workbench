@@ -1,0 +1,25 @@
+name: OPS-05 offline closed promotion safety QA
+on:
+  pull_request:
+    paths:
+      - 'scripts/ops05/**'
+      - '.github/workflows/play-closed-release.yml'
+      - '.github/workflows/ops05-safety.yml'
+permissions:
+  contents: read
+jobs:
+  safety:
+    name: No-upload Play promotion safety tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify Python syntax, offline authorization and Play-state invariants
+        run: |
+          python3 -m py_compile scripts/ops05/promotion.py scripts/ops05/test_promotion.py
+          python3 -m unittest discover -s scripts/ops05 -p 'test_*.py' -v
