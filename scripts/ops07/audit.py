@@ -196,24 +196,33 @@ def is_manual_only(condition):
 def _publishing_command(body):
     commands = "\n".join(line for line in body.splitlines()
                          if not line.lstrip().startswith(("- name:", "name:", "#")))
+    commands = re.sub(r"\\\s*\n\s*", " ", commands)
     if re.search(r"(?i)\bgh\s+release\s+create\b|softprops/action-gh-release|upload-google-play@", commands):
         return True
     if "androidpublisher.googleapis.com" in commands and re.search(
             r"(?i)\b(?:POST|PUT|PATCH)\b|:commit", commands):
         return True
-    if "/dispatches" in commands and re.search(r"(?i)play|closed|store|publish|release", commands):
+    dispatched = re.findall(r"(?i)actions/workflows/([A-Za-z0-9_.-]+)/dispatches", commands)
+    if any(re.search(r"(?i)play|closed|store|publish|release", name) for name in dispatched):
         return True
+    if "/dispatches" in commands and not dispatched:
+        return True
+    script_names = (r"publish[-_]?play|play[-_]?publish|play_publish|publisher\.py"
+                    r"|listing(?:_images|_ko)?\.py|store[_-]?refresh|promotion\.py"
+                    r"|play[-_]?release|publish-play|play[-_]?store"
+                    r"|play_internal\.py|play_closed\.py|promote_internal\.py"
+                    r"|play_images\.py|store_icon\.py")
     for line in commands.splitlines():
         match = re.search(r"\b(?:python(?:3(?:\.\d+)?)?|node|bash|sh)\s+([^\s;|]+)([^\n]*)", line)
         if not match:
             continue
         script, args = match.group(1).lower(), match.group(2).lower()
-        if not re.search(r"publish[-_]?play|play[-_]?publish|play_publish|publisher\.py|listing_images\.py|store[_-]?refresh|promotion\.py|play[-_]?release|publish-play|play[-_]?store", script):
+        if not re.search(script_names, script):
             continue
-        if re.search(r"--check(?:-only)?\b|\b(?:check|verify|validate|download-bundled|test|dry-run)\b", args) and not re.search(
-                r"--(?:publish|apply|upload|r09-final)\b|\b(?:publish|deploy|promote|reconcile-alpha-draft)\b", args):
-            continue
-        if re.search(r"--(?:publish|apply|upload|r09-final)\b|\b(?:publish|deploy|promote|upload|apply|reconcile-alpha-draft)\b", args):
+        mutating = re.search(r"--(?:publish|apply|upload|r09-final)\b"
+                             r"|\b(?:publish|deploy|promote|upload|apply|initialize|reconcile-alpha-draft)\b"
+                             r"|--mode\s*(?:=|\s)\s*(?:apply|upload|initialize|deploy|publish)\b", args)
+        if mutating:
             return True
         if re.search(r"publish[_-]?play[_-]?store[_-]?refresh", script) and not args.strip():
             return True
@@ -221,7 +230,7 @@ def _publishing_command(body):
 
 
 def automatic_mutations(filename, source):
-    events = triggers(source) & AUTO
+    events = triggers(source) - {"workflow_dispatch"}
     if not events:
         return []
     relevant_file = (re.search(r"play|store|closed|promote|alpha|listing|publisher", filename, re.I)
