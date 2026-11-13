@@ -97,6 +97,79 @@ class FailClosedRegressionTests(unittest.TestCase):
         self.assertIn(predicate, audit._guaranteed_atoms(safe))
         self.assertNotIn(predicate, audit._guaranteed_atoms(unsafe))
 
+    def test_chained_publish_scripts_and_image_only_upload(self):
+        for script in (
+            "python3 scripts/play/preflight.py auth && python3 scripts/play/publisher.py deploy",
+            "python3 scripts/play/preflight.py auth; python3 scripts/release/play_closed.py deploy",
+            "python3 scripts/play/images_only.py --track internal",
+        ):
+            with self.subTest(script=script):
+                self.assertTrue(audit.automatic_mutations(
+                    "custom.yml", publish_on("on:\n  push:", script)))
+
+    def test_id_first_upload_before_approval_is_blocked(self):
+        before = ("      - id: early_upload\n"
+                  "        run: python3 scripts/play/listing_images.py --mode upload\n")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            folder = root / ".github/workflows"
+            folder.mkdir(parents=True)
+            (folder / "renamed-store.yml").write_text(
+                store_workflow(before_guard=before), encoding="utf-8")
+            with patch.object(audit, "ROOT", root):
+                issues = audit.store_guard_findings()
+        self.assertTrue(any("STORE_ORDER" in issue for issue in issues), issues)
+
+    def test_downstream_always_cannot_bypass_approval_failure(self):
+        source = store_workflow().replace(
+            "      - run: python3 scripts/play/listing_images.py --mode upload",
+            "      - name: publish regardless\n"
+            "        if: always()\n"
+            "        run: python3 scripts/play/listing_images.py --mode upload")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            folder = root / ".github/workflows"
+            folder.mkdir(parents=True)
+            (folder / "renamed-assets.yml").write_text(source, encoding="utf-8")
+            with patch.object(audit, "ROOT", root):
+                issues = audit.store_guard_findings()
+        self.assertTrue(any("STORE_BYPASS" in issue for issue in issues), issues)
+
+    def test_approval_is_not_itself_a_play_mutation(self):
+        source = ("on:\n  workflow_dispatch:\njobs:\n  upload:\n"
+                  "    if: github.event_name == 'workflow_dispatch'\n"
+                  "    runs-on: ubuntu-latest\n    steps:\n"
+                  "      - name: authorize either approved listing mode\n"
+                  "        if: needs.source.outputs.mode == 'listing' || needs.source.outputs.mode == 'reconcile'\n"
+                  "        run: python3 scripts/ops06/store_gate.py apply\n"
+                  "      - name: upload listing\n"
+                  "        if: needs.source.outputs.mode == 'listing'\n"
+                  "        run: python3 scripts/release/listing.py apply --phone-only\n"
+                  "      - name: reconcile listing\n"
+                  "        if: needs.source.outputs.mode == 'reconcile'\n"
+                  "        run: python3 scripts/release/listing.py apply --reconcile-brand\n")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            folder = root / ".github/workflows"
+            folder.mkdir(parents=True)
+            (folder / "play-listing.yml").write_text(source, encoding="utf-8")
+            with patch.object(audit, "ROOT", root):
+                issues = audit.store_guard_findings()
+        self.assertEqual(issues, [])
+
+    def test_removing_both_internal_provenance_guards_fails(self):
+        workflow = ("on:\n  workflow_dispatch:\njobs:\n"
+                    "  verify:\n    runs-on: ubuntu-latest\n    steps:\n"
+                    "      - run: python3 scripts/ops04/internal.py verify\n"
+                    "  publish:\n    runs-on: ubuntu-latest\n    steps:\n"
+                    "      - run: python3 scripts/ops04/internal.py verify\n")
+        with patch.object(audit, "read", side_effect=lambda path:
+                          workflow if path == ".github/workflows/play-internal-release.yml" else None):
+            findings = audit.findings()
+        self.assertTrue(any("PROVENANCE" in item for item in findings), findings)
+
+
+
 
 if __name__ == "__main__":
     unittest.main()
