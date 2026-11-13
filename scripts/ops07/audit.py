@@ -30,61 +30,102 @@ def read(path):
 
 
 def triggers(source):
+    """Interpret standard and quoted workflow event keys; unknown syntax fails closed."""
     if source is None:
-        return set()
+        return {"unparsed"}
     lines = source.splitlines()
-    start = next((i for i, s in enumerate(lines) if s == "on:"), -1)
-    if start < 0:
-        inline = next((s for s in lines if s.startswith("on: ")), "")
-        return set(re.findall(r"[a-z][a-z_-]+", inline[3:]))
-    result = set()
-    for line in lines[start+1:]:
-        if line and not line[0].isspace():
-            break
-        match = re.match(r"^  ([a-zA-Z][\w-]*):", line)
+    position, inline = -1, ""
+    for index, line in enumerate(lines):
+        match = re.match(r"^(?:on|'on'|\"on\")\s*:\s*(.*?)\s*$", line)
         if match:
-            result.add(match.group(1))
-    return result
+            position, inline = index, match.group(1)
+            break
+    if position < 0:
+        return {"unparsed"}
+    if inline and not inline.startswith("#"):
+        if inline.startswith("["):
+            values = [v.strip().strip("'\"") for v in inline.strip("[] ").split(",")]
+        elif inline.startswith("{"):
+            values = re.findall(r"['\"]?([A-Za-z][\w-]*)['\"]?\s*:", inline)
+        else:
+            values = [inline.split("#", 1)[0].strip().strip("'\"")]
+        return set(values) if values and all(re.fullmatch(r"[A-Za-z][\w-]*", v) for v in values) else {"unparsed"}
+    body = []
+    for line in lines[position + 1:]:
+        if line.strip() and not line.lstrip().startswith("#") and not line[0].isspace():
+            break
+        if line.strip() and not line.lstrip().startswith("#"):
+            body.append(line)
+    if not body:
+        return {"unparsed"}
+    indent = min(len(line) - len(line.lstrip()) for line in body)
+    values = []
+    for line in body:
+        if len(line) - len(line.lstrip()) != indent:
+            continue
+        match = re.match(r"^(?:[A-Za-z][\w-]*|'[A-Za-z][\w-]*'|\"[A-Za-z][\w-]*\")\s*:", line.strip())
+        if not match:
+            return {"unparsed"}
+        values.append(match.group(0).split(":", 1)[0].strip("'\" "))
+    return set(values) if values else {"unparsed"}
 
 
 def jobs(source):
     if source is None:
         return {}
-    tail = source.split("\njobs:\n", 1)
-    if len(tail) != 2:
+    lines = source.splitlines()
+    start = next((i for i, line in enumerate(lines) if re.match(r"^jobs\s*:\s*(?:#.*)?$", line)), -1)
+    if start < 0:
         return {}
-    items = {}
-    name = None
-    buf = []
-    for line in tail[1].splitlines():
-        if line and not line[0].isspace():
+    children = []
+    for line in lines[start + 1:]:
+        if line.strip() and not line[0].isspace() and not line.lstrip().startswith("#"):
             break
-        match = re.match(r"^  ([A-Za-z][\w-]*):\s*$", line)
+        children.append(line)
+    candidates = [(len(line) - len(line.lstrip()), re.match(
+        r"^(?:[A-Za-z][\w-]*|'[A-Za-z][\w-]*'|\"[A-Za-z][\w-]*\")\s*:\s*(?:#.*)?$", line.strip()))
+        for line in children if line.strip() and not line.lstrip().startswith("#")]
+    indentation = min((depth for depth, match in candidates if match is not None), default=None)
+    if indentation is None:
+        return {}
+    result, name, buffer = {}, None, []
+    for line in children:
+        depth = len(line) - len(line.lstrip())
+        match = (re.match(r"^(['\"]?)([A-Za-z][\w-]*)\1\s*:\s*(?:#.*)?$", line.strip())
+                 if depth == indentation else None)
         if match:
             if name is not None:
-                items[name] = "\n".join(buf)
-            name = match.group(1)
-            buf = [line]
+                result[name] = "\n".join(buffer)
+            name, buffer = match.group(2), [line]
         elif name is not None:
-            buf.append(line)
+            buffer.append(line)
     if name is not None:
-        items[name] = "\n".join(buf)
-    return items
+        result[name] = "\n".join(buffer)
+    return result
 
 
 def job_condition(body):
     lines = body.splitlines()
-    for i, line in enumerate(lines):
-        match = re.match(r"^    if:\s*(.*)$", line)
-        if not match:
+    if not lines:
+        return ""
+    header_indent = len(lines[0]) - len(lines[0].lstrip())
+    key_indent = header_indent + 2
+    for index, line in enumerate(lines):
+        if len(line) - len(line.lstrip()) != key_indent:
             continue
-        parts = [match.group(1).strip()]
-        for nxt in lines[i+1:]:
-            if re.match(r"^    [A-Za-z][\w-]*:", nxt):
-                break
-            if nxt.startswith("      "):
-                parts.append(nxt.strip())
-        return " ".join(parts).lstrip(">- ").strip()
+        match = re.match(r"^\s+if\s*:\s*(.*)$", line)
+        if match is None:
+            continue
+        value = match.group(1).strip()
+        if value in (">-", ">", "|", "|-"):
+            parts = []
+            for nxt in lines[index + 1:]:
+                if nxt.strip() and len(nxt) - len(nxt.lstrip()) <= key_indent:
+                    break
+                if nxt.strip():
+                    parts.append(nxt.strip())
+            value = " ".join(parts)
+        return re.sub(r"\s+#.*$", "", value).strip()
     return ""
 
 
