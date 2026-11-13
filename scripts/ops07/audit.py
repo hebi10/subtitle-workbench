@@ -43,6 +43,7 @@ def triggers(source):
     if position < 0:
         return {"unparsed"}
     if inline and not inline.startswith("#"):
+        inline = inline.split(" #", 1)[0].strip()
         if inline.startswith("["):
             values = [v.strip().strip("'\"") for v in inline.strip("[] ").split(",")]
         elif inline.startswith("{"):
@@ -74,9 +75,9 @@ def jobs(source):
     if source is None:
         return {}
     lines = source.splitlines()
-    start = next((i for i, line in enumerate(lines) if re.match(r"^jobs\s*:\s*(?:#.*)?$", line)), -1)
+    start = next((i for i, line in enumerate(lines) if re.match(r"^(?:jobs|'jobs'|\\\"jobs\\\")\s*:\s*(?:#.*)?$", line)), -1)
     if start < 0:
-        return {}
+        return {"__unparsed_jobs__": source} if re.search(r"(?m)^(?:jobs|'jobs'|\\\"jobs\\\")\s*:", source) else {}
     children = []
     for line in lines[start + 1:]:
         if line.strip() and not line[0].isspace() and not line.lstrip().startswith("#"):
@@ -87,7 +88,7 @@ def jobs(source):
         for line in children if line.strip() and not line.lstrip().startswith("#")]
     indentation = min((depth for depth, match in candidates if match is not None), default=None)
     if indentation is None:
-        return {}
+        return {"__unparsed_jobs__": source}
     result, name, buffer = {}, None, []
     for line in children:
         depth = len(line) - len(line.lstrip())
@@ -101,7 +102,7 @@ def jobs(source):
             buffer.append(line)
     if name is not None:
         result[name] = "\n".join(buffer)
-    return result
+    return result if result else {"__unparsed_jobs__": source}
 
 
 def job_condition(body):
