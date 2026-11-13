@@ -330,7 +330,7 @@ def _step_condition(body):
 
 
 def _safe_store_step(guard_step, mutation_steps, body, filename):
-    if re.search(r"(?m)^\s+continue-on-error\s*:\s*(?!false\s*$)[^\n]+", guard_step):
+    if re.search(r"(?m)^[ \t]+(?:-[ \t]+)?continue-on-error[ \t]*:[ \t]*(?!false[ \t]*(?:#.*)?$)[^\n]+", guard_step):
         return False
     guard_command = r"(?m)^[ \t]*(?:-[ \t]+)?(?:run:[ \t]*)?python(?:3)?\s+scripts/ops06/store_gate\.py\s+apply"
     if not re.search(guard_command + r"(?:\s|$)", guard_step):
@@ -493,13 +493,19 @@ def findings():
                 problems.append("PROVENANCE: OPS-04 " + stage + " requires an executable signed-source guard")
                 continue
             index, guard = guards[0]
-            if (_step_condition(guard) or re.search(r"(?m)^\s+continue-on-error\s*:", guard)
+            if (_step_condition(guard) or re.search(r"(?m)^[ \t]+(?:-[ \t]+)?continue-on-error[ \t]*:", guard)
                     or re.search(guard_command + r"[^\n]*(?:\|\||;[ \t]*true\b|\|(?!\|))", guard)
                     or re.search(r"(?m)^[ \t]*(?:run:[ \t]*)?set[ \t]+\+e\b", guard)):
                 problems.append("PROVENANCE: OPS-04 " + stage + " guard must run and stop on failure")
             if any("actions/download-artifact@" in step or "google-github-actions/auth@" in step
                    for step in steps[:index]):
                 problems.append("PROVENANCE: OPS-04 " + stage + " guard must precede artifact access")
+            for downstream in steps[index + 1:]:
+                if (re.search(r"\b(?:always|failure|cancelled)\s*\(", _step_condition(downstream))
+                        and ("google-github-actions/auth@" in downstream
+                             or _publishing_command(downstream))):
+                    problems.append("PROVENANCE_BYPASS: OPS-04 " + stage + " can publish after a failed guard")
+                    break
     if REPOSITORY == "hebi10/TripCanvas":
         promote = jobs(read(".github/workflows/play-promote.yml")).get("promote")
         if not promote or "inputs.final_release_confirmed == true" not in _guaranteed_atoms(job_condition(promote)):
