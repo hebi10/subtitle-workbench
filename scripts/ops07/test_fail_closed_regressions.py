@@ -309,6 +309,26 @@ class WorkflowDispatchBypassRegressionTests(unittest.TestCase):
         self.assertTrue(audit.automatic_mutations("sync.yml", source))
         self.assertTrue(audit._publishing_command(command))
 
+    def test_dispatch_rejects_dynamic_or_duplicate_build_mode(self):
+        read_file = audit.read
+        source = read_file(".github/workflows/release-build.yml")
+        self.assertIn('inputs[mode]=build', source)
+        variants = (
+            source.replace('inputs[mode]=build', 'inputs[mode]=$REQUEST_MODE')
+                  .replace('args=(-f ref=main)', 'REQUEST_MODE=deploy\n          args=(-f ref=main)'),
+            source.replace('inputs[mode]=build', 'inputs[mode]=deploy'),
+            source.replace('inputs[mode]=build',
+                           'inputs[mode]=build" -f "inputs[mode]=deploy'),
+        )
+        for altered in variants:
+            with self.subTest(altered=altered[-350:]):
+                with patch.object(audit, "read", side_effect=lambda path:
+                                  altered if path == ".github/workflows/release-build.yml"
+                                  else read_file(path)):
+                    issues = audit.findings()
+                self.assertTrue(any("BUILD: API dispatch" in issue for issue in issues),
+                                issues)
+
     def test_build_only_request_must_not_dispatch_play_publisher(self):
         workflow = ("on:\n  workflow_dispatch:\njobs:\n  build:\n"
                     "    runs-on: ubuntu-latest\n"
