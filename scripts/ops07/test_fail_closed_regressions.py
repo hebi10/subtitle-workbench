@@ -286,5 +286,19 @@ class InterpreterOptionsRegressionTests(unittest.TestCase):
         self.assertTrue(any("STORE_GUARD" in item for item in issues), issues)
 
 
+
+class ClosedPromotionRegressionTests(unittest.TestCase):
+    def test_closed_promotion_rejects_binary_publisher(self):
+        workflow = ("on:\n  workflow_dispatch:\njobs:\n"
+                    "  publish:\n    runs-on: ubuntu-latest\n    steps:\n"
+                    "      - run: python3 scripts/ops05/promotion.py promote\n"
+                    "      - run: python3 scripts/release/publisher.py deploy --bundle app.aab --version-code 19\n")
+        with patch.object(audit, "read", side_effect=lambda path:
+                          workflow if path == ".github/workflows/play-closed-release.yml"
+                          else None):
+            issues = audit.findings()
+        self.assertTrue(any("CLOSED_BINARY" in issue for issue in issues), issues)
+
+
 if __name__ == "__main__":
     unittest.main()
