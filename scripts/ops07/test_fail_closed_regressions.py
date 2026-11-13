@@ -232,5 +232,37 @@ class SharedHardeningRegressionTests(unittest.TestCase):
         self.assertTrue(audit.automatic_mutations("custom.yml", workflow))
 
 
+
+class FailureBoundaryRegressionTests(unittest.TestCase):
+    def test_step_leading_ignore_errors_rejects_store_approval(self):
+        workflow = store_workflow().replace(
+            "      - name: Verify immutable approved batch\n",
+            "      - continue-on-error: true\n"
+            "        name: Verify immutable approved batch\n")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            folder = root / ".github/workflows"
+            folder.mkdir(parents=True)
+            (folder / "play-listing-images.yml").write_text(workflow, encoding="utf-8")
+            with patch.object(audit, "ROOT", root):
+                issues = audit.store_guard_findings()
+        self.assertTrue(any("STORE_OPTIONAL" in item for item in issues), issues)
+
+    def test_downstream_auth_cannot_ignore_failed_provenance(self):
+        workflow = ("on:\n  workflow_dispatch:\njobs:\n"
+                    "  verify:\n    steps:\n"
+                    "      - run: python3 scripts/ops04/internal.py guard\n"
+                    "  publish:\n    steps:\n"
+                    "      - run: python3 scripts/ops04/internal.py guard\n"
+                    "      - name: Unsafe Play authentication\n"
+                    "        if: always()\n"
+                    "        uses: google-github-actions/auth@v3\n")
+        with patch.object(audit, "read", side_effect=lambda path:
+                          workflow if path == ".github/workflows/play-internal-release.yml"
+                          else None):
+            issues = audit.findings()
+        self.assertTrue(any("PROVENANCE_BYPASS" in item for item in issues), issues)
+
+
 if __name__ == "__main__":
     unittest.main()
