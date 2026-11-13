@@ -318,6 +318,11 @@ def _safe_store_step(guard_step, mutation_steps, body, filename):
         return True
     if all(_step_condition(step) == guard_cond for step in mutation_steps):
         return True
+    # One mandatory guard may cover exactly the union of separate listing branches.
+    alternatives = _split_boolean(_unwrap(guard_cond), "||")
+    if (len(alternatives) > 1 and all(_step_condition(step) in alternatives
+                                      for step in mutation_steps)):
+        return True
     if (filename == "store-icon-sync.yml" and guard_cond == "inputs.apply == true"
             and "APPLY_MANUAL:" in body and "inputs.apply" in body
             and re.search(r'if \[\[ "\$APPLY_MANUAL" == "true" \]\]; then', body)):
