@@ -1,0 +1,33 @@
+name: OPS-07 integrated offline Play release policy QA
+on:
+  pull_request:
+    paths:
+      - 'scripts/ops07/**'
+      - '.github/workflows/ops07-safety.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  policy:
+    name: Full Play workflow inventory and fail-closed negative QA
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Save repository-level audit evidence without Play credentials
+        run: python3 scripts/ops07/audit.py --report ops07-output/report.json
+      - name: Reject automatic publishers and missing authorization/identity gates
+        run: python3 -m unittest discover -s scripts/ops07 -p 'test_*.py' -v
+      - name: Retain sanitized nonsecret audit report on pass or fail
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ops07-audit-${{ github.run_id }}
+          path: ops07-output/report.json
+          if-no-files-found: warn
+          retention-days: 30
