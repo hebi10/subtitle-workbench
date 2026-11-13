@@ -1,0 +1,123 @@
+name: OPS-03 Signed AAB build request
+run-name: OPS-03 subtitle-workbench signed AAB request
+on:
+  workflow_dispatch:
+    inputs:
+      expected_main_sha:
+        description: 'Exactly 40-character verified current main commit SHA'
+        required: true
+        type: string
+      batch_id:
+        description: 'KST release batch ID (YYYY-MM-DD-app)'
+        required: true
+        type: string
+      final_batch_approved:
+        description: 'All planned work, merges and final QA are complete'
+        required: true
+        type: boolean
+        default: false
+      version_code:
+        description: 'For apps using a build-only versionCode input'
+        required: false
+        default: ''
+        type: string
+      release_tag:
+        description: 'For subtitle-workbench only: matching vX.Y.Z release tag name'
+        required: false
+        default: ''
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: ops03-subtitle-workbench-build-request
+  cancel-in-progress: false
+jobs:
+  request:
+    name: Verify exact source and dispatch build-only action
+    if: github.repository == 'hebi10/subtitle-workbench' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    env:
+      EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+      BATCH_ID: ${{ inputs.batch_id }}
+      FINAL_BATCH_APPROVED: ${{ inputs.final_batch_approved }}
+      REQUIRED_CI_JSON: '["Verify web and Android"]'
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      VERSION_CODE: ${{ inputs.version_code }}
+      BUILD_WORKFLOW: 'play-internal.yml'
+    steps:
+      - name: Gate release batch, main SHA and required CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          import json, os, re, subprocess, sys
+          from datetime import date
+          from zoneinfo import ZoneInfo
+          def refuse(message):
+              raise SystemExit("OPS-03 build request blocked: " + message)
+          def api(path):
+              cp = subprocess.run(["gh","api",path],capture_output=True,text=True)
+              if cp.returncode: refuse("Cannot read GitHub authorization metadata")
+              return json.loads(cp.stdout)
+          sha=os.environ["EXPECTED_MAIN_SHA"]
+          batch=os.environ["BATCH_ID"]
+          repo=os.environ["GITHUB_REPOSITORY"]
+          if os.environ["GITHUB_EVENT_NAME"]!="workflow_dispatch" or os.environ["GITHUB_REF"]!="refs/heads/main": refuse("Explicit main-only manual request required")
+          if os.environ["FINAL_BATCH_APPROVED"]!="true": refuse("Final planned work and QA must be explicitly approved")
+          if not re.fullmatch("[a-f0-9]{40}",sha) or sha!=os.environ["GITHUB_SHA"]: refuse("Expected main SHA differs from this workflow source")
+          if not re.fullmatch(r"20\d{2}-\d{2}-\d{2}-[A-Za-z0-9-]{2,50}",batch): refuse("Invalid KST release batch ID")
+          if api("repos/"+repo+"/git/ref/heads/main")["object"]["sha"]!=sha: refuse("main changed after request")
+          required=json.loads(os.environ["REQUIRED_CI_JSON"])
+          if required:
+              runs=api("repos/"+repo+"/actions/runs?head_sha="+sha+"&branch=main&per_page=100")["workflow_runs"]
+              for name in required:
+                  matching=[r for r in runs if r.get("name")==name and r.get("head_sha")==sha and r.get("head_branch")=="main" and r.get("event") in ("push","workflow_dispatch")]
+                  if not matching: refuse("Missing exact-main CI: "+name)
+                  latest=max(matching,key=lambda r:(r.get("run_number",0),r.get("run_attempt",0),r.get("id",0)))
+                  if latest.get("status")!="completed" or latest.get("conclusion")!="success": refuse("Required CI not successful: "+name)
+              print("Verified exact-main successful CI: "+", ".join(required))
+          if True and not re.fullmatch(r"[1-9]\d{0,9}", os.environ["VERSION_CODE"]): refuse("Positive version_code input required")
+          if False and not re.fullmatch(r"v[0-9]+(?:\.[0-9]+){1,3}(?:[-.][A-Za-z0-9]+)*",os.environ["RELEASE_TAG"]): refuse("Exact release_tag required for subtitle-workbench")
+          print("Validated source SHA:",sha)
+          print("KST batch:",batch)
+          print("This job requests a downstream signed AAB build. Play will not be changed by this job.")
+      - name: Dispatch existing signed AAB build-only mode
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(-f ref=main)
+          args+=(-f "inputs[mode]=build" -f "inputs[version_code]=$VERSION_CODE")
+          gh api --method POST "repos/$GITHUB_REPOSITORY/actions/workflows/$BUILD_WORKFLOW/dispatches" "${args[@]}"
+          actual="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
+          if [[ "$actual" != "$EXPECTED_MAIN_SHA" ]]; then
+            echo "::error::main moved after dispatch; downstream provenance must be checked and build approval revoked."
+            exit 1
+          fi
+          mkdir -p ops03
+          python3 - <<'PY'
+          import json,os
+          from datetime import datetime
+          from pathlib import Path
+          from zoneinfo import ZoneInfo
+          data={"schema":"ops03-build-request-v1","repo":os.environ["GITHUB_REPOSITORY"],"main_sha":os.environ["EXPECTED_MAIN_SHA"],"batch_id":os.environ["BATCH_ID"],"builder_workflow":os.environ["BUILD_WORKFLOW"],"request_run_id":os.environ["GITHUB_RUN_ID"],"requested_at_kst":datetime.now(ZoneInfo("Asia/Seoul")).isoformat(),"status":"dispatched_unverified","aab_built":False,"play_uploaded":False,"version_code_request":os.environ["VERSION_CODE"],"release_tag_request":os.environ["RELEASE_TAG"]}
+          Path("ops03/request.json").write_text(json.dumps(data,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          PY
+          {
+            echo "## OPS-03 build request accepted, AAB result NOT verified"
+            echo "Batch: `$BATCH_ID` / source SHA: `$EXPECTED_MAIN_SHA`"
+            echo "Review downstream build: https://github.com/$GITHUB_REPOSITORY/actions/workflows/$BUILD_WORKFLOW"
+            echo "Only the build-only input was dispatched. This request result is not proof of signed AAB success."
+            echo "Do not submit anything to Play; verify downstream output and checksum first."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve request provenance (NOT an AAB)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ops03-request-subtitle-workbench-${{ github.run_id }}
+          path: ops03/request.json
+          retention-days: 30
+          if-no-files-found: error
