@@ -2188,3 +2188,9 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
 #resultsView .result-export-status[data-state="cancelled"] {
   color: var(--es-muted);
 }
+
+/* UI-10-E: retain flat settings hierarchy while improving long localized policy text. */
+#settingsView .settings-data-guide .hint {
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
