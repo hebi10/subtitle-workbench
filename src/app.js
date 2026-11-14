@@ -302,6 +302,9 @@ function bindEvents() {
   refs.downloads.addEventListener('click', (event) => {
     const link = event.target.closest('a.download-link[download]');
     if (!link) return;
+    const format = link.download.split('.').at(-1).toUpperCase();
+    refs.exportDownloadStatus.dataset.state = 'requested';
+    refs.exportDownloadStatus.dataset.format = format;
     refs.exportDownloadStatus.textContent = `${link.download} 다운로드 요청됨 · 실제 저장 여부는 브라우저 다운로드 내역에서 확인하세요.`;
   });
   refs.undoEdit.addEventListener('click', () => restoreEdit('undo'));
@@ -1696,7 +1699,7 @@ function renderExportOverview() {
     : !state.subtitles.length
       ? { state: 'empty', text: '내려받을 자막이 없습니다. 기존 자막을 불러오거나 생성 탭에서 작업하세요.' }
       : entry?.translationPending
-        ? { state: 'partial', text: '부분 번역 결과 · 저장된 원문을 보존한 상태로 SRT·VTT·JSON을 내려받을 수 있습니다.' }
+        ? { state: 'partial', text: '부분 번역 결과 · 현재 페이지에 남아 있는 원문으로 SRT·VTT·JSON을 내려받을 수 있습니다.' }
         : getTranslationFailures(state.subtitles).length
           ? { state: 'partial', text: '번역 오류가 포함되어 있습니다. 원문 자막을 확인한 뒤 파일을 내려받으세요.' }
           : { state: 'ready', text: '자막 파일 준비 완료 · SRT를 먼저 권장합니다. 실제 저장 여부는 브라우저 다운로드 내역에서 확인하세요.' };
@@ -1709,6 +1712,8 @@ function renderDownloads(subtitles) {
   state.downloadUrls = [];
   refs.exportBuildError.hidden = true;
   refs.exportDownloadStatus.textContent = '';
+  refs.exportDownloadStatus.dataset.state = 'preparing';
+  refs.exportDownloadStatus.dataset.format = '';
 
   try {
     const files = createExportFiles(subtitles);
@@ -1716,6 +1721,7 @@ function renderDownloads(subtitles) {
       ...files.map((file) => createDownloadLink(file)),
       createDownloadSyncMeta(),
     );
+    refs.exportDownloadStatus.dataset.state = 'ready';
     refs.exportDownloadStatus.textContent = '파일 준비 완료 · 다운로드 버튼을 눌러 기기에 저장하세요.';
   } catch {
     state.downloadUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -1723,6 +1729,7 @@ function renderDownloads(subtitles) {
     refs.downloads.replaceChildren(...createDownloadPlaceholders(), createDownloadSyncMeta());
     refs.exportBuildError.hidden = false;
     refs.exportBuildErrorText.textContent = '자막 파일을 준비하지 못했습니다. 기존 자막과 편집 내용은 유지됩니다. 파일을 다시 준비해 주세요.';
+    refs.exportDownloadStatus.dataset.state = 'error';
     refs.exportDownloadStatus.textContent = '파일 준비 오류 · 아직 다운로드를 요청할 수 없습니다.';
   }
   renderTranslationFailureSummary(subtitles);
