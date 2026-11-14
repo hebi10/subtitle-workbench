@@ -2127,10 +2127,11 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
 }
 
 /* UI-10-C2 — task list controls; the underlying JobStore and card styles remain unchanged. */
+#jobsView .jobs-overview { margin-bottom: var(--es2-space-1); }
 #jobsView .jobs-browse {
   border: 1px solid var(--es-border);
   background: var(--es-surface);
-  margin: 0 0 var(--es2-space-2);
+  margin: 0;
   border-radius: 0;
   box-shadow: none;
 }

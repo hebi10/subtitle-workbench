@@ -78,7 +78,8 @@ test('UI-10-C2 keeps the JobStore and Native Bridge intact while adding local br
   assert.match(js, /nativeCall\('resume'/);
   assert.match(js, /nativeCall\('pause'/);
   assert.match(css, /#jobsView \.jobs-browse-fields/);
-  assert.doesNotMatch(css.slice(css.lastIndexOf('UI-10-C2')), /box-shadow:\s*(?!none\b)[^;]+;/);
+  const shadows = [...css.slice(css.lastIndexOf('UI-10-C2')).matchAll(/box-shadow:\s*([^;]+);/g)].map(match => match[1].trim());
+  assert.ok(shadows.every(value => value === 'none'), 'C2 controls must not add shadows');
 });
 
 test('UI-10-C2 search, six states, creation order, missing dates, pagination and native refresh', { skip: !enabled }, async () => {
