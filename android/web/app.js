@@ -1047,13 +1047,17 @@ function syncConnection() {
     verified: '인증과 선택 모델 접근을 확인했습니다. 결제 상태와 잔액을 확인한 것은 아닙니다.',
     saved: '연결 정보가 저장됐습니다. 연결 확인을 실행해 선택 모델에 접근할 수 있는지 검사해 주세요.',
   };
-  $('settingsConnectionHelp').textContent = healthGuides[connectionHealth];
+  $('settingsConnectionHelp').textContent = connectionModeDraft === 'relay' && !relay
+    ? '테스트 서버 전환은 주소와 전용 코드를 입력하고 연결 저장을 눌러야 완료됩니다.'
+    : running && connection.hasKey
+      ? '실행·대기 중인 작업을 먼저 일시정지해야 연결 정보를 변경하거나 삭제할 수 있습니다.'
+      : healthGuides[connectionHealth];
   $('settingsConnectionSummary').textContent = `${modeLabel} · ${connectionHealth === 'error' ? '연결 확인 실패' : connection.hasKey ? matches ? '인증·모델 확인됨' : '연결 저장됨' : '연결 필요'}`;
   $('settingsDefaultsOverview').textContent = settingsSummary(savedSettings);
   const unsavedDefaultChanges = !sameSettings(selected, savedSettings);
   $('settingsDefaultsHelp').textContent = unsavedDefaultChanges
-    ? '입력 중인 변경은 아직 적용되지 않습니다. 아래에서 설정을 저장해 주세요.'
-    : '새로 선택하는 영상에 적용됩니다. 기존 작업 설정은 바뀌지 않습니다.';
+    ? '입력 변경은 아직 적용되지 않습니다. 저장 전에는 기존 기본값을 사용합니다.'
+    : '새로 선택하는 영상에 적용됩니다. 기존 작업 설정은 유지됩니다.';
   $('cloudTransmissionNotice').hidden = !relay;
   $('cloudTransmissionNotice').textContent = relayTransmissionNotice(connection.reviewRelay.url);
   $('cloudLiveNotice').textContent = relay ? relayTransmissionNotice(connection.reviewRelay.url, true) : '개인 API 연결: 마이크 음성을 OpenAI로 전송합니다. 본인의 API 키와 별도 이용 요금이 필요하며 인식 시작 전 안내를 제공합니다.';
