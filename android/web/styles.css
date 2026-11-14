@@ -2182,3 +2182,9 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
 @media (min-width: 620px) {
   #jobsView .jobs-browse-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* UI-10-D: distinguish active file picker and user cancellation without falsely confirming a save. */
+#resultsView .result-export-status[data-state="pending"],
+#resultsView .result-export-status[data-state="cancelled"] {
+  color: var(--es-muted);
+}

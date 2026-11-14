@@ -129,11 +129,11 @@
           <p id="resultMeta" class="hint"></p>
           <p id="resultStatus" class="hint" role="status"></p>
         </section>
+        <p id="resultMediaStatus" class="result-media-status hint" role="status">연결된 원본 영상 상태를 확인합니다.</p>
         <div class="result-actions">
           <button id="editResult" type="button"><span class="es-icon es-icon--edit" aria-hidden="true"></span><span data-result-edit-label>자막 편집</span></button>
           <button id="resultPreview" type="button" aria-describedby="resultMediaStatus"><span class="es-icon es-icon--play" aria-hidden="true"></span>영상 미리보기</button>
         </div>
-        <p id="resultMediaStatus" class="result-media-status hint" role="status">연결된 원본 영상 상태를 확인합니다.</p>
         <details id="resultCueDetails" class="result-cue-details" hidden>
           <summary>자막 내용 미리보기</summary>
           <div id="resultCuePreview" class="result-cue-preview"></div>
@@ -146,7 +146,7 @@
             <button type="button" data-export="vtt"><span class="es-icon es-icon--download" aria-hidden="true"></span>VTT 저장</button>
             <button type="button" data-export="json"><span class="es-icon es-icon--download" aria-hidden="true"></span>JSON 저장</button>
           </div>
-          <p id="resultExportStatus" class="result-export-status" role="status" hidden></p>
+          <p id="resultExportStatus" class="result-export-status" role="status" aria-live="polite" aria-atomic="true" data-state="idle" hidden></p>
           <details><summary>파일 형식 안내</summary><p class="hint">SRT는 일반 영상 플레이어, VTT는 웹 영상에 사용합니다. JSON은 원문·번역·시간 정보를 보관하고 다시 편집할 때 사용합니다.</p></details>
         </section>
       </div>
