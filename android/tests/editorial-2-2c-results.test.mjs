@@ -28,7 +28,7 @@ test('2-C uses original result selection and formats with an accessible export s
   assert.match(html, /id="resultCueDetails"[^>]*hidden/);
   assert.match(js, /exportStatus\.dataset\.jobId/);
   assert.match(js, /history\.present\.slice\(0, 3\)/);
-  assert.match(js, /const saved = result !== null && result !== false/);
+  assert.ok(js.includes("const saved = result === true || result?.saved === true;"));
   assert.match(js, /await exportCues\(job, history\.present, format\)/);
   assert.match(css, /#resultsView \.export-section \.export-actions \[data-export="srt"\]/);
   assert.match(css, /#resultsView \.result-export-status\.error-text/);

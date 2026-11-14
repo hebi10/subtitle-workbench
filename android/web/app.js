@@ -42,6 +42,7 @@ let refreshingResultId = null;
 let settingsHydrated = false;
 let settingsTouched = false;
 let pendingDeletionId = '';
+let resultExportInFlight = false;
 let savedSettings = { sourceLanguage: 'auto', targetLanguage: 'ko', sttModel: DEFAULT_STT_MODEL, translate: true, translationModel: DEFAULT_TRANSLATION_MODEL };
 const preparedEditors = new Map();
 let connection = { hasKey: false, hasPersonalKey: false, cloudMode: 'personal', reviewRelay: { url: '', hasCode: false }, keyCheck: null };
@@ -679,6 +680,8 @@ function renderResults() {
     exportStatus.dataset.jobId = current?.id || '';
     exportStatus.textContent = '';
     exportStatus.hidden = true;
+    exportStatus.dataset.format = '';
+    exportStatus.dataset.state = 'idle';
     exportStatus.classList.remove('error-text');
     $('resultCueDetails').open = false;
   }
@@ -858,7 +861,7 @@ function syncEditorButtons() {
   $('readOnlyNote').hidden = !current || editable();
   $('preview').disabled = !current?.uri;
   $('exportNote').textContent = editable() ? '번역이 없는 자막은 원문으로 내보냅니다.' : '현재까지 저장된 부분 자막을 내보냅니다. 번역이 없으면 원문을 사용합니다.';
-  document.querySelectorAll('[data-export]').forEach((node) => { node.disabled = changingJob || refreshingResultId === current?.id || !history.present.length; });
+  document.querySelectorAll('[data-export]').forEach((node) => { node.disabled = resultExportInFlight || changingJob || refreshingResultId === current?.id || !history.present.length; });
   document.querySelectorAll('#cueList input, #cueList textarea, #cueList [data-edit]').forEach((node) => { node.disabled = !editable(); });
   document.querySelectorAll('[data-last]').forEach((node) => { node.disabled = true; });
   const pages = Math.max(1, Math.ceil(filteredIndices().length / PAGE_SIZE));
@@ -1236,8 +1239,11 @@ async function exportCues(job, cues, format) {
   const text = format === 'json' ? toSubtitleJson(cues) : format === 'vtt' ? formatVtt(cues) : formatSrt(cues);
   const mime = { srt: 'application/x-subrip', vtt: 'text/vtt', json: 'application/json' }[format];
   const result = await nativeCall('export', { name: `${sanitizeFileBase(job.name)}.${format}`, mime, text });
-  const saved = result !== null && result !== false && result?.saved !== false;
-  message(saved ? `${format.toUpperCase()} 자막 파일을 저장했습니다.` : '자막 저장을 취소했습니다.');
+  const saved = result === true || result?.saved === true;
+  if (!saved && result !== null && result !== false && result?.saved !== false) {
+    throw new Error('파일 저장 결과를 확인하지 못했습니다. 다시 저장해 주세요.');
+  }
+  message(saved ? `${format.toUpperCase()} 자막 파일을 저장했습니다.` : `${format.toUpperCase()} 자막 저장을 취소했습니다.`);
   return saved;
 }
 async function deleteCompletedJob(jobId) {
@@ -1270,23 +1276,36 @@ async function exportJob(jobId) {
   });
 }
 document.querySelectorAll('[data-export]').forEach((node) => node.addEventListener('click', () => run(node, async () => {
-  await flushSave();
-  if (changingJob || refreshingResultId === current?.id || !current || !history.present.length) return;
+  if (resultExportInFlight || changingJob || refreshingResultId === current?.id || !current || !history.present.length) return;
   const job = current;
   const format = node.dataset.export;
+  const formatLabel = format.toUpperCase();
   const status = $('resultExportStatus');
-  status.hidden = false;
-  status.classList.remove('error-text');
-  status.textContent = `${format.toUpperCase()} 파일 저장 중…`;
+  const isSelectedResult = () => current?.id === job.id && status.dataset.jobId === job.id;
+  const updateStatus = (state, text) => {
+    if (!isSelectedResult()) return;
+    status.hidden = false;
+    status.dataset.state = state;
+    status.dataset.format = format;
+    status.classList.toggle('error-text', state === 'error');
+    status.textContent = text;
+  };
+  resultExportInFlight = true;
+  syncEditorButtons();
+  updateStatus('pending', `${formatLabel} 파일 저장을 준비하고 있습니다…`);
   try {
+    await flushSave();
+    if (!isSelectedResult() || changingJob || refreshingResultId === job.id) return;
+    updateStatus('pending', `${formatLabel} 파일 저장 위치를 선택하고 있습니다…`);
     const saved = await exportCues(job, history.present, format);
-    if (current?.id === job.id) status.textContent = saved ? `${format.toUpperCase()} 파일을 저장했습니다.` : '파일 저장을 취소했습니다.';
+    updateStatus(saved ? 'success' : 'cancelled',
+      saved ? `${formatLabel} 파일을 저장했습니다.` : `${formatLabel} 파일 저장을 취소했습니다.`);
   } catch (error) {
-    if (current?.id === job.id) {
-      status.textContent = `파일을 저장하지 못했습니다. 다시 시도해 주세요. ${error.message}`;
-      status.classList.add('error-text');
-    }
+    updateStatus('error', `${formatLabel} 파일을 저장하지 못했습니다. 다시 시도해 주세요. ${error.message}`);
     throw error;
+  } finally {
+    resultExportInFlight = false;
+    syncEditorButtons();
   }
 })));
 document.addEventListener('visibilitychange', () => { if (!document.hidden) void refresh(); else void flushSave().catch(() => {}); });
