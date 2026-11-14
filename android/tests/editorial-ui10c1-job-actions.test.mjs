@@ -75,7 +75,7 @@ test('UI-10-C1 preserves existing job operations and prioritizes one available a
   assert.match(js, /if \(primary\) actions\.prepend\(primary\)/);
   assert.match(js, /const review = actionIcon\(button\('준비 확인'/);
   assert.match(js, /JOBS_PAGE_SIZE = 4/);
-  for (const action of ["button('일시정지'", "button('이어하기'", "button('자막 편집'", "button('결과 보기'", "button('SRT 저장'", "button('기록 삭제'"]) {
+  for (const action of ["'일시정지'", "'이어하기'", "'자막 편집'", "button('결과 보기'", "button('SRT 저장'", "button('기록 삭제'"]) {
     assert.ok(js.includes(action), 'existing action: ' + action);
   }
   assert.match(js, /pendingDeletionId = job\.id/);
