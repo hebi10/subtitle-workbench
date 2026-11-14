@@ -2119,7 +2119,9 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
   }
 }
 
-/* UI-10-C1: show the current available action before secondary job controls. */
-#jobsView .job-actions > button.job-primary-action:first-child {
-  grid-column: 1 / -1;
+/* UI-10-C1: keep compact job cards at 390px and above. */
+@media (max-width: 360px) {
+  #jobsView .job-actions > button.job-primary-action:first-child {
+    grid-column: 1 / -1;
+  }
 }
