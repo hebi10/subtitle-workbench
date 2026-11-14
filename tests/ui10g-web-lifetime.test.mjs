@@ -12,7 +12,7 @@ test('UI-10-G three web panels disclose page-only results and verified file down
     assert.equal((markup.match(new RegExp('id="' + id + '"', 'g'))||[]).length, 1, id);
   }
   assert.match(markup, /자막·편집 결과는 현재 페이지의 임시 데이터/);
-  assert.match(markup, /수정 내용은 현재 브라우저 페이지에만 유지됩니다/);
+  assert.match(markup, /수정 내용은 현재 페이지에서 유지됩니다/);
   assert.match(markup, /자막과 수정 내용은 현재 페이지의 임시 데이터/);
   assert.match(markup, /실제 저장 여부는 브라우저 다운로드 내역에서 확인/);
 });
