@@ -116,7 +116,7 @@ public final class OfflineVoskActivity extends Activity {
         NativeDesignSystem.transcriptPanel(captionPreview, density);
         save = button(transcription, "자막 저장 및 편집", true, this::save);
         save.setEnabled(false);
-        label(transcription, "모델 다운로드만 인터넷이 필요하며 음성 파일은 OpenAI로 전송하지 않습니다.", 13, false);
+        label(transcription, "모델 설치만 인터넷이 필요하고 인식·저장은 기기 내부에서 진행됩니다. '중단'은 일시정지가 아니며 미완료 인식 결과는 저장되지 않습니다.", 13, false);
         NativeDesignSystem.helpDisclosure(transcription, "인식 품질·라이선스",
                 "Vosk 소형 모델은 Whisper와 인식 정확도가 다릅니다. 한국어 소형 모델의 공개 Zeroth 테스트 WER는 28.1%입니다. 모델 다운로드에만 네트워크를 사용하며 음성 파일은 OpenAI로 전송하지 않습니다. 모델 라이선스: Apache-2.0.", density);
         button(root, "닫기", false, this::closeRequested);
@@ -159,7 +159,7 @@ public final class OfflineVoskActivity extends Activity {
                     : model.title + " 설치되지 않음 · 모델 크기 약 " + model.approximateMegabytes + "MB");
         if (modelDetails != null) {
             modelDetails.setText(model.description
-                    + "\n모델 다운로드에는 인터넷이 필요하며, 설치 후 인식은 기기 내부에서 실행됩니다. 모델 손상이 감지되면 삭제 후 재설치해야 합니다.");
+                    + "\n모델 다운로드에는 인터넷과 기기 여유 공간이 필요합니다. SHA-256 검사를 통과한 설치 모델로만 인식하며, 이후 영상·음성 전사는 기기 내부에서 실행됩니다. 손상 시 삭제 후 재설치하세요. 파일은 OpenAI에 전송되지 않습니다.");
         }
         selection.setEnabled(!busy);
         download.setEnabled(!busy && installed == null && !damaged);

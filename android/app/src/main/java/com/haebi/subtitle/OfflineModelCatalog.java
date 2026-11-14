@@ -30,7 +30,7 @@ final class OfflineModelCatalog {
             "https://huggingface.co/rhasspy/vosk-models/resolve/main/ko/vosk-model-small-ko-0.22.zip",
             "eea36124087fed26c59996a4761519458e3bd185e8ea9d9865ad8760c4a1d989", 87, 550),
         new Spec("vosk-model-small-en-us-0.15", "영어(미국) · 소형", "en",
-            "약 41MB 다운로드 · LibriSpeech WER 9.85% · Apache-2.0",
+            "약 42MB 다운로드 · LibriSpeech WER 9.85% · Apache-2.0",
             "https://huggingface.co/rhasspy/vosk-models/resolve/main/en/vosk-model-small-en-us-0.15.zip",
             "30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498", 42, 330),
         new Spec("vosk-model-small-ja-0.22", "일본어 · 소형", "ja",
