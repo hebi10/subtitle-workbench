@@ -94,7 +94,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
 
         float density = getResources().getDisplayMetrics().density;
         NativeDesignSystem.header(root, "CLOUD / REALTIME", "GPT 실시간 마이크 자막",
-                "연결과 이용 요금을 확인한 뒤 마이크 인식을 시작합니다. 전송은 시작한 동안에만 진행됩니다.", density);
+                "실제 모델 gpt-live-transcribe · 한 번에 최대 5분. 개인 API 유료 전송 또는 테스트 서버 공유 한도를 확인한 뒤 인식을 시작하세요.", density);
         workflow = NativeDesignSystem.workflow(root, density, "연결", "인식", "저장");
 
         LinearLayout connection = NativeDesignSystem.section(root, "01 / CONNECTION", "연결·인식 언어", density);
@@ -138,8 +138,8 @@ public final class CloudLiveRecognitionActivity extends Activity {
 
     private void updateDisclosure(CloudAccess access) {
         disclosure.setText(access.isRelay()
-                ? "테스트 연결: " + access.origin() + "\n마이크 음성은 테스트 서버를 거쳐 OpenAI로 전송됩니다. 개인 API 요금은 없으나 공용 테스트 한도가 적용됩니다. 인식 시작 후에만 전송합니다."
-                : "개인 API 연결: OpenAI\n마이크 음성을 OpenAI로 전송하며 API 이용 요금은 본인 계정에 별도 청구됩니다. 인식 시작 후에만 전송합니다.");
+                ? "테스트 연결: " + access.origin() + "\n모델 gpt-live-transcribe · 마이크 음성은 테스트 서버를 거쳐 OpenAI로 전송됩니다. 개인 API 요금은 없으나 서버 공유 한도가 적용됩니다. 인식 시작 후에만 전송합니다."
+                : "개인 API 연결: OpenAI\n모델 gpt-live-transcribe · 마이크 음성을 OpenAI로 전송하며 API 이용 요금이 본인 계정에 별도 청구됩니다. 인식 시작 후에만 전송합니다.");
         start.setText(access.isRelay() ? "테스트 GPT 실시간 인식 시작" : "유료 GPT 실시간 인식 시작");
     }
 
