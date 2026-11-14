@@ -59,7 +59,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
         try {
             recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(this);
             recognizer.setRecognitionListener(listener);
-            showStatus("온디바이스 인식 서비스를 찾았습니다. 언어를 선택하고 인식을 시작하세요.");
+            showStatus("기기 온디바이스 인식 서비스가 있습니다. 선택한 언어 모델은 아직 확인되지 않았으니 '언어 지원 확인'을 먼저 선택하세요.");
         } catch (RuntimeException error) {
             showStatus("온디바이스 음성 인식 서비스를 시작할 수 없습니다.");
             startButton.setEnabled(false);
@@ -107,7 +107,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
         checkButton = addButton(preparation, "언어 지원 확인", false, this::checkSupport);
         downloadButton = addButton(preparation, "온디바이스 언어 모델 다운로드 요청", false, this::downloadModel);
         NativeDesignSystem.helpDisclosure(preparation, "언어 모델 도움말",
-                "모델은 Android 시스템 인식 서비스가 설치·관리합니다. Android 13 이상에서만 다운로드 요청을 지원하며, 마이크 권한은 인식 시작 시 요청합니다. 기기·언어에 따라 지원 여부가 다릅니다.", density);
+                "모델은 Android 시스템 인식 서비스가 설치·관리하며 Whisper/Vosk 파일을 다운로드하는 기능이 아닙니다. Android 13 이상에서 다운로드를 요청할 수 있지만 요청 성공이 실제 언어 지원을 보장하지는 않습니다. '언어 지원 확인'으로 다시 확인하세요. 인식 시작 시 마이크 권한을 요청합니다.", density);
 
         LinearLayout capture = NativeDesignSystem.section(root, "02 / CAPTURE", "마이크 인식", density);
         startButton = addButton(capture, "마이크 인식 시작", true, this::requestStart);
