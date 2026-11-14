@@ -90,6 +90,30 @@
       <div class="section-heading"><div><p class="page-kicker">02 / HISTORY</p><h2 id="jobsHeading">작업 관리</h2></div><div class="jobs-heading-actions"><button id="startNewJob" type="button" class="primary"><span class="es-icon es-icon--add" aria-hidden="true"></span>새 작업</button><button id="refreshJobs" type="button"><span class="es-icon es-icon--refresh" aria-hidden="true"></span>새로고침</button></div></div>
       <p class="page-description">진행 중인 작업과 저장된 자막을 관리합니다.</p>
       <p id="jobsSummary" class="jobs-overview" role="status" aria-live="polite">작업 상태를 확인하는 중입니다.</p>
+      <details id="jobsBrowse" class="jobs-browse">
+        <summary>파일명 검색 · 상태 필터 · 정렬</summary>
+        <div class="jobs-browse-fields">
+          <label for="jobsSearch">파일명 검색<input id="jobsSearch" type="search" placeholder="파일명 입력" autocomplete="off" /></label>
+          <label for="jobsStatusFilter">상태
+            <select id="jobsStatusFilter">
+              <option value="all">전체</option>
+              <option value="active">진행·대기</option>
+              <option value="ready">준비</option>
+              <option value="paused">일시정지</option>
+              <option value="error">오류</option>
+              <option value="completed">완료</option>
+            </select>
+          </label>
+          <label for="jobsSort">정렬
+            <select id="jobsSort">
+              <option value="priority">상태 우선 (기존)</option>
+              <option value="newest">최신순 (생성일)</option>
+              <option value="oldest">오래된순 (생성일)</option>
+            </select>
+          </label>
+        </div>
+      </details>
+      <p id="jobsMatchCount" class="jobs-match-count" role="status" aria-live="polite" hidden></p>
       <div id="jobList" class="job-list" aria-label="작업 목록"><p class="empty">작업 목록을 불러오는 중입니다.</p></div>
       <nav class="pagination jobs-pagination" aria-label="작업 페이지"><button id="prevJobs" type="button">이전</button><span id="jobsPageInfo"></span><button id="nextJobs" type="button">다음</button></nav>
     </section>
