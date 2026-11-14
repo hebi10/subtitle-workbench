@@ -2507,3 +2507,10 @@ summary:focus-visible, a:focus-visible, .workspace-tab:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* UI-10-G: file preparation, download request and error are distinct local states. */
+#panel-export #exportDownloadStatus[data-state="requested"] {
+  color: var(--text);
+  font-weight: 600;
+}
+#panel-export #exportDownloadStatus[data-state="error"] { color: var(--danger); }
