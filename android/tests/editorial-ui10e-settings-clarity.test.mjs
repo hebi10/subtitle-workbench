@@ -16,7 +16,7 @@ test('UI-10-E grounds connection and cost messages in actual status, never mock 
   assert.match(js, /running && connection\.hasKey/);
   assert.match(js, /healthGuides\[connectionHealth\]/);
   assert.match(js, /settingsDefaultsHelp/);
-  assert.match(js, /이미 준비하거나 진행한 작업의 설정은 바뀌지 않습니다/);
+  assert.match(js, /새로 선택하는 영상에 적용됩니다. 기존 작업 설정은 유지됩니다./);
   assert.match(html, /원본 영상 파일 자체를 클라우드에 보관하는 기능은 없습니다/);
   assert.match(html, /연결 확인은 결제 상태·잔액·월 누적 비용을 조회하지 않습니다/);
   assert.match(html, /자동 재시작 기능은 제공하지 않습니다/);

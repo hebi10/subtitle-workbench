@@ -1056,8 +1056,8 @@ function syncConnection() {
   $('settingsDefaultsOverview').textContent = settingsSummary(savedSettings);
   const unsavedDefaultChanges = !sameSettings(selected, savedSettings);
   $('settingsDefaultsHelp').textContent = unsavedDefaultChanges
-    ? '입력 중인 변경은 미저장 상태입니다. 설정 저장 전에는 이전 기본값이 다음 영상에 적용됩니다.'
-    : '새로 선택하는 영상에 적용됩니다. 이미 준비하거나 진행한 작업의 설정은 바뀌지 않습니다.';
+    ? '입력 변경은 아직 적용되지 않습니다. 저장 전에는 기존 기본값을 사용합니다.'
+    : '새로 선택하는 영상에 적용됩니다. 기존 작업 설정은 유지됩니다.';
   $('cloudTransmissionNotice').hidden = !relay;
   $('cloudTransmissionNotice').textContent = relayTransmissionNotice(connection.reviewRelay.url);
   $('cloudLiveNotice').textContent = relay ? relayTransmissionNotice(connection.reviewRelay.url, true) : '개인 API 연결: 마이크 음성을 OpenAI로 전송합니다. 본인의 API 키와 별도 이용 요금이 필요하며 인식 시작 전 안내를 제공합니다.';
