@@ -30,6 +30,10 @@ let initialViewSet = false;
 let navigationRevision = 0;
 let selectionRevision = 0;
 let jobsPage = 0;
+let jobsSearchQuery = '';
+let jobsStatusFilter = 'all';
+let jobsSortMode = 'priority';
+let jobsMatchCount = 0;
 let preparedJobId = '';
 const jobCards = new Map();
 let jobFingerprint = '';
@@ -248,6 +252,31 @@ function prioritizeJobAction(actions, job, ready) {
   if (primary) actions.prepend(primary);
 }
 
+function matchesJobsStatus(job) {
+  if (jobsStatusFilter === 'active') return ['running', 'queued'].includes(job.status);
+  if (jobsStatusFilter === 'ready') return isPrepared(job);
+  if (jobsStatusFilter === 'paused') return job.status === 'paused' && !isPrepared(job);
+  return jobsStatusFilter === 'all' || job.status === jobsStatusFilter;
+}
+
+function filteredJobsForList() {
+  const search = jobsSearchQuery.trim().toLocaleLowerCase('ko-KR');
+  const entries = jobs.map((job, index) => ({ job, index }))
+    .filter(({ job }) => matchesJobsStatus(job) && String(job.name || '').toLocaleLowerCase('ko-KR').includes(search));
+  const created = (job) => {
+    const value = Number(job.createdAt);
+    return Number.isFinite(value) && value > 0 ? value : null;
+  };
+  entries.sort((a, b) => {
+    if (jobsSortMode === 'priority') return jobPriority(a.job) - jobPriority(b.job) || a.index - b.index;
+    const first = created(a.job), second = created(b.job);
+    if (first === null || second === null) return first === null && second === null ? a.index - b.index : first === null ? 1 : -1;
+    const difference = jobsSortMode === 'newest' ? second - first : first - second;
+    return difference || a.index - b.index;
+  });
+  return entries.map(({ job }) => job);
+}
+
 function renderJobs() {
   const focused = document.activeElement;
   const focusedJobId = focused?.closest('.job')?.dataset.jobId;
@@ -256,6 +285,11 @@ function renderJobs() {
   const list = $('jobList');
   const existing = jobCards;
   const ordered = [...jobs].sort((a, b) => jobPriority(a) - jobPriority(b));
+  const matches = filteredJobsForList();
+  jobsMatchCount = matches.length;
+  const hasCriteria = Boolean(jobsSearchQuery.trim()) || jobsStatusFilter !== 'all';
+  $('jobsMatchCount').hidden = !hasCriteria;
+  $('jobsMatchCount').textContent = `일치하는 작업 ${jobsMatchCount}개 / 전체 ${jobs.length}개`;
   const activeCount = jobs.filter((job) => ['running', 'queued'].includes(job.status)).length;
   const preparedCount = jobs.filter(isPrepared).length;
   const pausedCount = jobs.filter((job) => job.status === 'paused' && !isPrepared(job)).length;
@@ -425,9 +459,9 @@ function renderJobs() {
   $('preparedJobLabel').hidden = prepared.length < 2;
   $('preparedJobsHeading').hidden = prepared.length === 0;
   reconcileChildren($('preparedJobs'), preparedJobId ? [jobCards.get(preparedJobId)] : [el('p', '영상을 선택하면 여기에서 생성을 준비합니다.', 'empty')]);
-  const pages = Math.max(1, Math.ceil(ordered.length / JOBS_PAGE_SIZE));
+  const pages = Math.max(1, Math.ceil(matches.length / JOBS_PAGE_SIZE));
   jobsPage = Math.max(0, Math.min(jobsPage, pages - 1));
-  const visibleJobs = ordered.slice(jobsPage * JOBS_PAGE_SIZE, (jobsPage + 1) * JOBS_PAGE_SIZE);
+  const visibleJobs = matches.slice(jobsPage * JOBS_PAGE_SIZE, (jobsPage + 1) * JOBS_PAGE_SIZE);
   const visibleNodes = visibleJobs.map((job) => {
     if (!isPrepared(job)) return jobCards.get(job.id);
     const summary = el('article', undefined, 'job prepared-link'); summary.dataset.jobId = job.id; summary.tabIndex = -1;
@@ -447,7 +481,10 @@ function renderJobs() {
     return summary;
   });
   if (!visibleNodes.length) {
-    const empty = el('div', undefined, 'empty'); empty.append(el('p', '아직 작업이 없습니다.'), button('영상 추가', () => show('video'))); visibleNodes.push(empty);
+    const empty = el('div', undefined, 'empty');
+    if (jobs.length) empty.append(el('p', '검색 또는 상태 필터와 일치하는 작업이 없습니다.'));
+    else empty.append(el('p', '아직 작업이 없습니다.'), button('영상 추가', () => show('video')));
+    visibleNodes.push(empty);
   }
   reconcileChildren(list, visibleNodes);
   syncJobsPagination();
@@ -455,12 +492,13 @@ function renderJobs() {
   if (focusedJobId && document.activeElement !== focused) {
     const restoredJob = Array.from(document.querySelectorAll('.job')).find((node) => node.dataset.jobId === focusedJobId && !node.closest('[hidden]'));
     const restored = focused.isConnected ? focused : focusedSummary ? restoredJob?.querySelector('.job-inspection > summary') : Array.from(restoredJob?.querySelectorAll('button') || []).find((node) => node.textContent === focusedButtonLabel && !node.disabled);
-    restored?.focus({ preventScroll: true });
+    if (restored) restored.focus({ preventScroll: true });
+    else if (!focused.isConnected) $('jobsBrowse').querySelector('summary').focus({ preventScroll: true });
   }
 }
 function syncJobsPagination() {
-  const pages = Math.max(1, Math.ceil(jobs.length / JOBS_PAGE_SIZE));
-  $('jobsPageInfo').textContent = `${jobsPage + 1} / ${pages} · ${jobs.length}개`;
+  const pages = Math.max(1, Math.ceil(jobsMatchCount / JOBS_PAGE_SIZE));
+  $('jobsPageInfo').textContent = `${jobsPage + 1} / ${pages} · ${jobsMatchCount}개`;
   $('prevJobs').disabled = jobsPage === 0;
   $('nextJobs').disabled = jobsPage >= pages - 1;
 }
@@ -1183,6 +1221,9 @@ for (const [id, action] of Object.entries({
   undo: () => { if (!editable()) return; history = undoEdit(history); revision += 1; scheduleSave(); renderCues(); },
   redo: () => { if (!editable()) return; history = redoEdit(history); revision += 1; scheduleSave(); renderCues(); },
 })) $(id).addEventListener('click', (event) => { void run(event.currentTarget, action); });
+$('jobsSearch').addEventListener('input', () => { jobsSearchQuery = $('jobsSearch').value; jobsPage = 0; renderJobs(); });
+$('jobsStatusFilter').addEventListener('change', () => { jobsStatusFilter = $('jobsStatusFilter').value; jobsPage = 0; renderJobs(); });
+$('jobsSort').addEventListener('change', () => { jobsSortMode = $('jobsSort').value; jobsPage = 0; renderJobs(); });
 $('preparedJobSelector').addEventListener('change', () => { preparedJobId = $('preparedJobSelector').value; renderJobs(); focusJob(preparedJobId); });
 $('resultJobSelector').addEventListener('change', () => {
   const jobId = $('resultJobSelector').value;

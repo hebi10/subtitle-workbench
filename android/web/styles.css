@@ -2125,3 +2125,60 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
     grid-column: 1 / -1;
   }
 }
+
+/* UI-10-C2 — task list controls; the underlying JobStore and card styles remain unchanged. */
+#jobsView .jobs-overview { margin-bottom: var(--es2-space-1); }
+#jobsView .jobs-browse {
+  border: 1px solid var(--es-border);
+  background: var(--es-surface);
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+#jobsView .jobs-browse > summary {
+  min-height: 48px;
+  padding: var(--es2-space-2) var(--es2-space-3);
+  display: list-item;
+  align-content: center;
+  color: var(--es-ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#jobsView .jobs-browse-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--es2-space-2);
+  padding: var(--es2-space-2);
+}
+#jobsView .jobs-browse-fields label {
+  display: grid;
+  gap: var(--es2-space-1);
+  min-width: 0;
+  font-size: 12px;
+  color: var(--es-muted);
+}
+#jobsView .jobs-browse-fields input,
+#jobsView .jobs-browse-fields select {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: var(--es2-space-2);
+  color: var(--es-ink);
+  background: var(--es-surface);
+  border: 1px solid var(--es-border);
+  border-radius: 0;
+  box-shadow: none;
+  font: inherit;
+}
+#jobsView .jobs-match-count {
+  margin: 0 0 var(--es2-space-2);
+  font-size: 12px;
+  color: var(--es-muted);
+}
+@media (max-width: 360px) {
+  #jobsView .jobs-browse-fields { grid-template-columns: minmax(0, 1fr); }
+}
+@media (min-width: 620px) {
+  #jobsView .jobs-browse-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

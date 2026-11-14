@@ -82,7 +82,7 @@ test('UI-10-C1 preserves existing job operations and prioritizes one available a
   assert.match(js, /jobDestinationWarning\(job\)/);
   assert.match(css, /@media\s*\(max-width:\s*360px\)\s*\{\s*#jobsView \.job-actions > button\.job-primary-action:first-child\s*\{\s*grid-column:\s*1\s*\/\s*-1/);
   assert.match(html, /id="jobList"/);
-  assert.ok(!html.includes('id="jobsSearch"'), 'UI-10-C2 search is not part of C1');
+  assert.equal((html.match(/id="jobsSearch"/g) || []).length, 1, 'C2 search coexists with C1 priority actions');
 });
 
 test('UI-10-C1 state changes, credentials, pagination, deletion confirmation and responsive actions', { skip: !enabled }, async () => {
