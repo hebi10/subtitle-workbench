@@ -232,6 +232,22 @@ async function refresh() {
   finally { refreshing = false; }
 }
 
+function prioritizeJobAction(actions, job, ready) {
+  const preferred = ready ? '생성 시작'
+    : ['running', 'queued'].includes(job.status) ? '일시정지'
+    : ['paused', 'error'].includes(job.status) ? '이어하기'
+    : job.status === 'completed' ? '자막 편집' : '';
+  const buttons = [...actions.querySelectorAll('button')];
+  const available = (label) => buttons.find((node) => node.textContent.trim() === label && !node.disabled);
+  const primary = available(preferred)
+    || (['paused', 'error'].includes(job.status) ? available('API 설정 확인') : null);
+  for (const node of buttons) {
+    node.classList.toggle('primary', node === primary);
+    node.classList.toggle('job-primary-action', node === primary);
+  }
+  if (primary) actions.prepend(primary);
+}
+
 function renderJobs() {
   const focused = document.activeElement;
   const focusedJobId = focused?.closest('.job')?.dataset.jobId;
@@ -273,6 +289,14 @@ function renderJobs() {
         old.querySelectorAll('button').forEach((node) => {
           if (!busyNodes.has(node)) node.disabled = jobActionsInFlight.has(job.id) || (node.dataset.needsKey === 'true' && (!connection.hasKey || !sameDestination));
         });
+        const actions = old.querySelector('.job-actions');
+        const settingsAction = [...actions.querySelectorAll('button')].find((node) => node.textContent.trim() === 'API 설정 확인');
+        if ((!connection.hasKey || !sameDestination) && !settingsAction) {
+          actions.append(button('API 설정 확인', () => openSettings(), jobActionsInFlight.has(job.id)));
+        } else if (connection.hasKey && sameDestination && settingsAction) {
+          settingsAction.remove();
+        }
+        prioritizeJobAction(actions, job, true);
       }
       nextNodes.push(old);
       continue;
@@ -387,8 +411,7 @@ function renderJobs() {
         actions.append(settingsButton);
       }
     }
-    const featuredAction = actions.querySelector('button.primary:not(:disabled)');
-    if (featuredAction) actions.prepend(featuredAction);
+    prioritizeJobAction(actions, job, ready);
     article.append(actions);
     if (job.status === 'completed') article.append(secondaryActions);
     if (ready) article.append(preparationEditor(job));
@@ -416,7 +439,11 @@ function renderJobs() {
     preparedState.append(preparedBadge, el('span', formatDuration(job.durationMs), 'job-meta-text'));
     heading.append(preparedState);
     summary.append(heading);
-    const actions = el('div', undefined, 'job-actions'); actions.append(actionIcon(button('준비 확인', () => openPrepared(job.id)), 'play')); summary.append(actions);
+    const actions = el('div', undefined, 'job-actions');
+    const review = actionIcon(button('준비 확인', () => openPrepared(job.id)), 'play');
+    review.classList.add('primary', 'job-primary-action');
+    actions.append(review);
+    summary.append(actions);
     return summary;
   });
   if (!visibleNodes.length) {
