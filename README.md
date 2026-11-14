@@ -1,4 +1,4 @@
-# Subtitle Workbench · 해비 자막
+# 자막라인 · Subtitle Workbench 개발 저장소
 
 영상·오디오에서 자막을 생성하고 번역·편집하는 웹 및 Android 도구입니다. OpenAI API로 음성 인식과 번역을 수행하고 `SRT`, `VTT`, `JSON` 파일을 내보냅니다.
 

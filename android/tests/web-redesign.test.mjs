@@ -36,7 +36,7 @@ test('v0.8 desktop and mobile web screens remain accessible and aligned', { skip
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('http://127.0.0.1:' + server.address().port + '/');
     await page.locator('.workspace-tab').first().waitFor();
-    assert.match(await page.locator('.topbar').innerText(), /해비 자막/);
+    assert.match(await page.locator('.topbar').innerText(), /자막라인/);
 
     for (const width of [390, 1280]) {
       await page.setViewportSize({ width, height: 844 });

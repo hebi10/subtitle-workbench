@@ -47,7 +47,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        setTitle("해비 자막 · 온디바이스 마이크");
+        setTitle("자막라인 · 온디바이스 마이크");
         buildView();
         if (Build.VERSION.SDK_INT < 31 || !SpeechRecognizer.isOnDeviceRecognitionAvailable(this)) {
             showStatus("이 기기에서는 온디바이스 음성 인식이 제공되지 않습니다. Android 12 이상과 설치된 인식 엔진이 필요합니다.");
