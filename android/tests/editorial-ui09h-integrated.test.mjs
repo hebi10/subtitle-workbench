@@ -278,3 +278,39 @@ test('UI-09-H Android WebView: 61 mock configurations, error/partial and three f
     assert.equal(matrix.length, 61);
   });
 });
+
+test('UI-10-H traces all eight Android screen contracts plus the browser three-tab release freeze', async () => {
+  const androidRoot = resolve(root, 'android/app/src/main/java/com/haebi/subtitle');
+  const [view, actions, ondevice, live, vosk, protocol, catalog, web, webApp, manifest] = await Promise.all([
+    readFile(join(root, 'android/web/index.html'), 'utf8'),
+    readFile(join(root, 'android/web/app.js'), 'utf8'),
+    readFile(join(androidRoot, 'OnDeviceRecognitionActivity.java'), 'utf8'),
+    readFile(join(androidRoot, 'CloudLiveRecognitionActivity.java'), 'utf8'),
+    readFile(join(androidRoot, 'OfflineVoskActivity.java'), 'utf8'),
+    readFile(join(androidRoot, 'RealtimeTranscriptionProtocol.java'), 'utf8'),
+    readFile(join(androidRoot, 'OfflineModelCatalog.java'), 'utf8'),
+    readFile(join(root, 'index.html'), 'utf8'),
+    readFile(join(root, 'src/app.js'), 'utf8'),
+    readFile(join(root, 'assets/play-store/ko-KR/manifest.json'), 'utf8'),
+  ]);
+  for (const id of ['videoView', 'jobsView', 'resultsView', 'editorView', 'settingsView',
+    'jobsSearch', 'jobsStatusFilter', 'jobsSort', 'resultExportStatus', 'settingsConnectionHealth']) {
+    assert.equal((view.match(new RegExp('id="' + id + '"', 'g')) || []).length, 1, id);
+  }
+  assert.match(actions, /function filteredJobsForList\(\)/);
+  assert.match(actions, /const saved = result === true \|\| result\?\.saved === true/);
+  assert.match(actions, /resultExportInFlight/);
+  assert.match(actions, /설정 저장 전|아직 적용되지 않습니다/);
+  assert.match(ondevice, /SpeechRecognizer\.isOnDeviceRecognitionAvailable/);
+  assert.match(live, /gpt-live-transcribe/);
+  assert.match(protocol, /MODEL = "gpt-live-transcribe"/);
+  assert.match(vosk, /SHA-256 검사를 통과한 설치 모델/);
+  assert.match(catalog, /약 87MB 다운로드|약 42MB 다운로드/);
+  for (const id of ['panel-generate', 'panel-edit', 'panel-export', 'exportDownloadStatus']) {
+    assert.equal((web.match(new RegExp('id="' + id + '"', 'g')) || []).length, 1, id);
+  }
+  assert.match(webApp, /다운로드 요청됨 · 실제 저장 여부는 브라우저 다운로드 내역에서 확인/);
+  assert.match(web, /현재 페이지의 임시 데이터/);
+  assert.equal(JSON.parse(manifest).images.phoneScreenshots.length, 8);
+  assert.match(await readFile(join(root, 'AGENTS.md'), 'utf8'), /Play 배포 승인이 아니다/);
+});
