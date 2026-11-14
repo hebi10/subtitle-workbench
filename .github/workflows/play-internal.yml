@@ -1,12 +1,30 @@
 name: Play internal release
 
 on:
-  workflow_run:
-    workflows: ["Verify web and Android"]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
     inputs:
+      ops06_store_approved:
+        description: 'Separate approval for any legacy listing mutation'
+        required: true
+        type: boolean
+        default: false
+      ops06_confirmation:
+        description: 'For listing changes type APPLY_VERIFIED_PLAY_STORE_ASSETS'
+        required: false
+        type: string
+      ops06_expected_main_sha:
+        description: 'Exact approved current main SHA'
+        required: false
+        type: string
+      ops06_batch_id:
+        description: 'KST release batch for separately approved listing updates'
+        required: false
+        type: string
+      ops01_release_approved:
+        description: 'OPS-01 manual Play publish approval after final QA'
+        required: true
+        type: boolean
+        default: false
       mode:
         description: 'check, audit (read-only), build, deploy, or promote existing internal version'
         required: true
@@ -48,6 +66,13 @@ jobs:
       target: ${{ steps.route.outputs.target }}
       promotion_code: ${{ steps.route.outputs.promotion_code }}
     steps:
+      - name: OPS-01 enforce manual Play release approval
+        if: inputs.mode == 'deploy' || inputs.mode == 'promote'
+        env:
+          OPS01_RELEASE_APPROVED: ${{ inputs.ops01_release_approved }}
+        run: |
+          test "$GITHUB_EVENT_NAME" = workflow_dispatch
+          test "$OPS01_RELEASE_APPROVED" = true
       - uses: actions/checkout@v4
         with:
           ref: main
@@ -167,6 +192,15 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: python3 scripts/release/preflight.py signing
+      - name: OPS-06 require separate approval before any legacy listing update
+        if: needs.source.outputs.mode == 'listing' || needs.source.outputs.mode == 'reconcile'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPS06_STORE_APPROVED: ${{ inputs.ops06_store_approved }}
+          OPS06_CONFIRMATION: ${{ inputs.ops06_confirmation }}
+          OPS06_EXPECTED_MAIN_SHA: ${{ inputs.ops06_expected_main_sha }}
+          OPS06_BATCH_ID: ${{ inputs.ops06_batch_id }}
+        run: python3 scripts/ops06/store_gate.py apply
       - name: Check Play authentication configuration
         id: credentials
         if: needs.source.outputs.mode == 'deploy' || needs.source.outputs.mode == 'listing' || needs.source.outputs.mode == 'reconcile' || needs.source.outputs.mode == 'promote' || needs.source.outputs.mode == 'audit'

@@ -1,0 +1,31 @@
+name: OPS-06 Play listing safety (offline)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/ops06-store-safety.yml'
+      - 'scripts/ops06/**'
+      - '.github/workflows/play-listing.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ops06-store-safety.yml'
+      - 'scripts/ops06/**'
+      - '.github/workflows/play-listing.yml'
+permissions:
+  contents: read
+jobs:
+  safety:
+    name: Verify store approval and no automatic Play publishing
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline source approval, event and Play workflow regression tests
+        run: |
+          python3 -m py_compile scripts/ops06/store_gate.py
+          python3 -m unittest discover -s scripts/ops06 -p 'test_*.py' -v

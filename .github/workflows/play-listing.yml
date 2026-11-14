@@ -3,6 +3,28 @@ name: Play Korean store listing
 on:
   workflow_dispatch:
     inputs:
+      ops06_store_approved:
+        description: 'Separate Play listing approval after all planned features and QA'
+        required: true
+        type: boolean
+        default: false
+      ops06_confirmation:
+        description: 'For apply type APPLY_VERIFIED_PLAY_STORE_ASSETS'
+        required: false
+        type: string
+      ops06_expected_main_sha:
+        description: 'Approved exact current main SHA'
+        required: false
+        type: string
+      ops06_batch_id:
+        description: 'KST release batch YYYY-MM-DD-subtitle-workbench'
+        required: false
+        type: string
+      ops01_release_approved:
+        description: 'Explicit approval for Play mutation after final QA'
+        required: true
+        type: boolean
+        default: false
       mode:
         description: 'check = local validation only; apply = replace reviewed Korean listing and explicit image categories'
         type: choice
@@ -45,7 +67,10 @@ jobs:
 
   apply:
     needs: source
-    if: inputs.mode == 'apply'
+    if: >-
+      github.repository == 'hebi10/subtitle-workbench' && github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' && inputs.mode == 'apply' &&
+      inputs.ops01_release_approved == true && inputs.ops06_store_approved == true
     runs-on: ubuntu-latest
     environment: google-play
     permissions:
@@ -56,6 +81,14 @@ jobs:
         with:
           ref: ${{ needs.source.outputs.sha }}
           persist-credentials: false
+      - name: OPS-06 verify approved store metadata scope and source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPS06_STORE_APPROVED: ${{ inputs.ops06_store_approved }}
+          OPS06_CONFIRMATION: ${{ inputs.ops06_confirmation }}
+          OPS06_EXPECTED_MAIN_SHA: ${{ inputs.ops06_expected_main_sha }}
+          OPS06_BATCH_ID: ${{ inputs.ops06_batch_id }}
+        run: python3 scripts/ops06/store_gate.py apply
       - name: Check Play authentication configuration
         id: credentials
         env:

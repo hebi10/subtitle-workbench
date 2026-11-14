@@ -1,0 +1,40 @@
+name: OPS-08 final main source and release policy verification
+on:
+  pull_request:
+    paths:
+      - 'scripts/ops08/**'
+      - '.github/workflows/ops08-final-policy.yml'
+      - 'scripts/ops07/**'
+      - '.github/workflows/ops07-safety.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    name: Offline exact-source Play release freeze verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run OPS-07 regression tests without Google Play credentials
+        run: python3 -m unittest discover -s scripts/ops07 -p 'test_*.py' -v
+      - name: Run OPS-08 final main inventory tests
+        run: python3 -m unittest discover -s scripts/ops08 -p 'test_*.py' -v
+      - name: Verify exact checked-out source and all release safeguards
+        run: python3 scripts/ops08/final_audit.py --report ops08-output/report.json
+      - name: Preserve sanitized final audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ops08-final-main-${{ github.run_id }}
+          path: ops08-output/report.json
+          retention-days: 30
+          if-no-files-found: warn

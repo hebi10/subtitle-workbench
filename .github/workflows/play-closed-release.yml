@@ -1,0 +1,211 @@
+name: OPS-05 existing internal version to closed test
+run-name: OPS-05 ${{ inputs.mode }} versionCode ${{ inputs.version_code }}
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'check = inspect only; promote = update existing closed track'
+        type: choice
+        required: true
+        default: check
+        options: [check, promote]
+      expected_main_sha:
+        description: 'Exact current main SHA'
+        required: true
+        type: string
+      batch_id:
+        description: 'Approved KST release batch ID'
+        required: true
+        type: string
+      version_code:
+        description: 'Existing completed internal AAB versionCode'
+        required: true
+        type: string
+      aab_sha256:
+        description: 'Existing internal AAB SHA-256 from verified build/receipt'
+        required: true
+        type: string
+      internal_track:
+        description: 'Actual existing internal testing API track ID'
+        required: true
+        type: choice
+        default: internal
+        options: [internal, qa]
+      closed_track:
+        description: 'Exact existing closed track API ID (e.g., alpha)'
+        required: true
+        type: string
+        default: alpha
+      final_batch_approved:
+        description: 'Every planned task and release QA finished; separate closed promotion approved'
+        required: true
+        type: boolean
+        default: false
+      approval_phrase:
+        description: 'For promote only type PROMOTE_VERIFIED_INTERNAL_VERSION'
+        required: false
+        type: string
+      homecrew_final_approval:
+        description: 'HomeCrew only: existing final-release approval string'
+        required: false
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: play-com-haebi-subtitle
+  cancel-in-progress: false
+env:
+  EXPECTED_REPO: 'hebi10/subtitle-workbench'
+  APP_PACKAGE: 'com.haebi.subtitle'
+  EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+  BATCH_ID: ${{ inputs.batch_id }}
+  INTERNAL_TRACK: ${{ inputs.internal_track }}
+  CLOSED_TRACK: ${{ inputs.closed_track }}
+  VERSION_CODE: ${{ inputs.version_code }}
+  AAB_SHA256: ${{ inputs.aab_sha256 }}
+  MODE: ${{ inputs.mode }}
+  FINAL_BATCH_APPROVED: ${{ inputs.final_batch_approved }}
+  APPROVAL_PHRASE: ${{ inputs.approval_phrase }}
+  HOMECREW_FINAL_APPROVAL: ${{ inputs.homecrew_final_approval }}
+jobs:
+  guard:
+    name: Verify manual request and fixed current main source (no Play access)
+    if: github.repository == 'hebi10/subtitle-workbench' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Enforce exact main and explicit closed approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ops05/promotion.py guard
+
+  check:
+    name: Inspect completed internal, matching AAB hash and existing closed track
+    needs: guard
+    if: needs.guard.result == 'success'
+    runs-on: ubuntu-latest
+    environment: google-play
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Select existing app-scoped Play credentials
+        id: method
+        env:
+          PROVIDER: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
+          ACCOUNT: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          SERVICE_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "$PROVIDER" && -n "$ACCOUNT" ]]; then
+            echo mode=wif >> "$GITHUB_OUTPUT"
+          elif [[ -n "$SERVICE_JSON" ]]; then
+            echo mode=json >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::No authorized app-scoped Google Play credential"
+            exit 1
+          fi
+      - uses: google-github-actions/auth@v3
+        if: steps.method.outputs.mode == 'wif'
+        id: wif
+        with:
+          workload_identity_provider: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+          export_environment_variables: false
+      - uses: google-github-actions/auth@v3
+        if: steps.method.outputs.mode == 'json'
+        id: json
+        with:
+          credentials_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+          export_environment_variables: false
+      - name: Verify existing internal AAB and closed track (no commit)
+        env:
+          PLAY_ACCESS_TOKEN: ${{ steps.wif.outputs.access_token || steps.json.outputs.access_token }}
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ops05/promotion.py check
+      - name: Save sanitized read-only inspection result
+        uses: actions/upload-artifact@v4
+        with:
+          name: ops05-closed-inspection-${{ github.run_id }}
+          path: ops05-output/receipt.json
+          retention-days: 30
+          if-no-files-found: error
+
+  promote:
+    name: Promote same existing internal code to closed (no AAB upload)
+    needs: [guard, check]
+    if: inputs.mode == 'promote' && needs.check.result == 'success'
+    runs-on: ubuntu-latest
+    environment: google-play
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Select existing Play authentication
+        id: method
+        env:
+          PROVIDER: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
+          ACCOUNT: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          SERVICE_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "$PROVIDER" && -n "$ACCOUNT" ]]; then
+            echo mode=wif >> "$GITHUB_OUTPUT"
+          elif [[ -n "$SERVICE_JSON" ]]; then
+            echo mode=json >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::No authorized app-scoped Google Play credential"
+            exit 1
+          fi
+      - uses: google-github-actions/auth@v3
+        if: steps.method.outputs.mode == 'wif'
+        id: wif
+        with:
+          workload_identity_provider: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+          export_environment_variables: false
+      - uses: google-github-actions/auth@v3
+        if: steps.method.outputs.mode == 'json'
+        id: json
+        with:
+          credentials_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+          export_environment_variables: false
+      - name: Recheck complete internal code, exact AAB and source before Play edit
+        env:
+          PLAY_ACCESS_TOKEN: ${{ steps.wif.outputs.access_token || steps.json.outputs.access_token }}
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ops05/promotion.py promote
+      - name: Store sanitized Play commit/readback receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ops05-closed-promotion-${{ github.run_id }}
+          path: ops05-output/receipt.json
+          retention-days: 30
+          if-no-files-found: ignore
