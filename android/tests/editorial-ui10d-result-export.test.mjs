@@ -170,6 +170,7 @@ test('UI-10-D preserves missing-media and editable-results distinctions at respo
 
     await page.locator('#navVideo').click();
     await page.locator('#importSubtitles').click();
+    await page.locator('#editorView').waitFor({ state: 'visible' });
     await page.locator('#navResults').click();
     await page.waitForFunction(() => document.querySelector('#resultName')?.textContent === '가져온 자막.srt');
     assert.equal(await page.locator('#resultPreview').isDisabled(), true);
