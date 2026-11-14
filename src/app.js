@@ -1699,7 +1699,7 @@ function renderExportOverview() {
     : !state.subtitles.length
       ? { state: 'empty', text: '내려받을 자막이 없습니다. 기존 자막을 불러오거나 생성 탭에서 작업하세요.' }
       : entry?.translationPending
-        ? { state: 'partial', text: '부분 번역 결과 · 현재 페이지에 남아 있는 원문으로 SRT·VTT·JSON을 내려받을 수 있습니다.' }
+        ? { state: 'partial', text: '부분 번역 결과 · 현재 페이지의 원문을 보존한 상태에서 SRT·VTT·JSON을 내려받을 수 있습니다.' }
         : getTranslationFailures(state.subtitles).length
           ? { state: 'partial', text: '번역 오류가 포함되어 있습니다. 원문 자막을 확인한 뒤 파일을 내려받으세요.' }
           : { state: 'ready', text: '자막 파일 준비 완료 · SRT를 먼저 권장합니다. 실제 저장 여부는 브라우저 다운로드 내역에서 확인하세요.' };

@@ -25,6 +25,6 @@ test('UI-10-G file preparation differs from requested download and never claims 
     assert.ok(source.includes("dataset.state = '" + state + "'"), state);
   assert.match(source, /dataset\.format = format/);
   assert.match(source, /다운로드 요청됨 · 실제 저장 여부는 브라우저 다운로드 내역에서 확인/);
-  assert.match(source, /현재 페이지에 남아 있는 원문으로 SRT·VTT·JSON/);
+  assert.match(source, /현재 페이지의 원문을 보존한 상태에서 SRT·VTT·JSON/);
   assert.match(styles, /#panel-export #exportDownloadStatus\[data-state="requested"\]/);
 });
