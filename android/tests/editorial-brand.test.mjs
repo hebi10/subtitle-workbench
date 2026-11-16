@@ -53,7 +53,7 @@ test('1-B Android launcher has adaptive, round and themed glyphs', async () => {
   assert.equal(glyph.equals(themed), true);
 });
 
-test('1-B Play Store icon and graphic hashes match manifest', async () => {
+test('UI-10-I Play Store icon and graphic hashes match the current brand manifest', async () => {
   const m = JSON.parse(await getText('assets/play-store/ko-KR/manifest.json'));
   for (const [name, size] of [['icon.png',[512,512]],['feature-graphic.png',[1024,500]]]) {
     const bytes=await get('assets/play-store/ko-KR/'+name);
@@ -61,7 +61,8 @@ test('1-B Play Store icon and graphic hashes match manifest', async () => {
     const record=m.assets.find(item=>item.file===name);
     assert.ok(record,name+' must have a manifest record');
     assert.equal(createHash('sha256').update(bytes).digest('hex'),record.sha256);
-    assert.match(record.source.type,/imagegen-assisted/);
+    assert.equal(record.source.type, 'raster-brand-art');
+    assert.equal(record.source.brand, '자막라인');
   }
   assert.deepEqual(pngSize(await get('favicon.png')),[64,64]);
   assert.deepEqual(pngSize(await get('apple-touch-icon.png')),[180,180]);

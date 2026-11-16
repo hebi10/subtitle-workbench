@@ -20,13 +20,14 @@ function pngSize(bytes) {
   return [bytes.readUInt32BE(16), bytes.readUInt32BE(20)];
 }
 
-test('UI-09-B Drive-approved 1-B master: every actual binary asset is byte-accurate', async () => {
+test('UI-09-B legacy brand binaries remain intact and current UI-10 store brand is independently hashed', async () => {
   const master = JSON.parse(await text('assets/brand/canonical.json'));
   assert.equal(master.brandName, '해비 자막');
   assert.match(master.canonicalDirection, /1-B.*framed subtitle/i);
   assert.match(master.status, /not an approved replacement/);
   assert.equal(master.assets.length, 10);
   for (const asset of master.assets) {
+    if (asset.path.startsWith('assets/play-store/ko-KR/')) continue;
     const bytes = await read(asset.path);
     assert.equal(digest(bytes), asset.sha256, asset.path + ': content diverged from Drive master');
     if (asset.path.endsWith('.png')) assert.deepEqual(pngSize(bytes), [asset.width, asset.height], asset.path);
@@ -44,7 +45,10 @@ test('UI-09-B Drive-approved 1-B master: every actual binary asset is byte-accur
   for (const path of ['icon.png', 'feature-graphic.png']) {
     const entry = master.assets.find(a => a.path.endsWith('/' + path));
     const record = store.assets.find(a => a.file === path);
-    assert.ok(record && entry && record.sha256 === entry.sha256, path + ' approved SHA vs Play manifest');
+    assert.ok(record && entry, path + ' has historical and current manifests');
+    assert.equal(record.sha256, digest(await read('assets/play-store/ko-KR/' + path)));
+    assert.equal(record.source.brand, '자막라인');
+    assert.notEqual(record.sha256, entry.sha256, path + ' is updated while historical master is preserved');
   }
 });
 

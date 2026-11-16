@@ -1,0 +1,130 @@
+{
+  "app": "자막라인",
+  "sourceGitSha": "b57afccc2850f35cb675a837ff0d5437edad0936",
+  "equivalentMainSHA": "63cf896d60dbda377174c6c323a6c8ce5ef1b4a9",
+  "emulatorRunId": 43562836588,
+  "sourceScreenshots": [
+    {
+      "file": "01-video.png",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "43f889d85eb916694e48c00a284b3568f23d4d43838aeee315900141b3775430",
+      "source": {
+        "type": "real-android-emulator-capture",
+        "sourceCommit": "b57afccc2850f35cb675a837ff0d5437edad0936",
+        "mainEquivalentCommit": "63cf896d60dbda377174c6c323a6c8ce5ef1b4a9",
+        "sourceRunId": 43562836588,
+        "sourcePath": "output/editorial-5a/webview-light-font100/video-light-font100.png",
+        "sourceSHA256": "5fa3f7f0127f7626f2bd6a0341727d55fd0aa3548abebc8fdb8f97b4440a4031",
+        "captionOutsideUncroppedCapture": true
+      }
+    },
+    {
+      "file": "02-jobs.png",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "d9bf4a5f8a73dbc004bcd18daaa4890b231fc0146e4d57a8090edebc625d0f95",
+      "source": {
+        "type": "real-android-emulator-capture",
+        "sourceCommit": "b57afccc2850f35cb675a837ff0d5437edad0936",
+        "mainEquivalentCommit": "63cf896d60dbda377174c6c323a6c8ce5ef1b4a9",
+        "sourceRunId": 43562836588,
+        "sourcePath": "output/editorial-5a/webview-light-font100/jobs-light-font100.png",
+        "sourceSHA256": "a3ba3cce48adf06509648b2dcd7ee09b5875417c7d0e18beb948cbe40caed0c7",
+        "captionOutsideUncroppedCapture": true
+      }
+    },
+    {
+      "file": "03-results.png",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "00ce855520dd64ea4cddfc1af8787d35c90267bf169db3cbf31c435857c39cc8",
+      "source": {
+        "type": "real-android-emulator-capture",
+        "sourceCommit": "b57afccc2850f35cb675a837ff0d5437edad0936",
+        "mainEquivalentCommit": "63cf896d60dbda377174c6c323a6c8ce5ef1b4a9",
+        "sourceRunId": 43562836588,
+        "sourcePath": "output/editorial-5a/webview-light-font100/results-light-font100.png",
+        "sourceSHA256": "7e605bb6bba3ea7cd57ef6636bf8cb2044304c80400bf029f2787933f0378df5",
+        "captionOutsideUncroppedCapture": true
+      }
+    },
+    {
+      "file": "04-editor.png",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "a92d5793a3b355396b0db50030895e93c80c4482b594abe1943151a6823a9504",
+      "source": {
+        "type": "real-android-emulator-capture",
+        "sourceCommit": "b57afccc2850f35cb675a837ff0d5437edad0936",
+        "mainEquivalentCommit": "63cf896d60dbda377174c6c323a6c8ce5ef1b4a9",
+        "sourceRunId": 43562836588,
+        "sourcePath": "output/editorial-5a/webview-light-font100/editor-light-font100.png",
+        "sourceSHA256": "8279237ce32fd958505a7898f6241312711cca03c45ee8cf2d61a1084bdf0ec4",
+        "captionOutsideUncroppedCapture": true
+      }
+    },
+    {
+      "file": "05-settings.png",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "b390cc1c453fe1985ae12f9df6cfc892128f0bc78a974a83636bddcd54c6eb7e",
+      "source": {
+        "type": "real-android-emulator-capture",
+        "sourceCommit": "b57afccc2850f35cb675a837ff0d5437edad0936",
+        "mainEquivalentCommit": "63cf896d60dbda377174c6c323a6c8ce5ef1b4a9",
+        "sourceRunId": 43562836588,
+        "sourcePath": "output/editorial-5a/webview-light-font100/settings-expanded-light-font100.png",
+        "sourceSHA256": "f4dffc050e8c83a36e57b42fc68e836f78c4f21ccec8ca5d865a9d350ed1f3cb",
+        "captionOutsideUncroppedCapture": true
+      }
+    },
+    {
+      "file": "06-on-device.png",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "23c9f25d0e4ec7a3daaef90e263c0a13c55642cb68cc43a69677bc8fdd2f3860",
+      "source": {
+        "type": "real-android-emulator-capture",
+        "sourceCommit": "b57afccc2850f35cb675a837ff0d5437edad0936",
+        "mainEquivalentCommit": "63cf896d60dbda377174c6c323a6c8ce5ef1b4a9",
+        "sourceRunId": 43562836588,
+        "sourcePath": "output/editorial-native-3c/editorial-3c/on-device-light.png",
+        "sourceSHA256": "dc766138831cffcbb011829ebf74b4c0ee919ec650062add6775d69a2e4a41ef",
+        "captionOutsideUncroppedCapture": true
+      }
+    },
+    {
+      "file": "07-cloud-live.png",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "caa394119a69001fb4d6e47f6c95566ac74abefd1df8fca77dcb226bb5840ada",
+      "source": {
+        "type": "real-android-emulator-capture",
+        "sourceCommit": "b57afccc2850f35cb675a837ff0d5437edad0936",
+        "mainEquivalentCommit": "63cf896d60dbda377174c6c323a6c8ce5ef1b4a9",
+        "sourceRunId": 43562836588,
+        "sourcePath": "output/editorial-native-3c/editorial-3c/cloud-live-light.png",
+        "sourceSHA256": "760633aa947a9db02ec7100afab7677b50bf5cb41a9281066d141dd769e10700",
+        "captionOutsideUncroppedCapture": true
+      }
+    },
+    {
+      "file": "08-vosk-local.png",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "dc6a8c6999697523ec657bb82a38e78cea06cb3735da422364d16fa7239a3c86",
+      "source": {
+        "type": "real-android-emulator-capture",
+        "sourceCommit": "b57afccc2850f35cb675a837ff0d5437edad0936",
+        "mainEquivalentCommit": "63cf896d60dbda377174c6c323a6c8ce5ef1b4a9",
+        "sourceRunId": 43562836588,
+        "sourcePath": "output/editorial-native-3c/editorial-3c/vosk-local-light.png",
+        "sourceSHA256": "eb123f38c20ced80625b213abfa110b9dbb123b2d2cbbb3ba822663518e0e7a8",
+        "captionOutsideUncroppedCapture": true
+      }
+    }
+  ],
+  "dataKind": "deterministic QA fixtures; no user content",
+  "originalAppUISourceByteIdenticalToMain": true
+}
