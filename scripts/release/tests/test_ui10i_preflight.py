@@ -28,6 +28,16 @@ class Ui10iPreflightTests(unittest.TestCase):
         self.assertEqual(result["status"], "blocked")
         self.assertTrue(any(("older Android code" in b or "old brand" in b) for b in result["blockers"]))
 
+    def test_new_android_capture_accepts_actual_source_or_equivalent_main_sha(self):
+        original = "b57afccc2850f35cb675a837ff0d5437edad0936"
+        equivalent = "63cf896d60dbda377174c6c323a6c8ce5ef1b4a9"
+        for source_sha in [original, equivalent]:
+            with self.subTest(source_sha=source_sha):
+                result = MODULE.audit(ROOT, source_sha)
+                self.assertEqual(result["status"], "assets-technically-verified")
+                self.assertEqual(result["validImageCount"], 10)
+                self.assertEqual(result["blockers"], [])
+
     def test_read_only_checker_does_not_include_play_api_mutations(self):
         source = SOURCE.read_text(encoding="utf-8")
         for forbidden in ["edits.commit", "androidpublisher", "PLAY_SERVICE_ACCOUNT_JSON",

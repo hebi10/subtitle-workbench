@@ -90,8 +90,8 @@ def audit(repo_root, verified_android_sha=None):
                 continue
             if category == "phoneScreenshots":
                 source = entry.get("source") or {}
-                if (source.get("sourceCommit") not in (sha, recorded)
-                        or source.get("mainEquivalentCommit", sha) != sha
+                if (source.get("sourceCommit") != recorded
+                        or (sha != recorded and source.get("mainEquivalentCommit") != sha)
                         or not source.get("sourcePath")):
                     blockers.append(filename + ": no matching current Android capture provenance")
                     continue
