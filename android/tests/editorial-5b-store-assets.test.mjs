@@ -9,17 +9,18 @@ const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const store = join(root, 'assets/play-store/ko-KR');
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 
-test('STORE-05 latest UI-09-H Play screenshots are eight authentic Android 15 captures', async () => {
+test('UI-10-I current 자막라인 Play screenshots have authentic Android 15 capture provenance', async () => {
   const manifest = JSON.parse(await readFile(join(store, 'manifest.json'), 'utf8'));
-  const provenance = JSON.parse(await readFile(join(store, 'capture-provenance-store05.json'), 'utf8'));
+  const provenance = JSON.parse(await readFile(join(store, 'capture-provenance-ui10.json'), 'utf8'));
   const files = manifest.images.phoneScreenshots;
   assert.equal(manifest.language, 'ko-KR');
   assert.equal(files.length, 8);
   assert.equal(new Set(files).size, 8);
   assert.equal(manifest.screenshotCapture.count, 8);
-  assert.equal(provenance.stage, 'STORE-05');
-  assert.equal(provenance.sourceGitSha, 'ede57b4d0c7c6b63d1a0c6e0a679fab1ce13c917');
-  assert.equal(provenance.assets.length, 8);
+  assert.equal(provenance.app, '자막라인');
+  assert.equal(provenance.sourceGitSha, 'b57afccc2850f35cb675a837ff0d5437edad0936');
+  assert.equal(provenance.equivalentMainSHA, manifest.screenshotCapture.mainEquivalentCommit);
+  assert.equal(provenance.sourceScreenshots.length, 8);
   assert.deepEqual(manifest.images.icon, ['icon.png']);
   assert.deepEqual(manifest.images.featureGraphic, ['feature-graphic.png']);
 
@@ -29,15 +30,16 @@ test('STORE-05 latest UI-09-H Play screenshots are eight authentic Android 15 ca
     assert.deepEqual([image.readUInt32BE(16), image.readUInt32BE(20)], [1080, 1920]);
     assert.ok(image.length < 8 * 1024 * 1024);
     const record = manifest.assets.find(item => item.file === filename);
-    const source = provenance.assets.find(item => item.file === filename);
-    assert.ok(record && source, filename + ' has provenance metadata');
+    const original = provenance.sourceScreenshots.find(item => item.file === filename);
+    assert.ok(record && original, filename + ' has matching provenance');
     assert.equal(record.sha256, digest(image), filename + ' SHA-256');
-    assert.equal(source.sha256, digest(image), filename + ' provenance SHA-256');
+    assert.equal(original.sha256, digest(image), filename + ' provenance SHA-256');
     assert.equal(record.source.sourceCommit, provenance.sourceGitSha);
-    assert.equal(record.source.sourcePath, source.sourcePath);
-    assert.equal(record.source.sourceSha256, source.sourceSHA256);
-    assert.match(record.source.type, /android-15-emulator/);
-    assert.match(source.rendering, /no image crop/);
+    assert.equal(record.source.mainEquivalentCommit, provenance.equivalentMainSHA);
+    assert.equal(record.source.sourcePath, original.source.sourcePath);
+    assert.equal(record.source.sourceSHA256, original.source.sourceSHA256);
+    assert.match(record.source.type, /real-android-emulator-capture/);
+    assert.equal(record.source.captionOutsideUncroppedCapture, true);
   }
 });
 
