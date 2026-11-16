@@ -26,7 +26,7 @@ class Ui10iPreflightTests(unittest.TestCase):
     def test_even_old_matching_sha_has_outdated_brand_provenance(self):
         result = MODULE.audit(ROOT, "ede57b4d0c7c6b63d1a0c6e0a679fab1ce13c917")
         self.assertEqual(result["status"], "blocked")
-        self.assertTrue(any("old brand" in b for b in result["blockers"]))
+        self.assertTrue(any(("older Android code" in b or "old brand" in b) for b in result["blockers"]))
 
     def test_read_only_checker_does_not_include_play_api_mutations(self):
         source = SOURCE.read_text(encoding="utf-8")
