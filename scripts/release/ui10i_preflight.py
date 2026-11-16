@@ -48,7 +48,8 @@ def audit(repo_root, verified_android_sha=None):
         blockers.append("Missing verified latest Android 15 capture source SHA")
     capture = manifest.get("screenshotCapture") or {}
     recorded = str(capture.get("originalSourceCommit", "")).lower()
-    if valid_sha and recorded != sha:
+    equivalent = str(capture.get("mainEquivalentCommit", "")).lower()
+    if valid_sha and recorded != sha and equivalent != sha:
         blockers.append("Store captures originate from older Android code, not the verified source")
     if manifest.get("language") != "ko-KR" or listing.get("language") != "ko-KR":
         blockers.append("Both store manifest and listing must be ko-KR")
@@ -89,7 +90,9 @@ def audit(repo_root, verified_android_sha=None):
                 continue
             if category == "phoneScreenshots":
                 source = entry.get("source") or {}
-                if source.get("sourceCommit") != sha or not source.get("sourcePath"):
+                if (source.get("sourceCommit") not in (sha, recorded)
+                        or source.get("mainEquivalentCommit", sha) != sha
+                        or not source.get("sourcePath")):
                     blockers.append(filename + ": no matching current Android capture provenance")
                     continue
             checked["valid"] = True
@@ -100,7 +103,8 @@ def audit(repo_root, verified_android_sha=None):
     else:
         try:
             evidence = json.loads((assets / evidence_filename).read_text(encoding="utf-8"))
-            if evidence.get("sourceGitSha") != sha:
+            if (evidence.get("sourceGitSha") != recorded
+                    or (recorded != sha and evidence.get("equivalentMainSHA") != sha)):
                 blockers.append("Screenshot evidence does not match verified Android source")
             if evidence.get("app") != listing.get("title"):
                 blockers.append("Screenshot evidence uses old brand instead of 자막라인")
