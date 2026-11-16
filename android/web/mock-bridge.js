@@ -24,7 +24,7 @@
         const job = state.jobs.find((item) => item.id === params.jobId);
         if (['setKey', 'clearKey', 'usePersonalApi', 'setReviewRelay', 'clearReviewRelay'].includes(method) && state.jobs.some((item) => ['running', 'queued'].includes(item.status))) throw new Error('실행 또는 대기 중인 작업을 일시정지해 주세요.');
         switch (method) {
-          case 'getSubscriptionOptions': result = { available: false, purchaseEnabled: false, entitlementVerified: false, plans: [] }; break;
+          case 'getSubscriptionOptions': result = state.subscriptionOptions ?? { available: false, purchaseEnabled: false, entitlementVerified: false, plans: [] }; break;
           case 'setAdScreen': result = true; break;
           case 'openAdPrivacyOptions': result = true; break;
           case 'status': result = { jobs: state.jobs, hasKey: state.hasKey, hasPersonalKey: state.hasPersonalKey, cloudMode: state.cloudMode, reviewRelay: state.reviewRelay, keyCheck: state.keyCheck, settings: state.settings, maxDurationMs: 10800000 }; break;

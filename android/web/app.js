@@ -28,6 +28,7 @@ let refreshing = false;
 let view = 'jobs';
 let initialViewSet = false;
 let navigationRevision = 0;
+let subscriptionVerified = false;
 let selectionRevision = 0;
 let jobsPage = 0;
 let jobsSearchQuery = '';
@@ -110,6 +111,10 @@ window.onDeviceCaptionSaved = async (jobId, mode = '온디바이스') => {
   }
 };
 window.nativeEvent = (event) => {
+  if (event?.type === 'subscription') {
+    if (event.verified || subscriptionVerified) showSubscriptionStatus({ entitlementVerified: event.verified, verificationConfigured: true });
+    return;
+  }
   if (event?.type === 'error') message(event.message || event.error || '앱 작업을 처리하지 못했습니다.', true);
   else if (event?.type === 'notice') message(event.message || '작업 상태가 변경되었습니다.');
   if (!document.hidden) void refresh();
@@ -1179,6 +1184,35 @@ $('chooseFile').addEventListener('click', focusFileSource);
 $('chooseMicrophone').addEventListener('click', focusMicrophoneSource);
 $('chooseOffline').addEventListener('click', focusOfflineSource);
 selectSource('file');
+
+function showSubscriptionStatus(data) {
+  const status = $('subtitleSubscriptionStatus');
+  const options = $('subtitleSubscriptionPlans');
+  const wasVerified = subscriptionVerified;
+  subscriptionVerified = data?.entitlementVerified === true;
+  options.replaceChildren();
+  $('subtitleRestoreSubscription').hidden = data?.verificationConfigured !== true;
+  $('subtitleManageSubscription').hidden = data?.verificationConfigured !== true;
+  if (subscriptionVerified) status.textContent = '광고 제거 구독이 적용되었습니다.';
+  else if (data?.pending) status.textContent = 'Google Play에서 결제가 처리 중입니다. 완료 후 구독을 다시 확인해 주세요.';
+  else if (data?.purchaseEnabled) {
+    status.textContent = '구독은 자동 갱신됩니다. Google Play에서 해지하거나 관리할 수 있습니다.';
+    for (const plan of data.plans ?? []) {
+      if (!['monthly', 'yearly'].includes(plan.basePlanId) || !plan.price) continue;
+      options.append(button(`${plan.basePlanId === 'monthly' ? '월간' : '연간'} 구독 · ${plan.price}`, async () => {
+        if (!await nativeCall('buySubscription', { plan: plan.basePlanId })) {
+          showSubscriptionStatus(await nativeCall('getSubscriptionOptions'));
+          throw new Error('구매 화면을 열 수 없습니다. Google Play 연결과 현재 구독 상태를 확인해 주세요.');
+        }
+        options.replaceChildren();
+        status.textContent = 'Google Play에서 결제를 마친 뒤 구독 상태를 확인해 주세요.';
+      }));
+    }
+  } else if (data?.hasPurchase || wasVerified) status.textContent = '현재 광고 제거 권한을 확인할 수 없습니다. Google Play 구독 상태를 확인한 뒤 구매 복원을 시도해 주세요.';
+  else if (data?.available || data?.verificationAvailable === false && data.verificationConfigured) status.textContent = '지금은 구독 구매를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.';
+  else status.textContent = '현재 구매 가능한 광고 제거 구독이 없습니다.';
+}
+
 for (const [id, action] of Object.entries({
   startNewJob: () => show('video'),
   navVideo: () => show('video'), navJobs: () => show('jobs'), navResults: () => show('results'), navSettings: () => show('settings'),
@@ -1203,17 +1237,15 @@ for (const [id, action] of Object.entries({
   discardSettings: () => { hydrateSettings(savedSettings); settingsTouched = false; $('discardSettings').disabled = true; $('settingsStatus').textContent = '변경을 취소하고 저장된 설정을 불러왔습니다.'; },
   openApiKeyPage: () => nativeCall('openApiKeyPage'),
   openPrivacyPolicy: () => nativeCall('openPrivacyPolicy'),
-  subtitleCheckSubscriptions: async () => {
-    const data = await nativeCall('getSubscriptionOptions');
-    const plans = Array.isArray(data?.plans) ? data.plans : [];
-    const summary = plans.map(plan => `${plan.basePlanId === 'monthly' ? '월간' : '연간'}: ${plan.price || '가격 확인 필요'}`).join(' · ');
-    $('subtitleSubscriptionStatus').textContent = summary
-      ? `${summary} · 결제 및 광고 제거 기능은 서버 구매 검증 연동 후 제공됩니다.`
-      : 'Google Play에서 활성 구독 상품을 찾지 못했습니다. 현재 구매는 지원하지 않습니다.';
+  subtitleCheckSubscriptions: async () => showSubscriptionStatus(await nativeCall('getSubscriptionOptions')),
+  subtitleRestoreSubscription: async () => showSubscriptionStatus(await nativeCall('restoreSubscription')),
+  subtitleManageSubscription: async () => {
+    if (!await nativeCall('manageSubscription')) throw new Error('Google Play 구독 관리 화면을 열 수 없습니다.');
   },
   subtitleAdPrivacyOptions: async () => {
     const opened = await nativeCall('openAdPrivacyOptions');
-    if (!opened) $('subtitleSubscriptionStatus').textContent = '현재 변경이 필요한 광고 개인정보 선택 항목이 없습니다.';
+    $('subtitleAdPrivacyStatus').hidden = opened;
+    $('subtitleAdPrivacyStatus').textContent = opened ? '' : '현재 변경할 광고 개인정보 선택 항목이 없습니다.';
   },
   checkConnection: async () => {
     checkingConnection = true; connectionError = ''; syncConnection();

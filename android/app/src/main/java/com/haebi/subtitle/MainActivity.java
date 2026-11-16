@@ -65,7 +65,7 @@ public final class MainActivity extends Activity {
         android.widget.FrameLayout adSlot = new android.widget.FrameLayout(this);
         content.addView(adSlot, new android.widget.LinearLayout.LayoutParams(-1, -2));
         setContentView(root);
-        monetization = new MonetizationController(this, adSlot);
+        monetization = new MonetizationController(this, adSlot, this::emitSubscriptionState);
         root.setOnApplyWindowInsetsListener((view, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.ime() | WindowInsets.Type.displayCutout());
@@ -163,11 +163,17 @@ public final class MainActivity extends Activity {
                     String adScreen = params.optString("screen", "");
                     runOnUiThread(() -> { if (!destroyed && monetization != null) monetization.setScreen(adScreen); });
                     result = true; break;
-                case "getSubscriptionOptions":
+                case "getSubscriptionOptions": case "restoreSubscription": case "buySubscription": case "manageSubscription":
                     String billingRequestId = id;
+                    String billingPlan = params.optString("plan", "");
                     runOnUiThread(() -> {
                         if (destroyed || monetization == null) return;
-                        monetization.querySubscriptionOptions(options -> reply(billingRequestId, options, null));
+                        switch (method) {
+                            case "getSubscriptionOptions": monetization.querySubscriptionOptions(options -> reply(billingRequestId, options, null)); break;
+                            case "restoreSubscription": monetization.restoreSubscription(options -> reply(billingRequestId, options, null)); break;
+                            case "buySubscription": monetization.buySubscription(billingPlan, launched -> reply(billingRequestId, launched, null)); break;
+                            case "manageSubscription": reply(billingRequestId, monetization.manageSubscription(), null); break;
+                        }
                     });
                     return;
                 case "openAdPrivacyOptions":
@@ -592,6 +598,12 @@ public final class MainActivity extends Activity {
     }
 
     private void emitNotice(String message) { emit("notice", message); }
+
+    private void emitSubscriptionState() {
+        if (destroyed || web == null || monetization == null) return;
+        web.evaluateJavascript("window.nativeEvent && window.nativeEvent({type:'subscription', verified:"
+                + monetization.subscriptionVerified() + "})", null);
+    }
 
     private void emit(String type, String message) {
         try {

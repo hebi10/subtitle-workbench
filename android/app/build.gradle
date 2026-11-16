@@ -7,6 +7,14 @@ if (!(releaseVersionCode ==~ /[0-9]+/) || releaseVersionCode.toBigInteger() < 1 
 
 def admobAppId = providers.gradleProperty('SW_ADMOB_APP_ID').orElse('ca-app-pub-3940256099942544~3347511713').get()
 def admobBannerId = providers.gradleProperty('SW_ADMOB_BANNER_ID').orElse('ca-app-pub-3940256099942544/9214589741').get()
+def billingVerifierUrl = providers.gradleProperty('SW_BILLING_VERIFIER_URL').getOrElse('')
+def billingCloudProject = providers.gradleProperty('SW_BILLING_CLOUD_PROJECT').getOrElse('0')
+if (billingVerifierUrl && !(billingVerifierUrl ==~ /https:\/\/[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}\/?/)) {
+    throw new GradleException('Billing verifier must use a fixed HTTPS origin')
+}
+if (!(billingCloudProject ==~ /[0-9]{1,18}/) || ((billingCloudProject.toLong() > 0) != !billingVerifierUrl.isEmpty())) {
+    throw new GradleException('Set both billing verifier origin and Play Integrity Cloud project number')
+}
 
 android {
     buildFeatures { resValues true }
@@ -16,6 +24,8 @@ android {
         applicationId 'com.haebi.subtitle'
         manifestPlaceholders = [subtitleAdmobAppId: admobAppId]
         resValue 'string', 'subtitle_banner_ad_unit_id', admobBannerId
+        resValue 'string', 'subtitle_billing_verifier_url', billingVerifierUrl
+        resValue 'string', 'subtitle_billing_cloud_project', billingCloudProject
         minSdk 26
         targetSdk 36
         versionCode releaseVersionCode.toInteger()
@@ -61,6 +71,7 @@ tasks.named('preBuild').configure { dependsOn 'syncWebAssets' }
 
 dependencies {
     implementation 'com.android.billingclient:billing:9.1.0'
+    implementation 'com.google.android.play:integrity:1.6.0'
     implementation 'com.google.android.gms:play-services-ads:25.0.0'
     implementation 'com.google.android.ump:user-messaging-platform:3.2.0'
     implementation 'com.alphacephei:vosk-android:0.3.75'

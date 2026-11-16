@@ -24,9 +24,11 @@ test('Ads are consent-gated, native and restricted to new-task screen', async ()
   assert.match(manifest, /com\.google\.android\.gms\.ads\.APPLICATION_ID/);
 });
 
-test('Unverified subscriptions cannot be purchased or grant ad-free access', async () => {
-  const [controller, gradle, html, privacy] = await Promise.all([
+test('Purchase requires a verified service and ad removal requires a time-limited grant', async () => {
+  const [ads, controller, verifier, gradle, html, privacy] = await Promise.all([
     read('android/app/src/main/java/com/haebi/subtitle/MonetizationController.java'),
+    read('android/app/src/main/java/com/haebi/subtitle/SubscriptionController.java'),
+    read('android/app/src/main/java/com/haebi/subtitle/SubscriptionVerifier.java'),
     read('android/app/build.gradle'),
     read('android/web/index.html'),
     read('docs/privacy-policy.html'),
@@ -34,12 +36,14 @@ test('Unverified subscriptions cannot be purchased or grant ad-free access', asy
   assert.match(controller, /subtitle_remove_ads/);
   assert.match(controller, /"monthly"/);
   assert.match(controller, /"yearly"/);
-  assert.match(controller, /"purchaseEnabled", false/);
-  assert.match(controller, /"entitlementVerified", false/);
-  assert.doesNotMatch(controller, /launchBillingFlow/);
+  assert.match(controller, /if \(!ready \|\| hasPurchase \|\| pendingPurchase/);
+  assert.match(controller, /verifier\.verify\(new ArrayList<>\(tokens\)/);
+  assert.match(controller, /verifiedUntil > SystemClock\.elapsedRealtime\(\)/);
+  assert.match(verifier, /candidate >= 0 && candidate <= MAX_VALID_MS/);
+  assert.match(ads, /consent\.canRequestAds\(\) && !subscriptionsVerified\(\)/);
   assert.match(gradle, /billing:9\.1\.0/);
   assert.match(gradle, /verifySubtitleAdMobReleaseIds/);
   assert.match(html, /id="subtitleCheckSubscriptions"/);
-  assert.doesNotMatch(html, /id="subtitleBuy"/);
+  assert.match(html, /id="subtitleRestoreSubscription" type="button" hidden/);
   assert.match(privacy, /Google AdMob/);
 });
