@@ -162,6 +162,29 @@ test('3-B settings show saved connection/model and protect pending test codes', 
   });
 });
 
+test('Settings only offers plans after the purchase verifier is ready', {skip:!enabled}, async () => {
+  await withApp(390, 'light', async page => {
+    await page.locator('#navSettings').click();
+    await page.locator('#privacySettings > summary').click();
+    await page.evaluate(() => {
+      window.mockNative.subscriptionOptions = {
+        available: true, purchaseEnabled: false, verificationConfigured: true,
+        plans: [{ basePlanId: 'monthly', price: '₩1,000' }, { basePlanId: 'yearly', price: '₩9,900' }],
+      };
+    });
+    await page.locator('#subtitleCheckSubscriptions').click();
+    await page.getByText('지금은 구독 구매를 확인할 수 없습니다.').waitFor();
+    assert.equal(await page.locator('#subtitleSubscriptionPlans button').count(), 0);
+    await page.evaluate(() => { window.mockNative.subscriptionOptions.purchaseEnabled = true; });
+    await page.locator('#subtitleCheckSubscriptions').click();
+    await page.getByRole('button', { name: '월간 구독 · ₩1,000', exact: true }).waitFor();
+    assert.equal(await page.locator('#subtitleSubscriptionPlans button').count(), 2);
+    await page.evaluate(() => window.nativeEvent({ type: 'subscription', verified: true }));
+    await page.getByText('광고 제거 구독이 적용되었습니다.').waitFor();
+    assert.equal(await page.locator('#subtitleSubscriptionPlans button').count(), 0);
+  });
+});
+
 test('3-B responsive editor/settings do not overflow in light and dark modes', {skip:!enabled}, async()=>{
   await withApp(390,'light',async page=>{
     for(const width of [320,390,800]){

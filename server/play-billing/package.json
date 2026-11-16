@@ -1,0 +1,9 @@
+{
+  "name": "subtitle-play-billing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24 <25" },
+  "scripts": { "start": "node main.mjs" },
+  "dependencies": { "google-auth-library": "11.3.4" }
+}

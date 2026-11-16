@@ -249,6 +249,10 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ORG_GRADLE_PROJECT_SW_ADMOB_APP_ID: ${{ vars.SW_ADMOB_APP_ID }}
+          ORG_GRADLE_PROJECT_SW_ADMOB_BANNER_ID: ${{ vars.SW_ADMOB_BANNER_ID }}
+          ORG_GRADLE_PROJECT_SW_BILLING_VERIFIER_URL: ${{ vars.SW_BILLING_VERIFIER_URL }}
+          ORG_GRADLE_PROJECT_SW_BILLING_CLOUD_PROJECT: ${{ vars.SW_BILLING_CLOUD_PROJECT || '0' }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon bundleRelease

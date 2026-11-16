@@ -2194,3 +2194,7 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
+
+.settings-monetization { display: grid; gap: 10px; }
+.settings-monetization .hint { margin: 0; }
+.settings-monetization button { width: fit-content; }

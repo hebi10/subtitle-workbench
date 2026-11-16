@@ -236,7 +236,23 @@
           <section><h4>원본 파일</h4><p class="hint">원본 파일을 이동하거나 삭제하면 이어하기와 미리보기가 불가능할 수 있습니다.</p></section>
         </div>
       </details>
-      <section class="settings-section settings-privacy" aria-labelledby="privacyHeading"><p class="settings-index" aria-hidden="true">04 / PRIVACY</p><h3 id="privacyHeading">개인정보</h3><p class="hint">처리 방식별 전송 데이터와 기기 내 저장·삭제 방법을 확인할 수 있습니다.</p><button id="openPrivacyPolicy" type="button">개인정보처리방침 · 브라우저에서 열기</button></section>
+      <details id="privacySettings" class="settings-group">
+        <summary><span class="settings-index" aria-hidden="true">04 / PRIVACY</span>개인정보 · 광고 및 구독</summary>
+        <div class="settings-section settings-monetization">
+          <h3>광고 및 구독</h3>
+          <p class="hint">광고는 새 자막 작업 화면에만 표시됩니다.</p>
+          <p id="subtitleSubscriptionStatus" class="hint" role="status">Google Play에서 광고 제거 구독의 구매 가능 여부를 확인하세요.</p>
+          <div id="subtitleSubscriptionPlans" class="settings-actions"></div>
+          <div class="settings-actions">
+            <button id="subtitleCheckSubscriptions" type="button">구독 확인</button>
+            <button id="subtitleRestoreSubscription" type="button" hidden>구매 복원</button>
+            <button id="subtitleManageSubscription" type="button" hidden>Google Play 구독 관리</button>
+          </div>
+          <button id="subtitleAdPrivacyOptions" type="button">광고 개인정보 선택 관리</button>
+          <p id="subtitleAdPrivacyStatus" class="hint" role="status" hidden></p>
+          <button id="openPrivacyPolicy" type="button">개인정보처리방침 · 브라우저에서 열기</button>
+        </div>
+      </details>
     </section>
   </main>
   <nav class="app-nav" aria-label="주 메뉴"><button id="navVideo" type="button" aria-controls="videoView"><span class="es-icon es-icon--video" aria-hidden="true"></span>영상 추가</button><button id="navJobs" type="button" aria-controls="jobsView" aria-current="page"><span class="es-icon es-icon--jobs" aria-hidden="true"></span>작업</button><button id="navResults" type="button" aria-controls="resultsView"><span class="es-icon es-icon--results" aria-hidden="true"></span>결과</button><button id="navSettings" type="button" aria-controls="settingsView"><span class="es-icon es-icon--settings" aria-hidden="true"></span>설정</button></nav>

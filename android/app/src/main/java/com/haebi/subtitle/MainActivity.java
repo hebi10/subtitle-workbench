@@ -39,6 +39,7 @@ public final class MainActivity extends Activity {
     private final ExecutorService connectionIo = Executors.newSingleThreadExecutor();
     private volatile OpenAiClient.Cancellation connectionCancellation;
     private WebView web;
+    private MonetizationController monetization;
     private JobStore store;
     private SecretStore secrets;
     private CloudAccessStore cloud;
@@ -57,8 +58,14 @@ public final class MainActivity extends Activity {
         web = new WebView(this);
         // Resize the WebView viewport itself: its own padding does not move CSS position:fixed bars.
         android.widget.FrameLayout root = new android.widget.FrameLayout(this);
-        root.addView(web, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        android.widget.LinearLayout content = new android.widget.LinearLayout(this);
+        content.setOrientation(android.widget.LinearLayout.VERTICAL);
+        root.addView(content, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        content.addView(web, new android.widget.LinearLayout.LayoutParams(-1, 0, 1f));
+        android.widget.FrameLayout adSlot = new android.widget.FrameLayout(this);
+        content.addView(adSlot, new android.widget.LinearLayout.LayoutParams(-1, -2));
         setContentView(root);
+        monetization = new MonetizationController(this, adSlot, this::emitSubscriptionState);
         root.setOnApplyWindowInsetsListener((view, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.ime() | WindowInsets.Type.displayCutout());
@@ -110,6 +117,7 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         if (web != null) web.onResume();
+        if (monetization != null) monetization.resume();
         if (pendingOnDeviceJobId != null && web != null) {
             String savedId = pendingOnDeviceJobId;
             String mode = pendingCaptionMode == null ? "온디바이스" : pendingCaptionMode;
@@ -151,6 +159,30 @@ public final class MainActivity extends Activity {
             switch (method) {
                 case "status": result = cloud.status().put("jobs", store.list())
                         .put("settings", readSettings()).put("keyCheck", readConnectionCheck()).put("maxDurationMs", JobStore.MAX_DURATION_MS); break;
+                case "setAdScreen":
+                    String adScreen = params.optString("screen", "");
+                    runOnUiThread(() -> { if (!destroyed && monetization != null) monetization.setScreen(adScreen); });
+                    result = true; break;
+                case "getSubscriptionOptions": case "restoreSubscription": case "buySubscription": case "manageSubscription":
+                    String billingRequestId = id;
+                    String billingPlan = params.optString("plan", "");
+                    runOnUiThread(() -> {
+                        if (destroyed || monetization == null) return;
+                        switch (method) {
+                            case "getSubscriptionOptions": monetization.querySubscriptionOptions(options -> reply(billingRequestId, options, null)); break;
+                            case "restoreSubscription": monetization.restoreSubscription(options -> reply(billingRequestId, options, null)); break;
+                            case "buySubscription": monetization.buySubscription(billingPlan, launched -> reply(billingRequestId, launched, null)); break;
+                            case "manageSubscription": reply(billingRequestId, monetization.manageSubscription(), null); break;
+                        }
+                    });
+                    return;
+                case "openAdPrivacyOptions":
+                    String privacyRequestId = id;
+                    runOnUiThread(() -> {
+                        if (destroyed || monetization == null) return;
+                        reply(privacyRequestId, monetization.showPrivacyOptions(), null);
+                    });
+                    return;
                 case "getSettings": result = readSettings(); break;
                 case "setSettings":
                     JSONObject options = checkedSettings(params.getJSONObject("settings"));
@@ -567,6 +599,12 @@ public final class MainActivity extends Activity {
 
     private void emitNotice(String message) { emit("notice", message); }
 
+    private void emitSubscriptionState() {
+        if (destroyed || web == null || monetization == null) return;
+        web.evaluateJavascript("window.nativeEvent && window.nativeEvent({type:'subscription', verified:"
+                + monetization.subscriptionVerified() + "})", null);
+    }
+
     private void emit(String type, String message) {
         try {
             JSONObject event = new JSONObject().put("type", type).put("message", message);
@@ -576,6 +614,7 @@ public final class MainActivity extends Activity {
 
     @Override protected void onPause() {
         if (web != null) web.onPause();
+        if (monetization != null) monetization.pause();
         super.onPause();
     }
 
@@ -586,6 +625,7 @@ public final class MainActivity extends Activity {
         connectionIo.shutdownNow();
         io.execute(() -> store.close());
         io.shutdown();
+        if (monetization != null) monetization.destroy();
         if (web != null) web.destroy();
         super.onDestroy();
     }
