@@ -87,7 +87,7 @@ final class MonetizationController {
     private void maybeRequestBanner() {
         if (destroyed || !homeScreen || !consent.canRequestAds() || adLoading || banner != null) return;
         adLoading = true;
-        MobileAds.initialize(activity, status -> {
+        MobileAds.initialize(activity, status -> activity.runOnUiThread(() -> {
             if (destroyed) return;
             AdView next = new AdView(activity);
             next.setAdUnitId(activity.getString(R.string.subtitle_banner_ad_unit_id));
@@ -108,7 +108,7 @@ final class MonetizationController {
             adSlot.addView(next, new FrameLayout.LayoutParams(-1, -2));
             banner = next;
             next.loadAd(new AdRequest.Builder().build());
-        });
+        }));
     }
 
     private void updateVisibility() {
