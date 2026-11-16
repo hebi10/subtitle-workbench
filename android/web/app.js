@@ -167,6 +167,7 @@ async function show(next) {
   if (navigation !== navigationRevision) return;
   if (view === 'settings' && next !== 'settings') { $('reviewRelayCode').value = ''; $('apiKey').value = ''; }
   view = next;
+  void nativeCall('setAdScreen', { screen: next }).catch(() => {});
   document.body.classList.toggle('is-editor', next === 'editor');
   for (const name of ['video', 'jobs', 'results', 'editor', 'settings']) $(`${name}View`).hidden = name !== next;
   for (const name of ['Video', 'Jobs', 'Results', 'Settings']) {
@@ -1202,6 +1203,15 @@ for (const [id, action] of Object.entries({
   discardSettings: () => { hydrateSettings(savedSettings); settingsTouched = false; $('discardSettings').disabled = true; $('settingsStatus').textContent = '변경을 취소하고 저장된 설정을 불러왔습니다.'; },
   openApiKeyPage: () => nativeCall('openApiKeyPage'),
   openPrivacyPolicy: () => nativeCall('openPrivacyPolicy'),
+  subtitleCheckSubscriptions: async () => {
+    const data = await nativeCall('getSubscriptionOptions');
+    const plans = Array.isArray(data?.plans) ? data.plans : [];
+    const summary = plans.map(plan => `${plan.basePlanId === 'monthly' ? '월간' : '연간'}: ${plan.price || '가격 확인 필요'}`).join(' · ');
+    $('subtitleSubscriptionStatus').textContent = summary
+      ? `${summary} · 결제 및 광고 제거 기능은 서버 구매 검증 연동 후 제공됩니다.`
+      : 'Google Play에서 활성 구독 상품을 찾지 못했습니다. 현재 구매는 지원하지 않습니다.';
+  },
+  subtitleAdPrivacyOptions: () => nativeCall('openAdPrivacyOptions'),
   checkConnection: async () => {
     checkingConnection = true; connectionError = ''; syncConnection();
     $('connectionStatus').textContent = `${connection.cloudMode === 'relay' ? '테스트 서버' : '개인 API'} 인증과 선택 모델 접근을 확인하고 있습니다…`;

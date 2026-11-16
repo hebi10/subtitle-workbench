@@ -5,11 +5,17 @@ if (!(releaseVersionCode ==~ /[0-9]+/) || releaseVersionCode.toBigInteger() < 1 
     throw new GradleException('versionCode must be an integer from 1 to 2100000000')
 }
 
+def admobAppId = providers.gradleProperty('SW_ADMOB_APP_ID').orElse('ca-app-pub-3940256099942544~3347511713').get()
+def admobBannerId = providers.gradleProperty('SW_ADMOB_BANNER_ID').orElse('ca-app-pub-3940256099942544/9214589741').get()
+
 android {
+    buildFeatures { resValues true }
     namespace 'com.haebi.subtitle'
     compileSdk 36
     defaultConfig {
         applicationId 'com.haebi.subtitle'
+        manifestPlaceholders = [subtitleAdmobAppId: admobAppId]
+        resValue 'string', 'subtitle_banner_ad_unit_id', admobBannerId
         minSdk 26
         targetSdk 36
         versionCode releaseVersionCode.toInteger()
@@ -54,6 +60,9 @@ tasks.register('syncWebAssets', Sync) {
 tasks.named('preBuild').configure { dependsOn 'syncWebAssets' }
 
 dependencies {
+    implementation 'com.android.billingclient:billing:9.1.0'
+    implementation 'com.google.android.gms:play-services-ads:25.0.0'
+    implementation 'com.google.android.ump:user-messaging-platform:3.2.0'
     implementation 'com.alphacephei:vosk-android:0.3.75'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'androidx.webkit:webkit:1.12.1'
@@ -99,4 +108,19 @@ tasks.configureEach { task ->
     if (task.name == 'preReleaseBuild') {
         task.dependsOn 'verifyReleaseUploadCertificate'
     }
+}
+
+// Release requires real publisher identifiers; debug builds always use Google's test IDs.
+tasks.register('verifySubtitleAdMobReleaseIds') {
+    doLast {
+        def app = providers.gradleProperty('SW_ADMOB_APP_ID').getOrElse('')
+        def unit = providers.gradleProperty('SW_ADMOB_BANNER_ID').getOrElse('')
+        if (!(app ==~ /ca-app-pub-[0-9]{16}~[0-9]{10}/) || app.startsWith('ca-app-pub-3940256099942544'))
+            throw new GradleException('Release AdMob application ID must be a real publisher ID')
+        if (!(unit ==~ /ca-app-pub-[0-9]{16}\/[0-9]{10}/) || unit.startsWith('ca-app-pub-3940256099942544'))
+            throw new GradleException('Release AdMob banner ID must be a real publisher ID')
+    }
+}
+tasks.configureEach { task ->
+    if (task.name == 'preReleaseBuild') task.dependsOn 'verifySubtitleAdMobReleaseIds'
 }
