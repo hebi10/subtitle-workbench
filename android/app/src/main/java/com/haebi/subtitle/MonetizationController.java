@@ -64,7 +64,7 @@ final class MonetizationController {
                 error -> maybeRequestBanner());
     }
 
-    void showPrivacyOptions() {
+    boolean showPrivacyOptions() {
         if (consent.getPrivacyOptionsRequirementStatus()
                 == ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED) {
             UserMessagingPlatform.showPrivacyOptionsForm(activity, error -> {
@@ -76,7 +76,9 @@ final class MonetizationController {
                 updateVisibility();
                 maybeRequestBanner();
             });
+            return true;
         }
+        return false;
     }
 
     boolean hasPrivacyOptions() {
@@ -88,10 +90,10 @@ final class MonetizationController {
         if (destroyed || !homeScreen || !consent.canRequestAds() || adLoading || banner != null) return;
         adLoading = true;
         MobileAds.initialize(activity, status -> activity.runOnUiThread(() -> {
-            if (destroyed) return;
+            if (destroyed || !homeScreen || !consent.canRequestAds()) { adLoading = false; return; }
             AdView next = new AdView(activity);
             next.setAdUnitId(activity.getString(R.string.subtitle_banner_ad_unit_id));
-            int width = Math.max(320, (int) (activity.getResources().getDisplayMetrics().widthPixels
+            int width = Math.max(1, (int) (activity.getResources().getDisplayMetrics().widthPixels
                     / activity.getResources().getDisplayMetrics().density));
             next.setAdSize(AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(activity, width));
             next.setAdListener(new AdListener() {
@@ -176,6 +178,10 @@ final class MonetizationController {
         } catch (Exception ignored) { }
         return json;
     }
+
+    void resume() { if (banner != null) banner.resume(); }
+
+    void pause() { if (banner != null) banner.pause(); }
 
     void destroy() {
         destroyed = true;

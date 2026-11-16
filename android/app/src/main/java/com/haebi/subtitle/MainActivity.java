@@ -117,6 +117,7 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         if (web != null) web.onResume();
+        if (monetization != null) monetization.resume();
         if (pendingOnDeviceJobId != null && web != null) {
             String savedId = pendingOnDeviceJobId;
             String mode = pendingCaptionMode == null ? "온디바이스" : pendingCaptionMode;
@@ -170,8 +171,12 @@ public final class MainActivity extends Activity {
                     });
                     return;
                 case "openAdPrivacyOptions":
-                    runOnUiThread(() -> { if (!destroyed && monetization != null) monetization.showPrivacyOptions(); });
-                    result = true; break;
+                    String privacyRequestId = id;
+                    runOnUiThread(() -> {
+                        if (destroyed || monetization == null) return;
+                        reply(privacyRequestId, monetization.showPrivacyOptions(), null);
+                    });
+                    return;
                 case "getSettings": result = readSettings(); break;
                 case "setSettings":
                     JSONObject options = checkedSettings(params.getJSONObject("settings"));
@@ -597,6 +602,7 @@ public final class MainActivity extends Activity {
 
     @Override protected void onPause() {
         if (web != null) web.onPause();
+        if (monetization != null) monetization.pause();
         super.onPause();
     }
 

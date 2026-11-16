@@ -1211,7 +1211,10 @@ for (const [id, action] of Object.entries({
       ? `${summary} · 결제 및 광고 제거 기능은 서버 구매 검증 연동 후 제공됩니다.`
       : 'Google Play에서 활성 구독 상품을 찾지 못했습니다. 현재 구매는 지원하지 않습니다.';
   },
-  subtitleAdPrivacyOptions: () => nativeCall('openAdPrivacyOptions'),
+  subtitleAdPrivacyOptions: async () => {
+    const opened = await nativeCall('openAdPrivacyOptions');
+    if (!opened) $('subtitleSubscriptionStatus').textContent = '현재 변경이 필요한 광고 개인정보 선택 항목이 없습니다.';
+  },
   checkConnection: async () => {
     checkingConnection = true; connectionError = ''; syncConnection();
     $('connectionStatus').textContent = `${connection.cloudMode === 'relay' ? '테스트 서버' : '개인 API'} 인증과 선택 모델 접근을 확인하고 있습니다…`;
