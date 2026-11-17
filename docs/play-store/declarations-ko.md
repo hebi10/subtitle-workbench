@@ -1,5 +1,8 @@
 # Play Console 선언안
 
+> **최신 상태 주의 (2026-11-17)** — 이 문서의 2026-11-08 광고 없음/광고 ID 미사용/Billing 없음 설명은 **과거 버전 기록**입니다. 최신 서명 AAB 0.10.0(24)에는 AdMob·UMP·Billing SDK, 운영 AdMob ID, `com.google.android.gms.permission.AD_ID` 및 `android.permission.ACCESS_ADSERVICES_AD_ID`가 포함되어 있습니다. **구독 검증 HTTPS 서버와 Play Integrity Cloud 프로젝트 번호는 AAB 내부에 미설정**입니다. 실제 콘솔 신고 여부는 확인하지 않았으므로 승인·반영 완료로 표기하지 않습니다. 최신 감사와 미완료 조치: [ADS-BILLING-PREFLIGHT](../qa/ads-billing-preflight-2026-11-17.md). 콘솔에서는 광고 포함/광고 ID/데이터 보안/구독·앱 액세스를 AAB 및 SDK 동작에 맞게 다시 검토해야 합니다.
+
+
 기준일: 2026-11-08. 대상: `com.haebi.subtitle`, 해비 자막 Android 소스. 이 문서는 입력 근거와 확인한 Console 저장 상태, 남은 결정을 기록한다. 초안 저장·검토 준비·심사·배포 완료를 구분한다. 실제 업로드 AAB의 Manifest·의존성이 달라지면 다시 점검한다.
 
 ## Console 확인 상태
