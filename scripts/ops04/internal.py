@@ -38,6 +38,44 @@ def invoke(args):
     require(result.returncode == 0, "Verification tool rejected the artifact")
     return result.stdout
 
+def compiled_string(aab, tool, name):
+    """Read a single default string from the *signed AAB*, not current CI variables."""
+    output = invoke(["java", "-jar", str(tool), "dump", "resources", "--bundle=" + str(aab),
+                     "--resource=string/" + name, "--values"])
+    lines = [line.strip() for line in output.splitlines()]
+    headers = [line for line in lines if re.fullmatch(r"0x[0-9a-fA-F]+\s+-\s+string/" + re.escape(name), line)]
+    require(len(headers) == 1, "AAB compiled monetization resource missing or ambiguous: " + name)
+    defaults = []
+    for line in lines:
+        match = re.fullmatch(r'\(default\)\s+-\s+(?:\[STR\]\s*)?"(.*)"(?:\s*\[STR\])?', line)
+        if match:
+            defaults.append(match.group(1))
+    require(len(defaults) == 1, "AAB default monetization resource missing or ambiguous: " + name)
+    return defaults[0]
+
+def verify_release_monetization(aab, tool, manifest):
+    """Reject an artifact that cannot validate purchases before any Play upload."""
+    application = manifest.find("application")
+    app_ids = [] if application is None else [
+        element.get(ANDROID + "value", "") for element in application.findall("meta-data")
+        if element.get(ANDROID + "name") == "com.google.android.gms.ads.APPLICATION_ID"
+    ]
+    require(len(app_ids) == 1
+            and bool(re.fullmatch(r"ca-app-pub-[0-9]{16}~[0-9]{10}", app_ids[0]))
+            and not app_ids[0].startswith("ca-app-pub-3940256099942544"),
+            "AAB production AdMob application ID is not configured")
+    banner = compiled_string(aab, tool, "subtitle_banner_ad_unit_id")
+    require(bool(re.fullmatch(r"ca-app-pub-[0-9]{16}/[0-9]{10}", banner))
+            and not banner.startswith("ca-app-pub-3940256099942544"),
+            "AAB production AdMob banner ID is not configured")
+    origin = compiled_string(aab, tool, "subtitle_billing_verifier_url")
+    project = compiled_string(aab, tool, "subtitle_billing_cloud_project")
+    require(bool(re.fullmatch(r"https://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}/?", origin)),
+            "AAB billing verifier HTTPS origin is not configured")
+    require(bool(re.fullmatch(r"[1-9][0-9]{0,17}", project)) and int(project) <= 9223372036854775807,
+            "AAB Play Integrity Cloud project is not configured")
+    print("AAB embedded AdMob and Billing configuration verified (remote service not checked)")
+
 def github(path):
     result = subprocess.run(["gh", "api", path], capture_output=True, text=True, check=False, timeout=30)
     require(result.returncode == 0, "GitHub source/build evidence cannot be read")
@@ -116,6 +154,7 @@ def verify():
         raise GateError("Cannot read AAB package/version manifest") from None
     require(identity == (env["APP_PACKAGE"], env["VERSION_CODE"], env["VERSION_NAME"]),
             "AAB applicationId, versionCode or versionName mismatch")
+    verify_release_monetization(aab, tool, manifest)
     OUT.mkdir(exist_ok=True)
     evidence = {"schema": "ops04-verified-aab-v1", "source_sha": env["EXPECTED_MAIN_SHA"],
                 "batch_id": env["BATCH_ID"], "build_run_id": env["BUILD_RUN_ID"],
