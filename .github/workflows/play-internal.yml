@@ -66,6 +66,18 @@ jobs:
       target: ${{ steps.route.outputs.target }}
       promotion_code: ${{ steps.route.outputs.promotion_code }}
     steps:
+      - name: RU-02 reject legacy Play publishing before any credentials
+        env:
+          LEGACY_MODE: ${{ inputs.mode }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$LEGACY_MODE" in
+            check|build|audit) ;;
+            *)
+              echo "::error::Use OPS-04 internal or OPS-05 closed for Play publishing."
+              exit 1 ;;
+          esac
       - name: OPS-01 enforce manual Play release approval
         if: inputs.mode == 'deploy' || inputs.mode == 'promote'
         env:
