@@ -82,5 +82,64 @@ class Ops04SafetyTests(unittest.TestCase):
         self.assertNotIn("gh release create", source)
         self.assertIn("androidpublisher", source)
 
+
+    def billing_manifest(self):
+        import xml.etree.ElementTree as ET
+        return ET.fromstring(
+            '<manifest xmlns:android="http://schemas.android.com/apk/res/android">'
+            '<application><meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" '
+            'android:value="ca-app-pub-3239289311207399~7319957827" /></application></manifest>'
+        )
+
+    def billing_resources(self, values):
+        def dump(args):
+            name = args[-2].split("/")[-1]
+            if name not in values:
+                return ""
+            return f'0x7F120001 - string/{name}\n    (default) - [STR] "{values[name]}"'
+        return dump
+
+    def billing_values(self):
+        return {
+            "subtitle_banner_ad_unit_id": "ca-app-pub-3239289311207399/5992057572",
+            "subtitle_billing_verifier_url": "https://billing.example.com",
+            "subtitle_billing_cloud_project": "1234567890",
+        }
+
+    def test_configured_monetization_is_accepted_from_embedded_aab_values(self):
+        with patch.object(internal, "invoke", side_effect=self.billing_resources(self.billing_values())):
+            internal.verify_release_monetization(Path("signed.aab"), Path("bundletool.jar"), self.billing_manifest())
+
+    def test_missing_billing_origin_or_project_fails_closed(self):
+        for key, bad in (("subtitle_billing_verifier_url", ""),
+                         ("subtitle_billing_verifier_url", "http://billing.example.com"),
+                         ("subtitle_billing_cloud_project", "0"),
+                         ("subtitle_billing_cloud_project", "99999999999999999999")):
+            with self.subTest(key=key, bad=bad):
+                values = self.billing_values()
+                values[key] = bad
+                with patch.object(internal, "invoke", side_effect=self.billing_resources(values)):
+                    with self.assertRaises(internal.GateError):
+                        internal.verify_release_monetization(Path("signed.aab"), Path("bundletool.jar"),
+                                                            self.billing_manifest())
+
+    def test_test_ad_unit_or_missing_compiled_resource_fails_closed(self):
+        values = self.billing_values()
+        values["subtitle_banner_ad_unit_id"] = "ca-app-pub-3940256099942544/9214589741"
+        with patch.object(internal, "invoke", side_effect=self.billing_resources(values)):
+            with self.assertRaises(internal.GateError):
+                internal.verify_release_monetization(Path("signed.aab"), Path("bundletool.jar"),
+                                                    self.billing_manifest())
+        values = self.billing_values()
+        del values["subtitle_billing_cloud_project"]
+        with patch.object(internal, "invoke", side_effect=self.billing_resources(values)):
+            with self.assertRaises(internal.GateError):
+                internal.verify_release_monetization(Path("signed.aab"), Path("bundletool.jar"),
+                                                    self.billing_manifest())
+
+    def test_verified_aab_upload_path_calls_monetization_gate(self):
+        source = (ROOT / "scripts" / "ops04" / "internal.py").read_text(encoding="utf-8")
+        self.assertIn("verify_release_monetization(aab, tool, manifest)", source)
+
 if __name__ == "__main__":
     unittest.main()
