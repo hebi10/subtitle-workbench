@@ -1,0 +1,31 @@
+name: OPS-09 offline single-approval internal release safety
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/internal-release-once.yml'
+      - '.github/workflows/release-build.yml'
+      - '.github/workflows/ops09-safety.yml'
+      - 'scripts/ops09/**'
+
+permissions:
+  contents: read
+
+jobs:
+  release-contract:
+    name: OPS-09 one-approval release regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check Python syntax without Play credentials
+        run: python3 -m py_compile scripts/ops09/internal_release_pipeline.py scripts/ops09/test_internal_release_pipeline.py
+      - name: Test missing approval, changed SHA and unverified build denial
+        run: python3 -m unittest discover -s scripts/ops09 -p 'test_*.py' -v
