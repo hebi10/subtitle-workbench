@@ -21,7 +21,7 @@ class FinalDeviceBatchQATest(unittest.TestCase):
         self.assertIn('r.get("event")=="workflow_dispatch"', release)
         self.assertIn('if not matching: refuse("Missing manual final Android QA for exact main: "+name)', release)
         self.assertIn('latest.get("status")!="completed" or latest.get("conclusion")!="success"', release)
-        self.assertIn('ref/heads/main', release)
+        self.assertIn('refs/heads/main', release)
 
     def test_device_run_requires_frozen_main_and_sha(self):
         workflow = read(".github/workflows/" + ENTRY)
