@@ -1,17 +1,35 @@
 name: Android Emulator Smoke
 
 on:
-  pull_request:
-    paths:
-      - 'android/**'
-      - '.github/workflows/android-emulator-smoke.yml'
   workflow_dispatch:
+    inputs:
+      expected_main_sha:
+        description: 'Exact frozen main SHA for the full Android emulator test'
+        type: string
+        required: true
 
 permissions:
   contents: read
 
 jobs:
+  validate-source:
+    name: Validate final main SHA
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Require frozen main SHA before running Android emulator
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "::error::Final emulator QA is main-only"; exit 1; }
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ && "$EXPECTED_MAIN_SHA" == "$GITHUB_SHA" ]] || { echo "::error::Final main SHA mismatch"; exit 1; }
+          [[ "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)" == "$GITHUB_SHA" ]] || { echo "::error::main changed"; exit 1; }
+
   emulator:
+    needs: validate-source
     name: Android 15 emulator integration
     runs-on: ubuntu-latest
     timeout-minutes: 35
