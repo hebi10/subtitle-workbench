@@ -1,0 +1,80 @@
+name: OPS-09 one-approval internal testing release
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_main_sha:
+        description: 'Frozen, reviewed current main SHA (40 lowercase hexadecimal characters)'
+        type: string
+        required: true
+      internal_release_approved:
+        description: 'Approve full Android QA, signed AAB build, and Play INTERNAL upload in that order'
+        type: boolean
+        required: true
+        default: false
+      version_code:
+        description: 'Unused versionCode; required for QuickCut/FocusLock/HomeCrew/TripCanvas/PetWorld/Subtitle Workbench'
+        type: string
+        required: false
+        default: ''
+      release_tag:
+        description: 'GalliPick only: version matching source and bundle, e.g. v0.2.20'
+        type: string
+        required: false
+        default: ''
+      cloud_pilot:
+        description: 'GalliPick only: development Firebase cloud pilot'
+        type: boolean
+        required: false
+        default: false
+      cloud_production:
+        description: 'GalliPick only: production Firebase cloud build (never combined with pilot)'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: ops09-one-approved-internal-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  internal-release:
+    name: QA > AAB > Play internal (only after explicit one-time approval)
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify OPS-09 fail-closed regression contracts
+        run: python3 -m unittest discover -s scripts/ops09 -p 'test_*.py' -v
+      - name: Execute exactly one explicitly approved INTERNAL release chain
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          INTERNAL_RELEASE_APPROVED: ${{ inputs.internal_release_approved }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          CLOUD_PILOT: ${{ inputs.cloud_pilot }}
+          CLOUD_PRODUCTION: ${{ inputs.cloud_production }}
+        run: python3 scripts/ops09/internal_release_pipeline.py
+      - name: Preserve sanitized exact-SHA child-run receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ops09-internal-request-${{ github.run_id }}
+          path: ops09/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
