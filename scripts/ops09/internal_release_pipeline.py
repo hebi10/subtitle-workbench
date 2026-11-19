@@ -156,7 +156,7 @@ class Orchestrator:
         self.current_main()
         response = self.api(
             f"/repos/{self.repo}/actions/workflows/{workflow}/dispatches",
-            {"ref": "main", "inputs": inputs, "return_run_details": True},
+            {"ref": "main", "inputs": inputs},
         )
         run_id = response.get("workflow_run_id")
         require(type(run_id) is int and run_id > 0, "Dispatch returned no exact run ID")
