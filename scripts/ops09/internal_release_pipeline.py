@@ -346,7 +346,10 @@ class Orchestrator:
         if self.name == "gallipick":
             inputs["cloud_production"] = self.env.get("CLOUD_PRODUCTION") == "true"
         self.current_main()
+        self.write(stage="internal_publish_may_start", play_published=None)
         publish_id = self.dispatch("play-internal-release.yml", inputs)
+        self.write(stage="internal_publish_running", internal_publish_run_id=publish_id,
+                   play_published=None)
         self.wait("play-internal-release.yml", publish_id)
         jobs = self.jobs(publish_id)
         names = {j.get("name") for j in jobs
@@ -363,7 +366,8 @@ def main():
     try:
         pipeline.run()
     except Exception as exc:
-        pipeline.write(stage="blocked", play_published=False,
+        pipeline.write(stage="blocked",
+                       play_published=(None if pipeline.receipt.get("play_published") is None else False),
                        error_type=type(exc).__name__, error=str(exc))
         raise
 
