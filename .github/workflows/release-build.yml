@@ -102,7 +102,7 @@ jobs:
           set -euo pipefail
           args=(-f ref=main)
           args+=(-f "inputs[mode]=build" -f "inputs[version_code]=$VERSION_CODE")
-          dispatch_details="$(gh api --method POST -H 'X-GitHub-Api-Version: 2026-03-10' -F return_run_details=true "repos/$GITHUB_REPOSITORY/actions/workflows/$BUILD_WORKFLOW/dispatches" "${args[@]}")"
+          dispatch_details="$(gh api --method POST -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/actions/workflows/$BUILD_WORKFLOW/dispatches" "${args[@]}")"
           builder_run_id="$(printf '%s' "$dispatch_details" | python3 -c 'import json,sys; v=json.load(sys.stdin).get("workflow_run_id"); assert isinstance(v,int) and v>0; print(v)')"
           export BUILDER_RUN_ID="$builder_run_id"
           actual="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
