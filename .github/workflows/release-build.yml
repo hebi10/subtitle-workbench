@@ -102,7 +102,9 @@ jobs:
           set -euo pipefail
           args=(-f ref=main)
           args+=(-f "inputs[mode]=build" -f "inputs[version_code]=$VERSION_CODE")
-          gh api --method POST "repos/$GITHUB_REPOSITORY/actions/workflows/$BUILD_WORKFLOW/dispatches" "${args[@]}"
+          dispatch_details="$(gh api --method POST -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/actions/workflows/$BUILD_WORKFLOW/dispatches" "${args[@]}")"
+          builder_run_id="$(printf '%s' "$dispatch_details" | python3 -c 'import json,sys; v=json.load(sys.stdin).get("workflow_run_id"); assert isinstance(v,int) and v>0; print(v)')"
+          export BUILDER_RUN_ID="$builder_run_id"
           actual="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
           if [[ "$actual" != "$EXPECTED_MAIN_SHA" ]]; then
             echo "::error::main moved after dispatch; downstream provenance must be checked and build approval revoked."
@@ -115,6 +117,7 @@ jobs:
           from pathlib import Path
           from zoneinfo import ZoneInfo
           data={"schema":"ops03-build-request-v1","repo":os.environ["GITHUB_REPOSITORY"],"main_sha":os.environ["EXPECTED_MAIN_SHA"],"batch_id":os.environ["BATCH_ID"],"builder_workflow":os.environ["BUILD_WORKFLOW"],"request_run_id":os.environ["GITHUB_RUN_ID"],"requested_at_kst":datetime.now(ZoneInfo("Asia/Seoul")).isoformat(),"status":"dispatched_unverified","aab_built":False,"play_uploaded":False,"version_code_request":os.environ["VERSION_CODE"],"release_tag_request":os.environ["RELEASE_TAG"]}
+          data["builder_run_id"]=int(os.environ["BUILDER_RUN_ID"])
           Path("ops03/request.json").write_text(json.dumps(data,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
           PY
           {
