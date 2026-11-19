@@ -28,3 +28,9 @@
 
 ### 앱별 보존 지침
 - 웹·Android 자막 편집, 오프라인/클라우드 경계 및 작업 데이터 보호 정책을 보존한다. `.github/workflows/verify.yml`, `play-internal.yml`, `play-promote.yml`의 소스·테스트·서명 안전 조건을 유지한다.
+
+## CI-DEDUP-20261119-P2 — Android 최종 배치 계측
+- PR/main에서는 `verify.yml`의 웹·Android 단위 테스트, Lint, 빌드, 보안·배포 정책 검증을 자동 실행한다.
+- `android-emulator-smoke.yml`은 일반 PR 자동 전체 계측을 중단하고 최종 `main` SHA를 고정한 뒤 `workflow_dispatch`에서 1회 실행한다. API 35, 라이트·다크, 160% 글꼴, WebView, 마이크, 오프라인 Vosk, 비밀 저장 및 작업 복원 증빙을 그대로 유지한다.
+- `offline-vosk-real-model.yml`의 모델 변경 시 실제 모델·음성 계측은 고위험 선별 검사로 유지한다.
+- `release-build.yml`은 동일 SHA의 `Verify web and Android` 및 수동 `Android Emulator Smoke` 성공 없이는 서명 AAB 빌드를 차단한다. 모든 작업이 완료되기 전 최종 QA를 반복하지 않는다.
