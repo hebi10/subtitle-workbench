@@ -49,3 +49,20 @@ test('privacy policy describes optional relay transmission, quotas and separate 
   assert.doesNotMatch(policy, /중계 서버를 경유하지 않습니다/);
   assert.match(policy, /공유 사용량 한도/);
 });
+
+test('current Play declaration and public policy disclose ads and subscription data consistently', async () => {
+  const [decl, policy, listingText] = await Promise.all([
+    read('docs/play-store/declarations-ko.md'), read('docs/privacy-policy.html'), read('docs/play-store/listing-ko.json'),
+  ]);
+  assert.match(decl, /광고 포함 \| 예/);
+  assert.match(decl, /AD_ID 및 ACCESS_ADSERVICES_AD_ID/);
+  assert.match(decl, /앱 상호작용/);
+  assert.match(decl, /진단 정보/);
+  assert.match(decl, /구매 내역\/구독 상태/);
+  assert.match(decl, /Console에서 저장·검토·게시되었다는 증빙은 아니다/);
+  assert.doesNotMatch(decl, /광고 포함 \| 아니요/);
+  assert.match(policy, /대략적 위치 추정/);
+  assert.match(policy, /성능 및 진단 정보/);
+  assert.match(policy, /구독 구매 토큰과 Play Integrity 검증 토큰/);
+  assert.match(JSON.parse(listingText).fullDescription, /광고 제거 구독.*OpenAI API 사용 요금/s);
+});
