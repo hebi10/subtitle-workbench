@@ -44,3 +44,18 @@ test('probe fails closed on unexpected auth, redirect, bad metadata, rate limits
       error => /model lookup/.test(error.message) && !error.message.includes(env.REVIEW_ACCESS_CODE));
   }
 });
+
+test('probe preserves literal colons accepted by the relay model route', async () => {
+  const model = 'ft:gpt-example:organization:model:identifier';
+  let last = '';
+  const result = await probeReviewRelay({ ...env, REVIEW_PROBE_TRANSLATION_MODEL: model }, async (url, options) => {
+    if (!options.headers.authorization) return response(401, {});
+    const path = new URL(url).pathname;
+    const match = /^\/v1\/models\/([A-Za-z0-9._:-]{1,100})$/.exec(path);
+    assert.ok(match, 'model path must match the server raw route without percent encoding');
+    last = match[1];
+    return response(200, { id: match[1], object: 'model' });
+  });
+  assert.equal(last, model);
+  assert.equal(result.modelLookups, 4);
+});

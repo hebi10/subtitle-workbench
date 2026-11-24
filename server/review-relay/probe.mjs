@@ -49,7 +49,7 @@ export async function probeReviewRelay(env, fetchImpl = globalThis.fetch) {
   const { origin, code, models } = probeConfig(env);
   async function request(model, authenticated) {
     try {
-      const response = await fetchImpl(origin + '/v1/models/' + encodeURIComponent(model), {
+      const response = await fetchImpl(origin + '/v1/models/' + encodeURIComponent(model).replace(/%3A/g, ':'), {
         method: 'GET',
         redirect: 'error',
         signal: AbortSignal.timeout(20000),
