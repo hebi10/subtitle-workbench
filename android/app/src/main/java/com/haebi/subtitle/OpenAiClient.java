@@ -169,7 +169,6 @@ final class OpenAiClient {
     static String responseText(JSONObject response) {
         String status = response.optString("status", "completed");
         if (!status.equals("completed") || response.has("error") && !response.isNull("error")) throw new IllegalArgumentException("번역 응답이 완료되지 않았습니다. 이어하기로 재시도해 주세요.");
-        if (response.has("output_text")) return response.optString("output_text");
         JSONArray output = response.optJSONArray("output");
         StringBuilder text = new StringBuilder();
         if (output != null) for (int i = 0; i < output.length(); i++) {
@@ -178,9 +177,11 @@ final class OpenAiClient {
             if (content == null) continue;
             for (int j = 0; j < content.length(); j++) {
                 JSONObject part = content.optJSONObject(j);
+                if (part != null && "refusal".equals(part.optString("type"))) throw new IllegalArgumentException("번역 응답이 거부되었습니다. 이어하기로 재시도해 주세요.");
                 if (part != null && "output_text".equals(part.optString("type"))) text.append(part.optString("text"));
             }
         }
+        if (response.has("output_text")) return response.optString("output_text");
         if (text.length() == 0) throw new IllegalArgumentException("번역 응답에 자막이 없습니다.");
         return text.toString();
     }

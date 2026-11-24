@@ -772,3 +772,44 @@ test('missing-segment retries propagate permanent API failures instead of retryi
   }), { status: 403 });
   assert.deepEqual(sizes, [2, 1]);
 });
+
+test('translation retries duplicate, nonnumeric, invalid-type and unavailable IDs without replacing valid peers', async () => {
+  const originalFetch = globalThis.fetch;
+  const original = ['zero', 'one', 'two', 'three', 'four'].map((text, i) => ({
+    original: text, start: i, end: i + 1, speaker: 'A',
+  }));
+  const requests = [];
+  globalThis.fetch = async (_url, init) => {
+    const input = JSON.parse(JSON.parse(init.body).input).subtitles;
+    requests.push(input.map(item => item.text));
+    if (requests.length === 1) return Response.json({ output_text: JSON.stringify({ translations: [
+      { id: 0, translated: 'valid zero' }, { id: 1, translated: 'wrong' },
+      { id: 1, translated: 'duplicate' }, { id: '2', translated: 'coerced' },
+      { id: 3, translated: { text: 'not text' } }, { id: 4, translated: '[번역 불가]' },
+    ] }) });
+    return Response.json({ output_text: JSON.stringify({ translations: [{ id: 0, translated: 'fixed ' + input[0].text }] }) });
+  };
+  try {
+    const result = await translateSubtitles({ subtitles: original, settings: { apiKey: 'fixture-key' } });
+    assert.deepEqual(requests.slice(1), [['one'], ['two'], ['three'], ['four']]);
+    assert.deepEqual(result.map(cue => cue.translated), ['valid zero', 'fixed one', 'fixed two', 'fixed three', 'fixed four']);
+    assert.ok(result.every((cue, i) => cue.status === 'translated' && !cue.translationError && cue.start === i && cue.speaker === 'A'));
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test('incomplete and refused responses cannot mark a subtitle translated', async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    const output_text = JSON.stringify({ translations: [{ id: 0, translated: 'partial' }] });
+    for (const payload of [
+      { status: 'incomplete', output_text },
+      { status: 'completed', output_text, output: [{ content: [{ type: 'refusal', refusal: 'refused' }] }] },
+    ]) {
+      globalThis.fetch = async () => Response.json(payload);
+      const [cue] = await translateSubtitles({ subtitles: [{ start: 0, end: 1, original: 'original' }], settings: { apiKey: 'fixture-key' } });
+      assert.equal(cue.status, 'failed');
+      assert.equal(cue.original, 'original');
+      assert.equal(cue.translated, '[번역 실패]');
+    }
+  } finally { globalThis.fetch = originalFetch; }
+});

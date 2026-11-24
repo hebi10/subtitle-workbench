@@ -186,7 +186,7 @@ async function translateBatch({ batch, targetLanguage, settings, signal }) {
                   additionalProperties: false,
                   required: ['id', 'translated'],
                   properties: {
-                    id: { type: 'number' },
+                    id: { type: 'integer' },
                     translated: { type: 'string' },
                   },
                 },
@@ -212,13 +212,29 @@ async function translateBatch({ batch, targetLanguage, settings, signal }) {
   });
 
   const payload = await withExactSecretRedaction(() => response.json(), settings.apiKey);
+  if ((payload?.status != null && payload.status !== 'completed') || payload?.error != null ||
+      (Array.isArray(payload?.output) && payload.output.some((item) =>
+        Array.isArray(item?.content) && item.content.some((part) => part?.type === 'refusal')))) {
+    throw new Error('Translation response was incomplete or refused');
+  }
   const text = extractResponseText(payload);
   const parsed = await withExactSecretRedaction(() => parseJsonArray(text), settings.apiKey);
-  if (batch.length > 0 && parsed.length === 0) {
+  if (!Array.isArray(parsed) || (batch.length > 0 && parsed.length === 0)) {
     throw new Error('Translation response did not include translations');
   }
 
-  const byId = new Map(parsed.map((item) => [Number(item.id), item.translated]));
+  const byId = new Map();
+  const seen = new Set();
+  for (const item of parsed) {
+    const id = item?.id;
+    if (!Number.isInteger(id) || id < 0 || id >= batch.length) continue;
+    if (seen.has(id)) {
+      byId.delete(id);
+      continue;
+    }
+    seen.add(id);
+    byId.set(id, item.translated);
+  }
 
   return batch.map((subtitle, index) => {
     const translated = cleanTranslation(byId.get(index));
@@ -226,8 +242,9 @@ async function translateBatch({ batch, targetLanguage, settings, signal }) {
       return markTranslationFailed(subtitle, 'Translation response did not include this segment');
     }
 
+    const { translationError, ...source } = subtitle;
     return {
-      ...subtitle,
+      ...source,
       translated,
       status: 'translated',
     };
@@ -380,9 +397,9 @@ function parseJsonArray(text) {
 }
 
 function cleanTranslation(value) {
-  return String(value ?? '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  if (typeof value !== 'string') return '';
+  const text = value.replace(/\s+/g, ' ').trim();
+  return text === '[번역 불가]' || text === '[번역 실패]' ? '' : text;
 }
 
 async function formatApiError(response) {

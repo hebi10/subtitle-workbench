@@ -11,7 +11,7 @@ import java.util.List;
 final class Transcript {
     private Transcript() {}
 
-    static JSONArray normalize(JSONObject response, long offsetMs, long coreStartMs, long coreEndMs) throws JSONException {
+    static JSONArray normalize(JSONObject response, long offsetMs, long coreStartMs, long coreEndMs, long extractEndMs) throws JSONException {
         JSONArray words = response.optJSONArray("words");
         JSONArray segments = response.optJSONArray("segments");
         List<JSONObject> local = new ArrayList<>();
@@ -46,10 +46,14 @@ final class Transcript {
                     local.add(cue(start, end, text.toString()));
                     text.setLength(0);
                 }
-                if (text.length() == 0) start = word.getDouble("start");
-                else text.append(' ');
+                if (text.length() == 0) {
+                    start = word.getDouble("start");
+                    end = nextEnd;
+                } else {
+                    text.append(' ');
+                    end = Math.max(end, nextEnd);
+                }
                 text.append(token);
-                end = nextEnd;
                 if (token.matches("(?s).*[.!?]$")) {
                     local.add(cue(start, end, clean(text.toString())));
                     text.setLength(0);
@@ -72,10 +76,11 @@ final class Transcript {
             String text = clean(item.optString("text"));
             if (text.isEmpty()) continue;
             double start = round(offsetMs / 1000d + item.optDouble("start"));
-            double end = round(Math.min(coreEndMs / 1000d + 0.5, Math.max(start + 0.001, offsetMs / 1000d + item.optDouble("end"))));
+            double end = round(Math.min(extractEndMs / 1000d, Math.max(start + 0.001, offsetMs / 1000d + item.optDouble("end"))));
             double midpointMs = (start + end) * 500;
             if (midpointMs < coreStartMs || midpointMs >= coreEndMs || end <= start) continue;
             List<String> parts = split(text);
+            if (parts.size() > Math.round((end - start) * 1000)) parts = java.util.Collections.singletonList(text);
             for (int p = 0; p < parts.size(); p++) {
                 double partStart = round(start + (end - start) * p / parts.size());
                 double partEnd = round(start + (end - start) * (p + 1) / parts.size());
@@ -98,11 +103,13 @@ final class Transcript {
             String[] translated = new String[source.length()];
             for (int i = 0; i < translations.length(); i++) {
                 JSONObject item = translations.getJSONObject(i);
-                double number = item.getDouble("id");
+                Object rawId = item.get("id");
+                if (!(rawId instanceof Number)) throw new IllegalArgumentException("번역 결과의 자막 ID가 올바르지 않습니다.");
+                double number = ((Number) rawId).doubleValue();
                 int id = (int) number;
                 if (number != id || id < 0 || id >= source.length() || translated[id] != null || !(item.get("translated") instanceof String)) throw new IllegalArgumentException("번역 결과의 자막 ID가 올바르지 않습니다.");
                 translated[id] = clean(item.getString("translated"));
-                if (translated[id].isEmpty() || translated[id].equals("[번역 불가]")) throw new IllegalArgumentException("번역되지 않은 자막이 있습니다. 이어하기로 재시도해 주세요.");
+                if (translated[id].isEmpty() || translated[id].equals("[번역 불가]") || translated[id].equals("[번역 실패]")) throw new IllegalArgumentException("번역되지 않은 자막이 있습니다. 이어하기로 재시도해 주세요.");
             }
             JSONArray result = new JSONArray();
             for (int i = 0; i < source.length(); i++) {

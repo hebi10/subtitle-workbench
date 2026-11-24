@@ -842,6 +842,7 @@ async function runPipelineForCurrentFile(batchInfo, settings, signal) {
       startTime: chunkAudio.startTime,
       coreStartTime: chunkAudio.coreStartTime,
       coreEndTime: chunkAudio.coreEndTime,
+      extractEndTime: chunkAudio.extractEnd,
       subtitles: localSegments.map((segment) => ({
         start: segment.start,
         end: segment.end,
