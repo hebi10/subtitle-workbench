@@ -2514,3 +2514,12 @@ summary:focus-visible, a:focus-visible, .workspace-tab:focus-visible {
   font-weight: 600;
 }
 #panel-export #exportDownloadStatus[data-state="error"] { color: var(--danger); }
+
+/* SW-FIX-06: optional local workspace status, using the existing neutral design tokens. */
+.workspace-local-storage { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; border:1px solid var(--line); background:var(--panel); padding:12px; margin:12px 0; min-width:0; }
+.workspace-local-storage > div { flex:1 1 220px; min-width:0; }
+.workspace-local-storage p { margin:0; overflow-wrap:anywhere; }
+#workspaceStorageStatus { font-weight:600; }
+#workspaceStorageHelp { color:var(--muted); font-size:12px; line-height:1.5; margin-top:4px; }
+.workspace-local-storage button { min-height:48px; max-width:100%; white-space:normal; }
+@media (max-width:600px) { .workspace-local-storage > div, .workspace-local-storage button { flex-basis:100%; } }
