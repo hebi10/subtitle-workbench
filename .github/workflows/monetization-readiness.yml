@@ -1,0 +1,25 @@
+name: SW-FIX-01 monetization readiness (read only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: google-play
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check production variable formats and billing HTTPS route
+        env:
+          SW_ADMOB_APP_ID: ${{ vars.SW_ADMOB_APP_ID }}
+          SW_ADMOB_BANNER_ID: ${{ vars.SW_ADMOB_BANNER_ID }}
+          SW_BILLING_VERIFIER_URL: ${{ vars.SW_BILLING_VERIFIER_URL }}
+          SW_BILLING_CLOUD_PROJECT: ${{ vars.SW_BILLING_CLOUD_PROJECT }}
+        run: python3 scripts/release/preflight.py monetization --probe

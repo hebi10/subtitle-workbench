@@ -18,3 +18,9 @@
 6. Actions 변수 `SW_BILLING_VERIFIER_URL`에 서버 HTTPS origin, `SW_BILLING_CLOUD_PROJECT`에 링크된 Cloud 프로젝트 번호를 설정한 뒤 내부 테스트 빌드에서 두 요금제의 표시 가격, 테스트 구매, 구매 복원, 정지·만료와 취소를 확인합니다.
 
 앱에 검증 서버 설정이 없거나 서버 및 Google Play 조회가 실패하면 앱에서 구매를 시작할 수 없습니다. 구독이 없는 사용자는 광고 동의 상태에 따라 새 자막 작업 화면에서 배너를 볼 수 있습니다.
+
+## 운영 사전 검증 (SW-FIX-01)
+
+- `SW-FIX-01 monetization readiness (read only)` Actions를 main에서 수동 실행하면 기존 `google-play` 환경의 네 가지 변수를 실제 값 노출 없이 검사합니다. HTTPS 검증 경로에 토큰 없는 빈 JSON을 보내 400과 no-store 응답을 확인합니다. 구매·인증·Google API 호출이나 Play 변경은 하지 않습니다.
+- 서명 빌드도 키 파일 생성 전에 동일 형식 검사를 수행합니다. 디버그 빌드와 기존 OPS-04 AAB 실제 리소스 검사는 유지됩니다.
+- 성공은 변수 형식 및 HTTP 경로 확인일 뿐입니다. AdMob 승인·UMP, 연결된 Cloud 프로젝트, 서버의 실제 ADC/Play 권한, 월간·연간 요금제 활성화, 라이선스 구매와 복원·만료를 별도로 확인해야 합니다. 실패하면 새 AAB를 만들거나 재업로드하기 전에 원인을 수정합니다.

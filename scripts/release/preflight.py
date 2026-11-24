@@ -9,6 +9,9 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import json
+from urllib.error import HTTPError, URLError
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 SIGNING_SECRETS = ('ANDROID_UPLOAD_KEYSTORE_B64', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_ALIAS', 'ANDROID_KEY_PASSWORD')
 
@@ -37,6 +40,51 @@ def auth_mode(env):
     if env.get('PLAY_SERVICE_ACCOUNT_JSON', '').strip():
         return 'json'
     raise PreflightError('Play authentication is missing; configure WIF variables or PLAY_SERVICE_ACCOUNT_JSON')
+
+
+def validate_monetization(env):
+    """Check the same four production inputs required by OPS-04, without logging values."""
+    rules = {
+        'SW_ADMOB_APP_ID': r'ca-app-pub-[0-9]{16}~[0-9]{10}',
+        'SW_ADMOB_BANNER_ID': r'ca-app-pub-[0-9]{16}/[0-9]{10}',
+        'SW_BILLING_VERIFIER_URL': r'https://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}/?',
+        'SW_BILLING_CLOUD_PROJECT': r'[1-9][0-9]{0,17}',
+    }
+    invalid = []
+    for name, pattern in rules.items():
+        value = env.get(name, '')
+        if not re.fullmatch(pattern, value) or (
+            name.startswith('SW_ADMOB_') and value.startswith('ca-app-pub-3940256099942544')
+        ):
+            invalid.append(name)
+    if invalid:
+        raise PreflightError('Missing or invalid production monetization variables: ' + ', '.join(invalid))
+    return env['SW_BILLING_VERIFIER_URL']
+
+
+class NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def probe_billing(origin, opener=None):
+    """Verify HTTPS route and invalid-body rejection only; never submit a purchase or token."""
+    request = Request(origin.rstrip('/') + '/v1/subscriptions/verify', data=b'{}',
+                      headers={'Content-Type': 'application/json; charset=utf-8'}, method='POST')
+    try:
+        (opener or build_opener(NoRedirect())).open(request, timeout=10).close()
+    except HTTPError as error:
+        try:
+            with error:
+                if error.code == 400 and error.headers.get('cache-control', '').lower() == 'no-store':
+                    body = error.read(65)
+                    if len(body) <= 64 and json.loads(body) == {}:
+                        return
+        except (ValueError, OSError):
+            pass
+    except (URLError, OSError, ValueError):
+        pass
+    raise PreflightError('Billing HTTPS route or malformed-request rejection not verified')
 
 
 def command_output(args):
@@ -83,11 +131,20 @@ def verify_bundle(path, expected):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['auth', 'signing', 'verify-bundle'])
+    parser.add_argument('command', choices=['auth', 'signing', 'verify-bundle', 'monetization'])
     parser.add_argument('--bundle', type=Path)
+    parser.add_argument('--probe', action='store_true', help='Check billing HTTPS route (monetization only)')
     args = parser.parse_args()
     try:
-        if args.command == 'auth':
+        if args.probe and args.command != 'monetization':
+            raise PreflightError('--probe is only supported for monetization')
+        if args.command == 'monetization':
+            origin = validate_monetization(os.environ)
+            print('Production monetization variable format verified (not remote configuration)')
+            if args.probe:
+                probe_billing(origin)
+                print('Billing HTTPS route and malformed-request rejection verified (not purchase or Google API readiness)')
+        elif args.command == 'auth':
             mode = auth_mode(os.environ)
             with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
                 output.write(f'auth_mode={mode}\n')
