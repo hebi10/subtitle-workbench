@@ -55,3 +55,16 @@ These are global use-unit limits shared by everyone holding the code, not a mone
 Only after the operator has verified the real deployment, provide the actual HTTPS origin and reusable review access code in Play Console's restricted app-access instructions. Do not provide an OpenAI key. The code must work repeatedly without registration, a personal OpenAI account, or payment by the reviewer. Do not submit a made-up code/address or describe untested cloud functionality as verified.
 
 Explain the exact app steps: open API settings, select **Test server**, enter the supplied HTTPS origin and review access code, save and check the connection. Select a short media file and run cloud transcription/translation; start realtime transcription after accepting its microphone and transmission notice. The app displays the test connection and data destination. Provide the operator's tested per-job/session limits and a contact for exhausted shared quotas, and keep the endpoint available for the review period. Verify these labels against the submitted build. Do not use reviewer detection, special hidden behavior, fake API results or fabricated foreground-service evidence.
+
+## 운영 연결 검사 (SW-FIX-03)
+
+서버를 실제 배포한 뒤 신뢰하는 운영자 터미널에서 `REVIEW_RELAY_ORIGIN`과 `REVIEW_ACCESS_CODE`를 비공개 환경으로 설정하고 다음을 실행합니다. 기존 비밀 관리 도구에서 주입하며 값을 명령행·채팅·GitHub에 기록하지 않습니다. 번역 모델을 변경했다면 `REVIEW_PROBE_TRANSLATION_MODEL`을 실제 선택값으로 설정합니다.
+
+```sh
+node probe.mjs
+```
+
+- 인증 없는 요청의 401 거부, HTTPS 연결, 파일 전사 모델 3종과 선택한 번역 모델의 실제 조회 결과를 검사합니다. 리디렉션은 거부하고 오류에 토큰, URL, 응답 본문을 출력하지 않습니다.
+- 실제 서버의 일일 요청 한도를 모델 조회 4회 사용합니다. 음성/자막 전송, 유료 전사·번역·실시간 연결은 실행하지 않습니다. 성공을 전체 심사 기능 확인으로 오인하지 않습니다.
+- 이어서 실제 기기에서 승인된 비개인정보 샘플로 파일 전사·번역·마이크를 실행하고, 할당량·TLS/WS·정리·로그·서버 재시작 후 quota 보존을 점검합니다. 심사 기간 중 충분한 할당량과 재사용 접근을 확보한 다음에만 Play 앱 액세스 정보를 제출합니다.
+- `npm test`는 probe 실패 처리와 로컬 fixture를 검증합니다. 운영 주소나 접근 코드가 없으면 실운영 검증은 미완료입니다.
