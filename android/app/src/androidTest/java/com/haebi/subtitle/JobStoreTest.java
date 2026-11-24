@@ -263,4 +263,35 @@ public class JobStoreTest {
             assertEquals("queued", store.get(id).getString("status"));
         }
     }
+
+    @Test public void interruptedPaidStagePausesAndKeepsCompletedLongMediaCheckpoints() throws Exception {
+        Context context = ApplicationProvider.getApplicationContext();
+        String id;
+        try (JobStore store = new JobStore(context)) {
+            id = store.create("content://test/uncertain-paid", "three hours", 10_800_000L, new JSONObject());
+            assertTrue(store.claim(id));
+            JSONArray cues = new JSONArray("[{\"start\":0,\"end\":1,\"original\":\"saved\",\"translated\":\"보존됨\"}]");
+            store.progress(id, "transcribing", 0, null, "paid");
+            store.saveTranscription(id, 0, new JSONObject(), cues, 1);
+            assertEquals("checkpoint", store.get(id).getString("stage"));
+            store.saveTranslation(id, 0, 0, cues);
+            store.completeChunk(id, 0);
+            store.progress(id, "transcribing", 1, null, "paid");
+        }
+        try (JobStore reopened = new JobStore(context)) {
+            assertFalse(reopened.claim(id));
+            JSONObject job = reopened.get(id);
+            assertEquals("paused", job.getString("status"));
+            assertTrue(job.getString("error").contains("추가 비용"));
+            assertEquals(26, job.getInt("totalChunks"));
+            assertTrue(reopened.isChunkComplete(id, 0));
+            assertTrue(reopened.hasTranslation(id, 0, 0));
+            assertFalse(reopened.hasTranscription(id, 1));
+            assertTrue(MainActivity.queueResume(reopened, id, null));
+            assertTrue(reopened.claim(id));
+            assertEquals("running", reopened.get(id).getString("status"));
+            assertTrue(reopened.isChunkComplete(id, 0));
+            reopened.pauseRunnable(id, "");
+        }
+    }
 }

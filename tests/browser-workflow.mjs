@@ -8,7 +8,7 @@ const change = (element) => element.dispatchEvent(new Event('change', { bubbles:
 const resultOptions = () => [...$('#jobResultSelect').options].filter((option) => option.value);
 const rowCount = () => document.querySelectorAll('#editorBody [data-cue-index]').length;
 const translated = () => $('#editorBody [data-edit-field="translated"]');
-const io = { mode: 'success', requests: 0, transcriptions: 0, writes: [], pending: 0, aborted: 0, terminated: 0 };
+const io = { mode: 'success', requests: 0, transcriptions: 0, writes: [], pending: 0, aborted: 0, terminated: 0, translationInputs: [] };
 
 async function waitFor(predicate, description) {
   const deadline = Date.now() + 5000;
@@ -110,10 +110,17 @@ try {
       return Response.json({ error: { message: 'Fixture unauthorized', type: 'authentication_error' } }, { status: 401 });
     }
     if (url.pathname.endsWith('/audio/transcriptions')) {
+      if (io.mode === 'partial-translation') {
+        return Response.json({ segments: Array.from({ length: 31 }, (_, i) => ({ start: i * 0.25, end: (i + 1) * 0.25, text: 'Line ' + i + '.' })) });
+      }
       return Response.json({ text: 'Hello world', segments: [{ start: 0, end: 2, text: 'Hello world' }] });
     }
     const request = JSON.parse(init.body);
     const subtitles = JSON.parse(request.input).subtitles;
+    io.translationInputs.push(subtitles.map(({ text }) => text));
+    if (io.mode === 'partial-translation' && subtitles.some(({ text }) => text === 'Line 30.')) {
+      return Response.json({ error: { message: 'Fixture denied' } }, { status: 401 });
+    }
     return Response.json({ output_text: JSON.stringify({ translations: subtitles.map(({ id }) => ({ id, translated: '안녕하세요 세계' })) }) });
   };
 
@@ -266,6 +273,22 @@ try {
     assert($('#translationRecovery').hidden && translated().value === '안녕하세요 세계', 'retry must finish translation');
     assert($('#exportSubtitleCount').textContent === `${rowCount()}개`, 'export count must match edited cues');
   });
+  await check('completed translation batches survive failure and retry skips their paid requests', async () => {
+    const before = io.translationInputs.length;
+    await runBatch(['partial-translation.mp4'], 'partial-translation');
+    assert(!$('#translationRecovery').hidden, 'partial translation must remain recoverable');
+    assert(translated().value === '안녕하세요 세계', 'first completed batch must be visible after failure');
+    assert(io.translationInputs[before].length === 30, 'fixture must exercise a whole completed batch');
+    const transcriptions = io.transcriptions;
+    io.mode = 'success';
+    $('#retryTranslationButton').click();
+    await waitFor(() => $('#cancelButton').disabled, 'partial retry completion');
+    assert(io.transcriptions === transcriptions, 'transcription must not repeat');
+    assert(io.translationInputs.slice(before).map(batch => batch.length).join(',') === '30,1,1', 'only the remaining line may be retried');
+    assert(io.translationInputs.at(-1)[0] === 'Line 30.', 'retry must target the failed line');
+    assert($('#translationRecovery').hidden, 'recovery must finish after remaining line');
+  });
+
   await check('cancelling translation retains downloadable original', async () => {
     const before = resultOptions().length;
     const pending = io.pending;

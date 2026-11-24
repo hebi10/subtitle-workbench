@@ -235,10 +235,21 @@ public final class JobStore extends SQLiteOpenHelper {
     }
 
     boolean claim(String id) {
-        ContentValues values = new ContentValues(); values.put("status", "running"); values.put("error", ""); values.put("updated_at", System.currentTimeMillis());
-        boolean claimed = getWritableDatabase().update("jobs", values, "id=? AND status IN ('queued','running')", new String[]{id}) == 1;
-        if (claimed) RUN_CLOCKS.putIfAbsent(id, new RunClock(get(id).optJSONObject("progress").optLong("elapsedMs")));
-        return claimed;
+        // Called by the single worker under WORKER_LOCK. A persisted paid stage with no
+        // surviving worker is ambiguous: do not silently replay it after process death.
+        final boolean[] claimed = {false};
+        transaction(db -> {
+            JSONObject job = get(id);
+            String stage = job.optString("stage");
+            if ("running".equals(job.optString("status")) && Arrays.asList("transcribing", "translating", "waiting").contains(stage)) {
+                setStatus(id, "paused", "중단된 API 요청의 서버 처리 여부를 확인할 수 없습니다. 저장된 결과는 유지됩니다. 이어하기로 재요청하면 추가 비용이 발생할 수 있습니다.");
+                return;
+            }
+            ContentValues values = new ContentValues(); values.put("status", "running"); values.put("error", ""); values.put("updated_at", System.currentTimeMillis());
+            claimed[0] = db.update("jobs", values, "id=? AND status IN ('queued','running')", new String[]{id}) == 1;
+            if (claimed[0]) RUN_CLOCKS.putIfAbsent(id, new RunClock(job.optJSONObject("progress").optLong("elapsedMs")));
+        });
+        return claimed[0];
     }
 
     void finishRunning(String id, String status, String error) {
@@ -491,6 +502,12 @@ public final class JobStore extends SQLiteOpenHelper {
         RunClock clock = RUN_CLOCKS.get(id);
         if (clock != null) values.put("elapsed_ms", clock.elapsed());
         db.update("jobs", values, "id=?", new String[]{id});
+        // The paid response and its safe recovery stage are committed together.
+        ContentValues durableStage = new ContentValues();
+        durableStage.put("stage", "checkpoint");
+        durableStage.put("progress_message", statusMessage("checkpoint"));
+        durableStage.putNull("extraction_percent");
+        db.update("jobs", durableStage, "id=? AND status='running'", new String[]{id});
     }
 
     private static long elapsed(String id, long persisted) {

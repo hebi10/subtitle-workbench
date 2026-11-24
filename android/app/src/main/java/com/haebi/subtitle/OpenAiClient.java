@@ -194,6 +194,7 @@ final class OpenAiClient {
             HttpURLConnection connection = null;
             ScheduledFuture<?> deadline = null;
             long retryDelay = 500L << attempt;
+            boolean uploadMayHaveStarted = false;
             try {
                 connection = connections.open(path);
                 cancellation.attach(connection);
@@ -211,6 +212,7 @@ final class OpenAiClient {
                     connection.setRequestProperty("Content-Type", contentType);
                     connection.setDoOutput(true);
                     connection.setFixedLengthStreamingMode(length);
+                    uploadMayHaveStarted = true;
                     try (OutputStream output = connection.getOutputStream()) { upload.write(output); }
                 }
                 cancellation.check();
@@ -222,6 +224,7 @@ final class OpenAiClient {
                         catch (JSONException invalid) { throw new ApiFailure("unknown", 0); }
                     }
                 }
+                if (!readOnly && status == 408) throw new ApiFailure("request_uncertain", status);
                 ApiFailure failure = new ApiFailure(httpFailureCode(status, readErrorCode(connection)), status);
                 if (!isRetryable(failure) || attempt + 1 == maxAttempts) throw failure;
                 long requestedWait = retryAfter(connection.getHeaderField("Retry-After"));
@@ -231,6 +234,7 @@ final class OpenAiClient {
             } catch (ApiFailure | ResponseTooLarge error) { throw error; }
             catch (IOException error) {
                 cancellation.check();
+                if (uploadMayHaveStarted) throw new ApiFailure("request_uncertain", 0);
                 if (attempt + 1 == maxAttempts) throw new ApiFailure("network", 0);
             } finally {
                 if (deadline != null) deadline.cancel(false);
@@ -326,6 +330,7 @@ final class OpenAiClient {
                 case "quota": return "API 할당량이 부족합니다. 결제·사용 한도를 확인한 뒤 이어하기를 눌러 주세요.";
                 case "rate_limit": return "API 요청 속도 제한에 도달했습니다. 잠시 기다린 뒤 이어하기를 눌러 주세요.";
                 case "network": return "네트워크 요청이 실패했습니다. 연결을 확인한 뒤 이어하기를 눌러 주세요.";
+                case "request_uncertain": return "API 요청의 서버 처리 여부를 확인할 수 없습니다. 저장된 결과는 유지됩니다. 이어하기로 재요청하면 추가 비용이 발생할 수 있습니다.";
                 case "server": return "OpenAI 서버에서 일시적인 오류가 발생했습니다. 잠시 뒤 이어하기를 눌러 주세요.";
                 case "invalid_request": return "API 요청을 처리할 수 없습니다. 언어·모델 설정을 확인해 주세요.";
                 default: return "API 응답을 확인할 수 없습니다. 설정을 확인한 뒤 다시 시도해 주세요.";

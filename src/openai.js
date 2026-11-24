@@ -35,31 +35,37 @@ export async function requestTranscription({ audioBlob, fileName, settings, sign
   return withExactSecretRedaction(() => response.json(), settings.apiKey);
 }
 
-export async function translateSubtitles({ subtitles, settings, signal, onProgress }) {
+export async function translateSubtitles({ subtitles, settings, signal, onProgress, onCheckpoint, resume = false }) {
   const targetLanguage = settings.targetLanguage || 'ko';
-  const batchSize = Math.max(1, Number(settings.translationBatchSize) || OPENAI_DEFAULTS.translationBatchSize);
-  const translated = [];
+  const batchSize = Math.max(1, Math.floor(Number(settings.translationBatchSize) || OPENAI_DEFAULTS.translationBatchSize));
+  const result = subtitles.map((subtitle) => ({ ...subtitle }));
+  const pending = result.map((subtitle, index) => ({ subtitle, index }))
+    .filter(({ subtitle }) => !resume || !(['translated', 'edited'].includes(subtitle.status) && cleanTranslation(subtitle.translated)));
   const batches = [];
+  for (let index = 0; index < pending.length; index += batchSize) batches.push(pending.slice(index, index + batchSize));
 
-  for (let index = 0; index < subtitles.length; index += batchSize) {
-    batches.push(subtitles.slice(index, index + batchSize));
-  }
-
+  let done = result.length - pending.length;
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
+    signal?.throwIfAborted();
     const batch = batches[batchIndex];
-    onProgress?.({ batchIndex, batchCount: batches.length, done: translated.length });
-    translated.push(
-      ...(await translateBatchWithFallback({
-        batch,
-        targetLanguage,
-        settings,
-        signal,
-      })),
-    );
+    onProgress?.({ batchIndex, batchCount: batches.length, done });
+    await translateBatchWithFallback({
+      batch: batch.map(({ subtitle }) => subtitle),
+      targetLanguage, settings, signal,
+      onResult: (offset, translated) => {
+        const patches = translated.map((subtitle, index) => {
+          const originalIndex = batch[offset + index].index;
+          result[originalIndex] = { ...subtitle };
+          return { index: originalIndex, subtitle: { ...subtitle } };
+        });
+        onCheckpoint?.(patches);
+      },
+    });
+    done += batch.length;
   }
-
-  onProgress?.({ batchIndex: batches.length, batchCount: batches.length, done: translated.length });
-  return translated;
+  signal?.throwIfAborted();
+  onProgress?.({ batchIndex: batches.length, batchCount: batches.length, done });
+  return result;
 }
 
 export function extractResponseText(payload) {
@@ -85,71 +91,41 @@ export function extractResponseText(payload) {
   return '';
 }
 
-async function translateBatchWithFallback({ batch, targetLanguage, settings, signal }) {
+async function translateBatchWithFallback({ batch, targetLanguage, settings, signal, onResult }) {
+  signal?.throwIfAborted();
+  let translated;
   try {
-    const translated = await translateBatch({ batch, targetLanguage, settings, signal });
-    return await retryMissingTranslations({
-      translated,
-      targetLanguage,
-      settings,
-      signal,
-    });
+    translated = await translateBatch({ batch, targetLanguage, settings, signal });
   } catch (error) {
-    if (error?.name === 'AbortError' || error?.isApiError) {
-      throw error;
-    }
-
+    if (error?.name === 'AbortError' || error?.isApiError) throw error;
     if (batch.length <= 1) {
-      return batch.map((subtitle) => markTranslationFailed(subtitle, error.message));
+      onResult(0, batch.map((subtitle) => markTranslationFailed(subtitle, error.message)));
+      return;
     }
-
     const fallbackSize = batch.length > 5 ? 5 : 1;
-    const translated = [];
-
     for (let index = 0; index < batch.length; index += fallbackSize) {
-      translated.push(
-        ...(await translateBatchWithFallback({
-          batch: batch.slice(index, index + fallbackSize),
-          targetLanguage,
-          settings,
-          signal,
-        })),
-      );
-    }
-
-    return translated;
-  }
-}
-
-async function retryMissingTranslations({ translated, targetLanguage, settings, signal }) {
-  const retryTargets = translated
-    .map((subtitle, index) => ({ subtitle, index }))
-    .filter(({ subtitle }) => isMissingTranslationFailure(subtitle));
-
-  if (retryTargets.length === 0) {
-    return translated;
-  }
-
-  const next = [...translated];
-
-  for (const { subtitle, index } of retryTargets) {
-    try {
-      const [retried] = await translateBatch({
-        batch: [subtitle],
-        targetLanguage,
-        settings,
-        signal,
+      await translateBatchWithFallback({
+        batch: batch.slice(index, index + fallbackSize), targetLanguage, settings, signal,
+        onResult: (offset, items) => onResult(index + offset, items),
       });
-      next[index] = retried;
-    } catch (error) {
-      if (error?.name === 'AbortError' || error?.isApiError) {
-        throw error;
-      }
-      next[index] = markTranslationFailed(subtitle, error.message);
     }
+    return;
   }
 
-  return next;
+  // Preserve valid siblings before retrying missing IDs. A later request may fail or be cancelled.
+  onResult(0, translated);
+  for (const [index, subtitle] of translated.entries()) {
+    if (!isMissingTranslationFailure(subtitle)) continue;
+    signal?.throwIfAborted();
+    let retried;
+    try {
+      [retried] = await translateBatch({ batch: [subtitle], targetLanguage, settings, signal });
+    } catch (error) {
+      if (error?.name === 'AbortError' || error?.isApiError) throw error;
+      retried = markTranslationFailed(subtitle, error.message);
+    }
+    onResult(index, [retried]);
+  }
 }
 
 async function translateBatch({ batch, targetLanguage, settings, signal }) {
@@ -292,21 +268,23 @@ async function apiFetch(path, { method, headers = {}, body, settings, signal }) 
       } catch (error) {
         if (error?.name === 'AbortError') throw error;
         signal?.throwIfAborted();
-        failure = new Error(error?.message ?? String(error));
-        failure.retryable = true;
+        failure = new Error((error?.message ?? String(error)) + ' · 서버 처리 여부를 확인할 수 없어 자동 재요청하지 않습니다. 다시 실행하면 추가 비용이 발생할 수 있습니다.');
+        failure.retryable = false;
       }
 
       if (response) {
         if (response.ok) return response;
-        failure = new Error(await formatApiError(response));
+        const detail = await formatApiError(response);
+        failure = new Error(detail.message);
         failure.status = response.status;
-        failure.retryable = response.status === 429 || response.status >= 500;
+        const quota = ['insufficient_quota', 'billing_hard_limit_reached', 'billing_not_active', 'usage_limit_reached'].includes(detail.code);
+        failure.retryable = (response.status === 429 && !quota) || response.status >= 500;
         failure.retryAfterMs = parseRetryAfter(response.headers?.get('Retry-After'));
       }
 
       failure.isApiError = true;
-      if (!failure.retryable || attempt === 2) throw failure;
-      const delay = Math.min(30000, Math.max(500 * (2 ** attempt), failure.retryAfterMs ?? 0));
+      if (!failure.retryable || attempt === 2 || (failure.retryAfterMs ?? 0) > 30000) throw failure;
+      const delay = Math.max(500 * (2 ** attempt), failure.retryAfterMs ?? 0);
       await waitForRetry(delay, signal);
     }
   }, apiKey);
@@ -409,13 +387,13 @@ async function formatApiError(response) {
     text = await response.text();
   } catch (error) {
     if (error?.name === 'AbortError') throw error;
-    return `OpenAI API ${status}: Request failed.`;
+    return { message: `OpenAI API ${status}: Request failed.` };
   }
 
   try {
     const parsed = JSON.parse(text);
-    return `OpenAI API ${status}: ${parsed.error?.message ?? text}`;
+    return { message: `OpenAI API ${status}: ${parsed.error?.message ?? text}`, code: parsed.error?.code };
   } catch {
-    return `OpenAI API ${status}: ${text || 'Request failed.'}`;
+    return { message: `OpenAI API ${status}: ${text || 'Request failed.'}` };
   }
 }
