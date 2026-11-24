@@ -1,143 +1,75 @@
-# Play Console 선언안
+# 자막라인 Play Console 현행 제출 초안 (SW-FIX-02)
 
-> **최신 상태 주의 (2026-11-17)** — 이 문서의 2026-11-08 광고 없음/광고 ID 미사용/Billing 없음 설명은 **과거 버전 기록**입니다. 최신 서명 AAB 0.10.0(24)에는 AdMob·UMP·Billing SDK, 운영 AdMob ID, `com.google.android.gms.permission.AD_ID` 및 `android.permission.ACCESS_ADSERVICES_AD_ID`가 포함되어 있습니다. **구독 검증 HTTPS 서버와 Play Integrity Cloud 프로젝트 번호는 AAB 내부에 미설정**입니다. 실제 콘솔 신고 여부는 확인하지 않았으므로 승인·반영 완료로 표기하지 않습니다. 최신 감사와 미완료 조치: [ADS-BILLING-PREFLIGHT](../qa/ads-billing-preflight-2026-11-17.md). 콘솔에서는 광고 포함/광고 ID/데이터 보안/구독·앱 액세스를 AAB 및 SDK 동작에 맞게 다시 검토해야 합니다.
+기준일 2026-11-24 KST. 패키지 `com.haebi.subtitle`, 기준 main `670cb27525bd4d1c1c376a2f99dc9be1ab805cdb`. 이 문서는 코드 및 기존 AAB 감사에 근거한 제출 초안이다. Console에서 저장·검토·게시되었다는 증빙은 아니다. 비공개 테스트 승격 오류는 실제 Console 상세 원인 확인 전 재시도하지 않는다.
 
+- 과거 2026-11-08 신고·Console 확인 이력: [보존 기록](declarations-ko-2026-11-08-archive.md). 당시 광고 없음/광고 ID 미사용/구독 없음 응답은 현행 빌드에 사용하지 않는다.
+- 2026-11-17 AAB 24 감사: [ADS-BILLING-PREFLIGHT](../qa/ads-billing-preflight-2026-11-17.md). 운영 광고 ID는 포함되었고 구독 검증 HTTPS 및 Play Integrity 프로젝트 번호는 당시 미설정이었다. 새 AAB의 설정과 병합 Manifest는 별도 검증한다.
+- 내부 23은 과거 API commit/readback 확인. [비공개 승격 실패 실행](https://github.com/hebi10/subtitle-workbench/actions/runs/43139034004)은 edits.validate HTTP 400 INVALID_ARGUMENT. 앱 콘텐츠, 액세스, 트랙/검토 등 가능한 원인은 아직 확인되지 않았다.
 
-기준일: 2026-11-08. 대상: `com.haebi.subtitle`, 해비 자막 Android 소스. 이 문서는 입력 근거와 확인한 Console 저장 상태, 남은 결정을 기록한다. 초안 저장·검토 준비·심사·배포 완료를 구분한다. 실제 업로드 AAB의 Manifest·의존성이 달라지면 다시 점검한다.
+## 등록정보와 필수 선언
 
-## Console 확인 상태
-
-2026-11-08 재확인 기록이다. 배포된 `0.9.1 (10)`은 Console에서 21:34 KST 게시 및 “내부 테스터에게 제공됨”으로 확인했다. [API 제출 실행](https://github.com/hebi10/subtitle-workbench/actions/runs/42475478811)은 `completed`를 새 edit에서 재조회했다. [참여 링크](https://play.google.com/apps/internaltest/4701628928119663504)는 테스트 초대 화면이 열리는 것까지 확인했으며 실제 기기 설치는 수행하지 않았다. 아래 필수 선언의 완료와 전체 스토어 심사는 별개다.
-
-| 항목 | 확인 상태 |
+| Console 항목 | 제출 초안/검토 근거 |
 | --- | --- |
-| 한국어 스토어 등록정보 | 아이콘 1개·대표 그래픽 1개·휴대전화 스크린샷 5개, 검토 준비 상태 |
-| 개인정보처리방침 | 공개 URL의 HTTP 200 응답 확인 |
-| 앱 설정 | 9/12 완료. 앱 액세스(로그인)·타깃 연령·데이터 보안은 미완료 |
-| 타깃 연령·데이터 보안 | 타깃 연령은 18세 이상을 권장하지만 앱 액세스 단계가 막혀 저장하지 않음. 데이터 보안은 아래 5개 유형의 초안만 저장 |
-| 콘텐츠·계정 선언 | IARC 응답 및 Google 한국 등급 3+ 저장. 광고 ID 사용은 아니요로 저장. 판매자 여부는 기존 계정의 예 응답을 상속해 저장 |
-| 내부 테스터 | 기존 `본인`(1명) 명단 유지. 내부 트랙 `0.9.1 (10)`이 제공됨. 실제 기기 설치·테스트 수락은 별도 |
-| 앱 서명 | 앱 전용 업로드키로 서명 빌드와 AAB 검증 및 실제 Play 업로드 성공. Google 앱 서명키와 개발자 업로드키는 구분 |
-| GitHub 배포 환경 | `google-play`의 main 전용 정책 유지. 서명 Secrets 4개·WIF와 인증서 Variables 구성이 실제 배포 실행에서 작동 |
-| 검증·자동 배포 | `0174c0a6` main CI 및 내부 배포 실행 `42475478811` 성공. 코드 10 업로드와 API commit·재조회·Console 제공 상태 확인. 이후 개발 변경은 별도 검증 필요 |
+| 앱 이름 | 자막라인. Manifest와 listing-ko.json 일치 |
+| 광고 포함 | 예. 새 작업 화면에서 동의 조건에 따른 AdMob 배너 제공 |
+| 광고 ID | 예로 검토. AAB 24 최종 Manifest에 AD_ID 및 ACCESS_ADSERVICES_AD_ID 포함. 새 AAB에서도 병합 Manifest와 SDK 설정 확인 |
+| 구독 | subtitle_remove_ads, monthly/yearly. 현지 가격은 Play 표시값. Google Play 상품 활성화·검증 서버·테스트 구매 확인 전 운영 완료 아님 |
+| 개인정보처리방침 | https://hebi10.github.io/subtitle-workbench/privacy-policy.html — 최신 광고·구독 고지 공개 여부를 확인 |
+| 앱 액세스 | 제한된 기능 있음. 클라우드 테스트 서버의 실동작 확인 후 [심사 접근 안내](review-access-template.md)를 실제 정보로 작성. 심사자에게 개인 키·유료 계정 요구 금지 |
+| 콘텐츠 등급/타깃 연령 | 이전 광고 없는 버전 응답을 그대로 사용하지 않음. 현재 광고와 생성 기능 기준으로 재검토. 최종 대상 연령은 소유자 확정 |
+| 앱 카테고리 | 동영상 플레이어/편집기 검토. 뉴스·정부·건강·금융 서비스 기능 없음 |
+| AI 관련 선언 | 전사·번역 기능을 실제 정책 질문과 대조. AI 미사용으로 선언하지 않음 |
+| 판매자 정보 | 실제 계정·사업자 정보 확인. 코드로 추정하지 않음 |
 
-## 0.10.0 테스트 서버 경로
+## 데이터 보안 제출 근거
 
-해비님의 지시에 따라 개인 API 기능을 유지하면서 테스트 서버 경로를 추가한다. 앱은 사용자에게 연결 방식을 명시하며 실제 전사·번역·실시간 처리를 서버를 거쳐 OpenAI로 요청한다. 개인 OpenAI 키를 Console·APK에 배포하지 않는다. 서버 주소와 전용 접근 코드를 별도로 입력하는 정상적인 테스트 접근 방식이며 심사자 자동 탐지나 결과 대체 기능이 아니다.
+기기 밖으로 전송되는 정보와 SDK의 자동 수집도 포함한다. 로컬 작업 경로가 존재한다고 앱 전체에 수집 없음으로 응답하지 않는다. 표는 검토 항목이며 Google의 수집/공유 예외, 동의 및 실제 운영 로그, 최종 SDK 버전, 서비스 제공자의 처리 조건을 확인해 Console 응답을 확정한다.
 
-구현과 테스트의 성공만으로 심사 접근이 마련되었다고 기록하지 않는다. 공개 HTTPS 서버 배포, 서버 전용 OpenAI 키·재사용 접근 코드의 안전한 설정, 실제 API 실행 확인이 선행되어야 한다. 현재 이 문서에는 실제 배포 URL·코드가 없으며, 그 상태에서 “앱 전체에 접근 가능” 확인란을 제출하지 않는다. 서버 준비 후 영어 접근 안내를 작성하고 각 FGS 실제 실행 영상을 확보한다. [서버 배포 안내](../../server/review-relay/README.md).
-
-서버 경로 사용 시 음성과 번역 자막은 선택한 테스트 서버를 거쳐 OpenAI에 전달된다. 서버는 오디오 임시 파일을 요청 종료 시 제거하고 접근 코드를 기록하는 대신 합계 사용량을 SQLite에 보관한다. 실제 운영의 역방향 프록시와 로그 설정을 배포 시 검증한 뒤 데이터 보안 응답과 공개 정책을 최종 확정한다. 기존 개인 API 경로의 데이터 흐름은 유지한다.
-
-## 등록정보
-
-| 항목 | 입력안 또는 상태 | 근거 |
+| 데이터 유형 | 관련 기능/처리 | 목적 및 검토 |
 | --- | --- | --- |
-| 기본 언어 | 한국어 `ko-KR` | `listing-ko.json` |
-| 앱 이름 | 해비 자막 | Manifest의 `android:label` |
-| 짧은/자세한 설명 | `listing-ko.json` | 현재 Android 구현 기준. API 무료·전 기능 오프라인·인식 정확도 보장 표현 없음 |
-| 릴리스 노트 | `release-notes-ko.txt` | 공개할 실제 버전에 맞춰 검토. 과거 버전의 변경 사항을 새 기능으로 중복 소개하지 않음 |
-| 개인정보처리방침 | `https://hebi10.github.io/subtitle-workbench/privacy-policy.html` | `docs/privacy-policy.html`, 공개 URL HTTP 200 확인. 정책 공개와 앱 심사·게시 완료는 구분 |
-| 공개 지원/개인정보 문의 | `asdlkj0104@gmail.com` | 같은 개발자의 [공개 GalliPick 등록 문서](https://github.com/hebi10/GalliPick/blob/main/docs/play-store/ko-KR-listing.md)에서 이미 게시 동의된 지원 주소임을 작업 담당자가 확인. 비공개 로그인 주소에서 새로 추정하지 않음 |
-| 앱/게임 | 앱 | 자막 생성·편집 도구 |
-| 카테고리 제안 | 동영상 플레이어/편집기 | 기능에 따른 제안. Console 제공 목록에서 선택 |
-| 광고 포함 | 아니요 | `android/app/build.gradle`에 광고 SDK 없음. 앱 소스에 광고 UI·광고 ID 사용 없음 |
-| 가격·유료 서비스 | 앱 가격은 소유자 결정. OpenAI 기능은 사용자 본인 API 요금 별도 | Play Billing 구현 없음. API 비용을 앱 무료와 혼동하지 않음 |
-| 판매자 유형·사업자 정보·법적 개발자명 | 판매자 여부는 기존 계정의 예 응답을 상속해 저장 | 사업자 정보·법적 개발자명은 코드·공개 닉네임으로 추정하지 않음 |
+| 음성/사운드 녹음, 기타 오디오, 음악 파일(해당 입력 시) | 개인 클라우드 또는 테스트 서버 경유 OpenAI | 선택적 클라우드 앱 기능. 외부 보관 조건 때문에 일시 처리로 일괄 단정하지 않음 |
+| 기타 사용자 제작 콘텐츠 | 자막 텍스트의 클라우드 번역 | 선택적 앱 기능. 원본 영상 화상·파일명·URI 전송과 구분 |
+| 사용자 ID/인증 정보 분류 검토 | 개인 API 인증, 테스트 접근 코드 | 인증에 필요. API 키를 Google 사용자 ID 유형으로 분류할지는 실제 질문에 맞춰 검토 |
+| 대략적 위치 | 광고 SDK의 IP 기반 위치 추정 가능 | 광고/분석/부정 사용 방지. 앱 자체 위치 권한 미사용과 구분 |
+| 앱 상호작용 | Google Mobile Ads SDK의 앱 실행·탭 등 | 광고/분석/부정 사용 방지 |
+| 진단 정보 | Google Mobile Ads SDK의 앱/SDK 성능 정보 | 광고/분석/부정 사용 방지 |
+| 기기 또는 기타 ID | 광고 ID, 앱 세트 ID 등 광고 SDK 식별자 및 Play Integrity 관련 처리 | 광고/분석/부정 사용 방지 및 구독 검증. 동의·SDK 구성·실제 수신자 기준 확인 |
+| 구매 내역/구독 상태 | Play Billing 구매 토큰, Integrity 검증 토큰을 독립 HTTPS 검증 서버로 전송; Play Developer API 조회 | 광고 제거 권한 확인·부정 사용 방지. 개발자 결제수단 수집과 구분. 실제 로그·보관 및 Google의 데이터 유형/공유 예외 확인 |
 
-## 데이터 흐름 근거
+광고 SDK의 공식 [데이터 공개 안내](https://developers.google.com/admob/android/privacy/play-data-disclosure?hl=ko)는 현재 최신 SDK 버전을 설명한다. 저장소는 25.0.0을 사용하므로 실제 탑재 버전과 UMP/광고 설정, 선택 기능 여부를 대조한 뒤 응답을 확정한다. 광고 SDK의 자동 수집·공유 가능성을 누락하지 않는다. OpenAI 및 테스트 서버·모델 호스팅·Google 처리와 구독 서버의 운영 로그까지 확인한다.
 
-| 기능/정보 | 실제 처리와 수신자 | 보관/삭제와 코드 |
-| --- | --- | --- |
-| 선택한 원본 파일 | Android `ACTION_OPEN_DOCUMENT`로 선택한 URI를 읽음. 클라우드 전사는 영상 화면 대신 추출 오디오를 OpenAI에 보냄. 원래 파일명 대신 업로드명 `chunk.m4a` 사용 | `MainActivity.startPicker/onActivityResult`, `MediaChunks`, `JobService.process`, `OpenAiClient.transcribe` |
-| 클라우드 전사 | 오디오·원본 언어·모델 → `https://api.openai.com/v1/audio/transcriptions` | `OpenAiClient`. 추출 임시 파일은 `JobService.process`의 `finally`에서 삭제 시도. 오래된 캐시 정리도 있음 |
-| 번역 | 자막 원문·대상 언어·모델 → `https://api.openai.com/v1/responses`, `store:false` | `OpenAiClient.translate`. `store:false`를 무보관 또는 즉시 삭제로 해석하지 않음 |
-| GPT 마이크 | 시작 후 PCM16 음성 → `wss://api.openai.com/v1/realtime?intent=transcription`. 최대 5분, 화면 이탈 시 중단 | `RealtimeTranscriptionProtocol`, `LiveTranscriptionClient`, `CloudLiveRecognitionActivity.onStop`. 앱은 원음 파일을 만들지 않음 |
-| OpenAI API 키 | OpenAI 요청 인증 헤더로 전송. 키 확인 시 모델 GET 조회. Android 앱은 Worker를 경유하지 않음 | `SecretStore`: Android Keystore AES-256-GCM, 앱 전용 `api_secret` preferences에는 ciphertext/nonce만 저장. `MainActivity` bridge는 키를 JS에 반환하지 않음. 설정의 삭제 기능은 로컬 복사본만 삭제 |
-| Vosk 파일 인식 | 사용자가 설치한 Vosk 모델로 기기 내부에서 음성 처리. 인식 입력·결과를 네트워크로 보내지 않음 | `OfflineVoskTranscriber`, `OfflineVoskActivity`. 모델 다운로드/삭제는 `OfflineModelInstaller` |
-| Vosk 모델 다운로드 | Hugging Face의 `rhasspy/vosk-models` 및 HTTPS 리디렉션 다운로드 제공망으로 모델 요청, IP 등 연결 정보. 음성·자막·API 키는 모델 다운로드 요청에 첨부하지 않음 | `OfflineModelCatalog`, `OfflineModelInstaller.download/open`. 호스트를 Hugging Face 하나로만 단정하지 않음 |
-| OS 온디바이스 마이크 | API 31+ `createOnDeviceSpeechRecognizer`, `EXTRA_PREFER_OFFLINE`. 클라우드 폴백 코드는 없음. 지원 조회/모델 설치는 시스템 제공자가 관리 | `OnDeviceRecognitionActivity`의 지원 확인·다운로드·인식, `onStop`에서 인식 중단. 모든 제조사 서비스의 보관 정책까지 앱이 보장하지 않음 |
-| 작업·자막·파일 정보 | 파일 URI/이름/길이, 언어·모델, 결과와 시간, 체크포인트를 기기 SQLite에 보관. 전체 DB 암호화는 없음 | `JobStore.onCreate/writePayload/saveEdited`. 완료 작업만 `deleteCompleted`로 개별 삭제. 준비 취소는 준비 작업만 제거. 미완료 작업까지 일괄 삭제하려면 Android 앱 데이터 삭제 |
-| 내보내기 | `ACTION_CREATE_DOCUMENT`의 사용자가 지정한 위치에 SRT/VTT/JSON UTF-8 저장. 외부 저장소가 클라우드 공급자일 수 있음 | `MainActivity.onActivityResult`. 앱 데이터 삭제는 내보낸 파일과 원본 파일을 삭제하지 않음 |
-| 백업/분석/광고 | 앱 자동 백업·기기 이전 제외. 자체 분석·광고·원격 충돌보고 SDK 및 계정 서버 없음 | Manifest `allowBackup=false`, `res/xml/data_extraction_rules.xml`, `android/app/build.gradle` 및 Android 소스. Google Play/OS 자체 진단을 앱의 자체 분석으로 설명하지 않음 |
-
-## 데이터 보안 입력안
-
-Google의 수집 기준은 개발자 서버 수신 여부가 아니라 기기 밖 전송 여부다. 로컬 경로가 있어도 OpenAI 전송 때문에 앱 전체에 “수집 없음”을 선택하지 않는다. 아래는 보수적인 제출 초안이며 Console의 실제 분류 문구와 수신자 처리를 맞춰 확인한다.
-
-| Console 질문 | 입력안 | 조건/이유 |
-| --- | --- | --- |
-| 사용자 데이터 수집/공유 여부 | 예 | OpenAI에 음성·텍스트·키 전송 |
-| 전송 중 암호화 | 예 | API HTTPS/WSS, 모델 다운로드 HTTPS만 허용. 외부 파일 저장소의 처리 방식까지 보장하지 않음 |
-| 계정 생성 방법 | 앱 내 계정 생성 없음 | 본인의 OpenAI API 키는 외부 서비스 자격 증명이며 해비 자막 회원 가입이 아님 |
-| 데이터 삭제 요청 방법 | 선택적 삭제 요청 기능: 아니요 (Console 초안 저장) | 로컬 삭제 절차와 문의 이메일은 제공하지만 개발자가 사용자의 OpenAI 계정 데이터를 대신 삭제할 수 없음 |
-| 독립 보안 검토 | 검토받았다는 증거 없음 | 자체 테스트를 제3자 인증/감사로 표기하지 않음 |
-| Families 관련 항목 | 소유자의 타깃 연령 결정 후 응답 | 아동 대상 또는 Families 준수라고 임의 선언하지 않음 |
-
-| 데이터 유형 | 수집 | 공유 초안 | 필수/선택 | 일시 처리 | 목적 |
-| --- | --- | --- | --- | --- | --- |
-| 오디오 파일 → 음성/사운드 녹음 | 예 | 예 | 선택 | 아니요 | 앱 기능: 클라우드 파일·실시간 전사 |
-| 오디오 파일 → 기타 오디오 파일 | 예 | 예 | 선택 | 아니요 | 앱 기능: 사용자가 선택한 다양한 오디오의 전사 |
-| 오디오 파일 → 음악 파일 | 예(음악 파일을 클라우드 입력으로 선택한 경우) | 예 | 선택 | 아니요 | 앱 기능: 오디오 파일 전사. 앱이 음악 파일을 별도로 차단하지 않음 |
-| 앱 활동 → 기타 사용자 제작 콘텐츠 | 예 | 예 | 선택 | 아니요 | 앱 기능: 인식된 자막 원문 번역. 자막의 의미 내용이 전송됨 |
-| 개인정보 → 사용자 ID | 예, 보수적으로 OpenAI 계정에 연결된 API 자격 증명 포함 | 예 | 선택 | 아니요 | 앱 기능: 외부 API 인증·모델 접근 조회 |
-
-분류 주의:
-
-- 원본 영상의 화상·사진, 원래 파일명과 URI, 기기 내 불러온 자막 문서 자체는 현재 클라우드 요청에 포함하지 않는다. 로컬 접근만을 이유로 사진/동영상·파일 및 문서 유형에 외부 수집을 표시하지 않는다. 번역 원문은 위의 기타 사용자 제작 콘텐츠로 다룬다. Console이 자막을 문서로 별도 분류하도록 안내하면 해당 유형으로 조정하고 중복·누락을 검토한다.
-- 개인정보/사용자 ID의 API 키 분류는 Google이 API 키를 명시한 분류가 아니라 계정 연결 자격 증명에 대한 보수적 해석이다. 이 항목을 누락한 채 “개인정보 전혀 없음”을 홍보하지 않는다.
-- 공유 “예”는 실제 OpenAI 전송을 반영한 보수적 초안이다. Google은 사용자 시작·충분한 고지/동의 또는 서비스 제공자 전송 예외를 두지만, 사용자 본인의 OpenAI 계약이 개발자의 수탁 계약과 동일하다고 추정하지 않는다. 파일 전송 안내가 기본적으로 접힌 상세 영역 안에 있으므로 현재 상태에서 고지 예외를 근거 없이 확정하지 않는다. 예외 적용이 확인될 때에만 Console의 공유 응답을 조정한다.
-- API 제공자의 전체 보관 행태를 앱 코드가 통제하지 않는다. Realtime·Responses의 보안 로그 보관이 가능하므로 앱 전체의 오디오·텍스트를 일시 처리로 선언하지 않는다. 로컬 원음 파일을 저장하지 않는다는 사실만으로 일시 처리가 되는 것은 아니다.
-- IP 등 연결 정보는 API·모델 호스팅에 전달된다. 앱 자체의 광고/설치 ID, 위치 추정·수집 코드는 없다. 제출 시 OpenAI와 모델 호스팅의 실제 처리 고지에서 IP를 식별자 또는 위치로 이용하는지 확인한다. IP 기반 식별/추적 또는 위치 추정이 확인되면 `기기 또는 기타 ID`/`대략적 위치`를 추가한다. 앱 코드만으로 외부 제공자의 모든 네트워크 로그가 없다고 선언하지 않는다.
-- 자막·음성의 자유로운 내용에 우연히 포함된 개인정보를 앱이 별도로 추출·분류하는 기능은 없다. 지원 문의 메일의 응대는 앱의 백그라운드 수집과 구분한다.
-
-클라우드 기능을 쓰지 않고 로컬 파일 전사·편집을 사용할 수 있으므로 위 데이터는 선택이다. 개별 클라우드 기능 안에서는 해당 데이터와 API 키가 기능 수행에 필요하다. 광고·마케팅·분석·프로필 개인화·개발자 자체 계정 관리 목적은 구현 근거가 없다.
+- 전송 중 암호화: 앱의 HTTPS/WSS, 광고 SDK TLS. 실제 운영 HTTPS와 외부 저장소의 별도 처리 확인.
+- 계정 생성: 앱 자체 계정 없음. 외부 OpenAI 계정은 별도.
+- 삭제 요청: 기기 저장 데이터 삭제 기능과 외부 서비스 삭제 절차를 구분. 서버의 집계 카운터와 결제 로그의 실제 보관/삭제 절차 확인.
+- 독립 보안 검토: 제3자 인증 증빙 없음.
+- 원본 영상·음성 및 자막의 로컬 저장은 기존 정책과 동일. 원본 삭제하지 않음.
+- [데이터 보안 공식 기준](https://support.google.com/googleplay/android-developer/answer/10787469?hl=ko), [공개 개인정보처리방침 소스](../privacy-policy.html).
 
 ## 권한 및 포그라운드 서비스
 
-| 권한/유형 | 실제 용도 | Console 입력·검토 |
-| --- | --- | --- |
-| `RECORD_AUDIO` | 사용자가 시작한 OS 온디바이스/GPT 실시간 마이크 자막 | 마이크 접근을 명시. 시작 전 런타임 요청, 거부 처리, 화면 이탈 중지. 백그라운드 상시 녹음이라고 설명하지 않음 |
-| `INTERNET`, `ACCESS_NETWORK_STATE` | 선택한 OpenAI 기능과 Vosk 모델 설치, 연결 상태 확인 | 서버 미전송이라고 선언하지 않음 |
-| `POST_NOTIFICATIONS` | 파일 처리 상태·일시정지 알림 | 알림 동의 거부와 Android 포그라운드 서비스 표시 정책을 구분 |
-| `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC` / `dataSync` | 사용자 시작 파일 작업에서 추출 오디오 업로드·전사/번역 응답 수신·체크포인트 저장 | 네트워크 전송/서버 처리. `JobService` |
-| `FOREGROUND_SERVICE_MEDIA_PROCESSING` / `mediaProcessing` | 영상·음성 구간에서 오디오를 네이티브로 추출·변환 | 미디어 변환. Android 15+에서 dataSync와 함께 활성화 |
-| `WAKE_LOCK` | 진행 중 파일 작업의 제한 시간 동안 처리 유지 | 작업 끝·실패·타임아웃·서비스 종료 시 해제 |
-| 사진/영상 전체, 저장소 전체, 연락처, 위치, 광고 ID | 요청하지 않음 | 파일 선택기 접근. `READ_MEDIA_*`, `MANAGE_EXTERNAL_STORAGE`, `AD_ID`, 위치 권한 없음 |
-| 마이크 FGS / 전체화면 인텐트 | 현재 사용하지 않음 | `microphone` FGS나 `USE_FULL_SCREEN_INTENT`를 새로 선언하지 않음 |
+| 권한/유형 | 실제 용도 |
+| --- | --- |
+| RECORD_AUDIO | 사용자가 시작한 온디바이스/GPT 마이크 자막. 화면 이탈 중지 |
+| INTERNET, ACCESS_NETWORK_STATE | 클라우드 전사·번역, 모델 다운로드, 연결 확인, 광고/구독 |
+| POST_NOTIFICATIONS | 진행 상태 및 일시정지 |
+| FOREGROUND_SERVICE, FOREGROUND_SERVICE_DATA_SYNC / dataSync | 추출 오디오·번역 텍스트 요청 및 응답, 진행 저장 |
+| FOREGROUND_SERVICE_MEDIA_PROCESSING / mediaProcessing | 구간 오디오 추출·변환 |
+| WAKE_LOCK | 처리 중 제한적인 실행 유지 |
+| AD_ID, ACCESS_ADSERVICES_AD_ID | AAB 24 병합 Manifest에 확인된 광고 관련 권한 |
+| BILLING | Play 구독 |
+| 전체 사진/영상/저장소·연락처·위치 | 앱 직접 권한 없음. 파일 선택기 기반; 광고 SDK IP 추정은 별도 |
+| microphone FGS/전체화면 인텐트 | 사용하지 않음 |
 
-FGS 기능 설명 붙여넣기 초안:
+FGS 설명 초안: 사용자가 영상·음성 파일을 선택하고 생성 시작 또는 이어하기를 누르면 작업을 시작합니다. mediaProcessing은 음성을 추출·변환하며 dataSync는 선택한 연결에서 추출 오디오·번역 자막을 전송하고 결과를 받습니다. 앱 및 알림에서 진행 확인과 일시정지가 가능하고 완료한 구간은 저장합니다. 중단되면 자막 생성이 지연되거나 현재 구간을 다시 처리할 수 있으며 작업 완료·실패·시스템 타임아웃 시 서비스를 정리합니다.
 
-> 사용자가 기기에서 영상·오디오를 선택하고 생성 시작 또는 이어하기를 누르면 자막 생성 작업을 시작합니다. mediaProcessing 유형은 파일 구간의 음성을 추출·변환하며 dataSync 유형은 사용자의 OpenAI API 키로 추출 오디오와 번역할 자막을 전송하고 결과를 받습니다. 앱 안과 진행 알림에서 상태를 확인하고 일시정지할 수 있습니다. 작업을 지연하거나 중단하면 사용자가 요청한 자막 생성이 늦어지고 현재 구간을 다시 처리해야 할 수 있습니다. 완료된 구간은 저장해 이어갈 수 있으며 작업 완료·실패·시스템 타임아웃 시 서비스를 정리합니다.
+실제 FGS 시연은 파일 선택→생성 시작→추출/전송→백그라운드 알림→일시정지/이어하기→결과/서비스 종료를 촬영한다. 토큰·개인 미디어·알림은 가린다. 에뮬레이터 fixture를 실제 유료 전사 증거로 제출하지 않는다. [FGS 공식 안내](https://support.google.com/googleplay/android-developer/answer/13392821?hl=ko).
 
-FGS 시연 영상에 필요한 실제 동작:
+## 비공개 테스트 차단 조사 순서
 
-1. 앱의 파일 선택 → 준비 화면·전송/비용 안내 → 사용자의 생성 시작 동작.
-2. 오디오 추출 단계와 처리 진행 표시. 앱을 배경으로 보내도 진행 상태 알림이 보이는 장면.
-3. 전사/번역 전송·응답 단계, 앱 또는 알림의 일시정지, 앱에서 이어하기.
-4. 완료 후 결과와 서비스 종료 확인. 영상에 키·개인 음성/자막·알림 등 개인정보를 노출하지 않음.
+1. Play Console 자막라인 선택. 대시보드, 게시 개요 및 비공개 테스트 alpha의 출시/오류 상세를 조회하고 정확한 차단 메시지를 기록한다. 기존 alpha 및 internal 릴리스를 삭제하거나 덮어쓰지 않는다.
+2. 최신 AAB Manifest·SDK 기준으로 광고 포함, 광고 ID, 데이터 보안, 개인정보처리방침, 앱 액세스, 타깃 연령·콘텐츠 등급, FGS를 점검한다. 실제 심사 접근과 시연 영상이 확보된 경우에만 해당 항목을 제출한다.
+3. alpha 국가·테스터/그룹·피드백 주소 및 게시/검토 상태를 확인한다. 계정의 테스트 요건을 실제 Console 기준으로 확인한다.
+4. 운영 설정과 전체 개발/QA 완료 후 승인된 internal에 새 검증 AAB를 배포한다. 실제 게시 상태와 테스터 설치를 확인한다.
+5. 비공개 테스트는 별도 승인 후 해당 internal의 동일 versionCode만 승격한다. 실패한 23을 임의 재승격하지 않는다. Play validate·commit·fresh readback, Console 게시, 설치를 각각 검증한다.
 
-실제 실행 영상의 공개 접근 URL은 별도 확보가 필요하다. 정지 스크린샷을 동영상 요구 충족으로 기록하지 않는다. 모의 브리지 화면을 실제 API 실행 증거로 제출하지 않는다.
-
-## 앱 접근·콘텐츠·소유자 확인
-
-| 항목 | 코드·Console로 확인한 사실 | 남은 결정 또는 확인 상태 |
-| --- | --- | --- |
-| 앱 액세스 | 앱 자체 로그인 없음. 편집·Vosk 경로는 OpenAI 키 불필요. 클라우드 기능은 유효한 사용자 API 키·모델 접근·과금 계정 필요 | 심사자에게 새 계정 생성이나 개인 유료 계정 사용을 요구할 수 없음. 서비스가 지원하는 반복 사용 가능한 심사용 접근 방법이 필요하며 현재 미확보. 개인 OpenAI API 키를 Console·APK·저장소에 공유·삽입하는 방식은 지원되는 심사 접근 방법으로 사용하지 않음. 앱 액세스 항목은 미완료 |
-| 타깃 연령 | 자막 도구라는 기능만으로 법적/사업적 타깃 연령은 확인 불가 | 권장 입력안은 18세 이상. 앱 액세스 단계 미완료로 아직 저장하지 않음 |
-| 콘텐츠 등급 | 앱 안 공개 피드·사용자 간 채팅·게시·광고 없음. 사용자가 가져온 미디어/자막을 처리 | IARC 응답과 Google 한국 등급 3+ 저장. 기능·응답 변경 시 다시 확인 |
-| 뉴스·정부·건강·금융 | 현재 구현은 자막/미디어 도구이며 해당 서비스 기능 없음 | Console의 질문 범위 확인 후 응답 |
-| AI 생성 콘텐츠 | 음성 전사와 텍스트 번역 기능 있음. 자유 채팅·이미지 생성 기능 없음 | 현재 Console 질문/생성형 AI 정책 적용 범위 확인. AI 미사용이라고 표시하지 않음 |
-| 테스트 인원·명단 | Console 내부 테스트에서 기존 `본인`(1명) 명단을 선택·저장 | 추가 인원은 소유자가 제공한 명단/그룹만 사용. 임의로 계정 이메일을 테스터로 추가하지 않음 |
-| 저작권·허가·법적 동의 | 사용자가 자기 파일을 선택한다는 사실만 확인 | 모든 입력 파일의 권리 보유·전송 동의가 있다고 대신 보증하지 않음 |
-
-## 공식 기준
-
-2026-11-08 확인. 앱의 기능 설명은 위 소스 코드에 근거한다. 아래 문서는 수집 정의·권한 선언·심사 접근·API 키 보호·외부 보관 정책 확인용이다.
-
-- [Google Play 데이터 보안 작성 안내](https://support.google.com/googleplay/android-developer/answer/10787469?hl=ko): 기기 외부 전송, 선택 수집, 공유 예외와 데이터 유형.
-- [Google Play 포그라운드 서비스 선언 안내](https://support.google.com/googleplay/android-developer/answer/13392821?hl=ko): 유형별 설명·영향·시연 동영상 요구.
-- [Android 포그라운드 서비스 유형](https://developer.android.com/develop/background-work/services/fgs/service-types): dataSync/mediaProcessing의 용도·실행 조건.
-- [OpenAI API 데이터 관리](https://developers.openai.com/api/docs/guides/your-data): API별 보관과 사용자 계정 조건. `store:false`와 전체 무보관은 다름.
-- [Google Play 검토를 위한 앱 준비](https://support.google.com/googleplay/android-developer/answer/9859455?hl=ko): 제한된 기능에 대한 심사용 앱 액세스 안내.
-- [OpenAI API 키 안전 수칙](https://help.openai.com/en/articles/5112595-best-practices-for-api-key-safety): API 키 공유 미지원, 모바일 앱 내 키 배포·저장소 커밋 금지 안내.
+[앱 액세스 공식 안내](https://support.google.com/googleplay/android-developer/answer/9859455?hl=ko). 이 문서 변경은 Console 설정 수정·심사 제출·배포 승인 또는 해결 증거가 아니다.
