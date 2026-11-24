@@ -200,7 +200,7 @@ public final class JobService extends Service {
                         holdWakeLock(10 * 60 * 1000L);
                         progress(id, "transcribing", chunk.index, null, "음성 인식 API 응답 대기 · " + (chunk.index + 1) + "/" + total);
                         JSONObject raw = api.transcribe(file, settings);
-                        JSONArray cues = Transcript.normalize(raw, chunk.extractStartMs, chunk.startMs, chunk.endMs);
+                        JSONArray cues = Transcript.normalize(raw, chunk.extractStartMs, chunk.startMs, chunk.endMs, chunk.extractEndMs);
                         if (sttModel.equals("gpt-transcribe") && raw.optJSONArray("words") == null && raw.optJSONArray("segments") == null) {
                             for (int i = 0; i < cues.length(); i++) cues.getJSONObject(i).put("timingAccuracy", "estimated");
                         }

@@ -124,6 +124,7 @@ export function mapSegmentsToGlobal(chunk, segments) {
       startTime: chunk.extractStart ?? chunk.start ?? 0,
       coreStartTime: chunk.start,
       coreEndTime: chunk.end,
+      extractEndTime: chunk.extractEnd,
       subtitles: segments,
     },
   ]).map((subtitle) => ({
@@ -140,12 +141,14 @@ export function mergeSubtitles(chunks, options = {}) {
     const chunkStartTime = numberOr(chunk.startTime ?? chunk.extractStart ?? chunk.start, 0);
     const coreStartTime = optionalNumber(chunk.coreStartTime ?? chunk.coreStart ?? chunk.start);
     const coreEndTime = optionalNumber(chunk.coreEndTime ?? chunk.coreEnd ?? chunk.end);
+    const extractEndTime = optionalNumber(chunk.extractEndTime ?? chunk.extractEnd);
 
     for (const subtitle of chunk.subtitles ?? []) {
-      const localStart = numberOr(subtitle.start, 0);
-      const localEnd = numberOr(subtitle.end ?? subtitle.start, localStart);
-      const globalStart = roundSeconds(chunkStartTime + localStart);
-      const globalEnd = roundSeconds(Math.max(chunkStartTime + localEnd, globalStart + 0.001));
+      if (!validTranscriptTime(subtitle?.start, subtitle?.end)) continue;
+      const globalStart = roundSeconds(chunkStartTime + subtitle.start);
+      const globalEnd = roundSeconds(Math.min(extractEndTime ?? Infinity,
+        Math.max(chunkStartTime + subtitle.end, globalStart + 0.001)));
+      if (globalStart < 0 || globalEnd <= globalStart) continue;
       const midpoint = (globalStart + globalEnd) / 2;
 
       if (
@@ -160,9 +163,10 @@ export function mergeSubtitles(chunks, options = {}) {
         continue;
       }
 
-      const originalParts = splitSubtitleText(original, maxTextLength);
+      let originalParts = splitSubtitleText(original, maxTextLength);
       const translated = cleanSubtitleText(subtitle.translated ?? '');
       const translatedParts = translated ? splitSubtitleText(translated, maxTextLength) : [];
+      if (originalParts.length > Math.round((globalEnd - globalStart) * 1000)) originalParts = [original];
       const partCount = originalParts.length;
       const partDuration = (globalEnd - globalStart) / partCount;
 
@@ -200,8 +204,9 @@ export function splitLongSubtitles(subtitles, maxTextLength = DEFAULT_MAX_SUBTIT
     const end = roundSeconds(Math.max(numberOr(subtitle.end, start), start + 0.001));
     const original = cleanSubtitleText(subtitle.original ?? subtitle.text ?? '');
     const translated = cleanSubtitleText(subtitle.translated ?? '');
-    const displayParts = splitSubtitleText(translated || original, maxTextLength);
+    let displayParts = splitSubtitleText(translated || original, maxTextLength);
     const originalParts = splitSubtitleText(original, maxTextLength);
+    if (displayParts.length > Math.round((end - start) * 1000)) displayParts = [translated || original];
     const partCount = Math.max(displayParts.length, 1);
     const partDuration = (end - start) / partCount;
 
@@ -230,12 +235,15 @@ export function splitLongSubtitles(subtitles, maxTextLength = DEFAULT_MAX_SUBTIT
 }
 
 export function normalizeTranscriptionSegments(response, fallbackDuration = 0, options = {}) {
-  const words = Array.isArray(response?.words) ? response.words : [];
-  const segments = Array.isArray(response?.segments) ? response.segments : [];
+  const words = Array.isArray(response?.words) ? response.words.filter((word) => word && validTranscriptTime(word.start, word.end) && cleanSubtitleText(word.word ?? word.text ?? '')) : [];
+  const rawSegments = Array.isArray(response?.segments) ? response.segments : [];
+  const segments = normalizeVerboseSegments(rawSegments);
+
+  if (segments.some((segment) => segment.speaker)) return segments;
 
   if (words.length > 0) {
     if (!words.some((word) => isSentenceBoundary(word.word ?? word.text)) && segmentsHaveSentenceBoundaries(segments)) {
-      return normalizeVerboseSegments(segments, fallbackDuration);
+      return segments;
     }
 
     const wordSegments = rebuildTranscriptCuesFromWords(words, options);
@@ -245,9 +253,11 @@ export function normalizeTranscriptionSegments(response, fallbackDuration = 0, o
   }
 
   if (segments.length > 0) {
-    return normalizeVerboseSegments(segments, fallbackDuration);
+    return segments;
   }
 
+  // Do not fabricate timing for a timestamped response whose entries are all invalid.
+  if (rawSegments.length || (Array.isArray(response?.words) && response.words.length)) return [];
   const text = cleanSubtitleText(response?.text ?? '');
   if (!text) {
     return [];
@@ -521,12 +531,16 @@ function normalizeSilences(silences) {
     .sort((left, right) => left.start - right.start);
 }
 
-function normalizeVerboseSegments(segments, fallbackDuration) {
+function validTranscriptTime(start, end) {
+  return Number.isFinite(start) && Number.isFinite(end) && start >= 0 && end >= start;
+}
+
+function normalizeVerboseSegments(segments) {
   return segments
-    .filter((segment) => segment && segment.text)
+    .filter((segment) => segment && segment.text && validTranscriptTime(segment.start, segment.end))
     .map((segment) => ({
-      start: Number(segment.start ?? 0),
-      end: Number(segment.end ?? segment.start ?? fallbackDuration),
+      start: segment.start,
+      end: segment.end,
       text: cleanSubtitleText(segment.text),
       ...(segment.speaker != null && String(segment.speaker).trim() ? { speaker: String(segment.speaker).trim() } : {}),
     }));
@@ -539,13 +553,13 @@ export function rebuildTranscriptCuesFromWords(words, options = {}) {
     maxCps: positiveNumber(options.maxCps, DEFAULT_MAX_SUBTITLE_CPS),
   };
   const normalizedWords = [...(words ?? [])]
+    .filter((word) => word && validTranscriptTime(word.start, word.end))
     .map((word) => ({
-      start: Number(word.start ?? 0),
-      end: Number(word.end ?? word.start ?? 0),
+      start: word.start,
+      end: word.end,
       text: cleanSubtitleText(word.word ?? word.text ?? ''),
     }))
-    .filter((word) => word.text && Number.isFinite(word.start) && Number.isFinite(word.end))
-    .filter((word) => word.end >= word.start)
+    .filter((word) => word.text)
     .sort((left, right) => left.start - right.start);
 
   const cues = [];
@@ -665,7 +679,7 @@ function shouldStartNewCue(currentWords, nextWord, settings) {
 
 function wordsToCue(words) {
   const start = roundSeconds(words[0]?.start ?? 0);
-  const rawEnd = roundSeconds(words[words.length - 1]?.end ?? start);
+  const rawEnd = roundSeconds(words.reduce((latest, word) => Math.max(latest, word.end), start));
   return {
     start,
     end: roundSeconds(Math.max(rawEnd, start + 0.001)),

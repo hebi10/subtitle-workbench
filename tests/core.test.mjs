@@ -583,3 +583,35 @@ test('getTranslationFailures and createTranslationFailureLogDownload summarize f
   assert.match(file.content, /"failedCount": 1/);
   assert.match(file.content, /"reason": "blocked"/);
 });
+
+test('invalid and reversed timestamps cannot become cues; valid diarized segments retain speaker', () => {
+  const normalized = normalizeTranscriptionSegments({
+    words: [{ start: 0, end: 1, word: 'No speaker.' }],
+    segments: [
+      { start: -2, end: 1, text: 'negative' },
+      { start: 3, end: 2, text: 'reversed' },
+      { start: null, end: 2, text: 'missing' },
+      { start: '1', end: 2, text: 'string' },
+      { start: 1, end: 3, text: 'valid', speaker: 'A' },
+    ],
+  }, 3);
+  assert.deepEqual(normalized, [{ start: 1, end: 3, text: 'valid', speaker: 'A' }]);
+  assert.deepEqual(normalizeTranscriptionSegments({ words: [{ start: -1, end: 2, word: 'bad' }], text: 'bad' }, 3), []);
+});
+
+test('last extracted media boundary caps timestamps without generating zero-length split cues', () => {
+  const chunks = [{ startTime: 0, coreStartTime: 0, coreEndTime: 3, extractEndTime: 3, subtitles: [
+    { start: 2, end: 4, text: 'last' },
+    { start: 3, end: 5, text: 'outside' },
+    { start: 1, end: 0, text: 'reversed' },
+    { start: 1.5, end: 1.501, text: 'many short words' },
+  ] }];
+  const cues = mergeSubtitles(chunks, { maxTextLength: 4 });
+  assert.equal(cues.length, 2);
+  assert.equal(cues[0].original, 'many short words');
+  assert.equal(cues[1].end, 3);
+  assert.ok(cues.every(cue => cue.end > cue.start && cue.end <= 3));
+  const split = splitLongSubtitles([{ start: 0, end: 0.001, original: 'many short words' }], 4);
+  assert.equal(split.length, 1);
+  assert.equal(split[0].end, 0.001);
+});
