@@ -276,7 +276,33 @@ public class OpenAiClientTest {
         assertTrue(result.get() instanceof java.io.InterruptedIOException);
     }
 
-    private static final class StubConnection extends HttpURLConnection {
+
+    @Test public void ambiguousPaidResponseDoesNotAutomaticallyRetry() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        OpenAiClient api = new OpenAiClient("fixture-private-key", new OpenAiClient.Cancellation(), path -> {
+            calls.incrementAndGet();
+            return new StubConnection(200, new byte[0]) {
+                @Override public InputStream getInputStream() {
+                    return new InputStream() {
+                        @Override public int read() throws IOException { throw new IOException("fixture-private-key lost response"); }
+                    };
+                }
+            };
+        });
+        IOException error = assertThrows(IOException.class, () -> api.translate(new JSONArray(), new JSONObject()));
+        assertEquals("request_uncertain", OpenAiClient.failureCode(error));
+        assertFalse(OpenAiClient.isRetryable(error));
+        assertFalse(error.toString().contains("fixture-private-key"));
+        assertEquals(1, calls.get());
+        OpenAiClient timeout = new OpenAiClient("test-key", new OpenAiClient.Cancellation(), path -> {
+            calls.incrementAndGet(); return new StubConnection(408, new byte[0]);
+        });
+        assertEquals("request_uncertain", OpenAiClient.failureCode(assertThrows(IOException.class,
+            () -> timeout.translate(new JSONArray(), new JSONObject()))));
+        assertEquals(2, calls.get());
+    }
+
+    private static class StubConnection extends HttpURLConnection {
         final ByteArrayOutputStream upload = new ByteArrayOutputStream();
         final int code;
         final byte[] response;

@@ -665,7 +665,7 @@ for (const status of [400, 401, 403]) {
   });
 }
 
-for (const failure of ['rate-limit', 'server', 'network']) {
+for (const failure of ['rate-limit', 'server']) {
   test(`exhausted ${failure} retries preserve the batch and safe metadata`, async (t) => {
     const sizes = [];
     const delays = [];
@@ -676,8 +676,7 @@ for (const failure of ['rate-limit', 'server', 'network']) {
     });
     t.mock.method(globalThis, 'fetch', async (url, init) => {
       sizes.push(JSON.parse(JSON.parse(init.body).input).subtitles.length);
-      if (failure === 'network') throw new TypeError('network secret-key');
-      return new Response('failed secret-key', {
+       return new Response('failed secret-key', {
         status: failure === 'rate-limit' ? 429 : 503,
         headers: failure === 'rate-limit' ? { 'Retry-After': '2' } : {},
       });
@@ -688,7 +687,7 @@ for (const failure of ['rate-limit', 'server', 'network']) {
     }), (error) => {
       assert.equal(error.isApiError, true);
       assert.equal(error.retryable, true);
-      if (failure !== 'network') assert.equal(error.status, failure === 'rate-limit' ? 429 : 503);
+      assert.equal(error.status, failure === 'rate-limit' ? 429 : 503);
       if (failure === 'rate-limit') assert.equal(error.retryAfterMs, 2000);
       assert.doesNotMatch(error.message, /secret-key/);
       return true;
@@ -709,14 +708,14 @@ test('transcription recovers from a transient error using bounded backoff', asyn
   t.mock.method(globalThis, 'fetch', async () => {
     calls += 1;
     return calls === 1
-      ? new Response('temporary', { status: 503, headers: { 'Retry-After': '999' } })
+      ? new Response('temporary', { status: 503, headers: { 'Retry-After': '2' } })
       : new Response(JSON.stringify({ text: 'recovered' }));
   });
   assert.deepEqual(await requestTranscription({
     audioBlob: new Blob(['audio']), fileName: 'audio.mp3', settings: { apiKey: 'key' },
   }), { text: 'recovered' });
   assert.equal(calls, 2);
-  assert.deepEqual(delays, [30000]);
+  assert.deepEqual(delays, [2000]);
 });
 
 test('cancellation during retry backoff prevents another API call', async (t) => {
@@ -812,4 +811,61 @@ test('incomplete and refused responses cannot mark a subtitle translated', async
       assert.equal(cue.translated, '[번역 실패]');
     }
   } finally { globalThis.fetch = originalFetch; }
+});
+
+test('completed translation checkpoints survive a later failed batch and resume only remaining IDs', async (t) => {
+  const source = ['one', 'two', 'three'].map((original, index) => ({ original, start: index, end: index + 1, translated: '' }));
+  const checkpoint = source.map(cue => ({ ...cue }));
+  let failing = true;
+  const requests = [];
+  t.mock.method(globalThis, 'fetch', async (_url, init) => {
+    const items = JSON.parse(JSON.parse(init.body).input).subtitles;
+    requests.push(items.map(x => x.text));
+    if (failing && items.some(x => x.text === 'two')) return Response.json({}, { status: 401 });
+    return Response.json({ output_text: JSON.stringify(items.map(x => ({ id: x.id, translated: 'translated ' + x.text }))) });
+  });
+  const onCheckpoint = patches => { for (const patch of patches) checkpoint[patch.index] = patch.subtitle; };
+  await assert.rejects(translateSubtitles({ subtitles: source, settings: { apiKey: 'fixture-key', translationBatchSize: 1 }, onCheckpoint }), { status: 401 });
+  assert.equal(checkpoint[0].translated, 'translated one');
+  assert.equal(checkpoint[1].translated, '');
+  assert.equal(source[0].translated, '');
+  failing = false;
+  const result = await translateSubtitles({ subtitles: checkpoint, settings: { apiKey: 'fixture-key', translationBatchSize: 1 }, resume: true });
+  assert.deepEqual(requests, [['one'], ['two'], ['two'], ['three']]);
+  assert.deepEqual(result.map(x => x.translated), ['translated one', 'translated two', 'translated three']);
+  assert.ok(result.every((x, index) => x.start === index));
+});
+
+test('checkpoint preserves successful siblings before a missing-ID retry fails', async (t) => {
+  const checkpoint = [{ original: 'one' }, { original: 'two' }];
+  let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => ++calls === 1
+    ? Response.json({ output_text: JSON.stringify([{ id: 0, translated: 'saved' }]) })
+    : Response.json({}, { status: 403 }));
+  await assert.rejects(translateSubtitles({ subtitles: checkpoint, settings: { apiKey: 'key' },
+    onCheckpoint: patches => { for (const patch of patches) checkpoint[patch.index] = patch.subtitle; },
+  }), { status: 403 });
+  assert.equal(checkpoint[0].status, 'translated');
+  assert.equal(checkpoint[0].translated, 'saved');
+  assert.equal(checkpoint[1].status, 'failed');
+  assert.equal(calls, 2);
+});
+
+test('ambiguous network failures, exhausted quota and long Retry-After do not replay paid requests', async (t) => {
+  for (const failure of [
+    () => { throw new TypeError('network fixture-key'); },
+    () => Response.json({ error: { code: 'insufficient_quota' } }, { status: 429 }),
+    () => new Response('limited', { status: 429, headers: { 'Retry-After': '120' } }),
+  ]) {
+    let calls = 0;
+    const mock = t.mock.method(globalThis, 'fetch', async () => { calls++; return failure(); });
+    try {
+      await assert.rejects(translateSubtitles({ subtitles: [{ original: 'one' }], settings: { apiKey: 'fixture-key' } }), error => {
+        assert.equal(error.isApiError, true);
+        assert.doesNotMatch(error.message, /fixture-key/);
+        return true;
+      });
+      assert.equal(calls, 1);
+    } finally { mock.mock.restore(); }
+  }
 });

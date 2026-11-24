@@ -879,7 +879,7 @@ async function runPipelineForCurrentFile(batchInfo, settings, signal) {
     state.pipelineResultId = checkpoint.id;
     setStep('translate', 'active');
     setStepProgress('translate', 0);
-    finalSubtitles = await translateSubtitles({
+    finalSubtitles = await translateWithCheckpoint(checkpoint, {
       subtitles: finalSubtitles,
       settings,
       signal,
@@ -898,7 +898,9 @@ async function runPipelineForCurrentFile(batchInfo, settings, signal) {
     setStep('translate', 'done');
   }
 
-  finalSubtitles = splitLongSubtitles(finalSubtitles, settings.maxSubtitleChars);
+  if (!settings.translationEnabled || !getTranslationFailures(finalSubtitles).length) {
+    finalSubtitles = splitLongSubtitles(finalSubtitles, settings.maxSubtitleChars);
+  }
 
   setStep('output', 'active');
   setStepProgress('output', 50);
@@ -962,9 +964,27 @@ function saveNewResult(subtitles, fileName, options = {}) {
   return entry;
 }
 
-function finishTranslation(entry, subtitles, preserveHistory = true) {
-  entry.translationPending = getTranslationFailures(subtitles).length > 0;
-  entry.outputLanguage = entry.translationSettings?.targetLanguage || 'original';
+async function translateWithCheckpoint(entry, options, preserveHistory = false) {
+  const snapshot = options.subtitles.map((subtitle) => ({ ...subtitle }));
+  try {
+    return await translateSubtitles({
+      ...options,
+      onCheckpoint: (patches) => {
+        for (const { index, subtitle } of patches) snapshot[index] = subtitle;
+      },
+    });
+  } catch (error) {
+    // The active result cannot be switched while busy. Keep every received cue even on cancellation.
+    finishTranslation(entry, snapshot, preserveHistory, true);
+    throw error;
+  }
+}
+
+function finishTranslation(entry, subtitles, preserveHistory = true, interrupted = false) {
+  entry.translationPending = interrupted || getTranslationFailures(subtitles).length > 0;
+  if (!interrupted || subtitles.some((cue) => cue.status === 'translated' || cue.status === 'edited')) {
+    entry.outputLanguage = entry.translationSettings?.targetLanguage || 'original';
+  }
   state.editHistory = preserveHistory
     ? commitEdit(state.editHistory, sortSubtitles(subtitles))
     : createEditHistory(sortSubtitles(subtitles));
@@ -976,7 +996,7 @@ function renderTranslationRecovery() {
   const entry = state.results.find((result) => result.id === state.activeResultId);
   refs.translationRecovery.hidden = !entry?.translationPending;
   if (!entry?.translationPending) return;
-  refs.translationRecoveryText.textContent = `원문 자막을 보존했습니다. 지금 다운로드하거나 ${entry.translationSettings.targetLanguage} 번역만 다시 시도할 수 있습니다. 새로고침하면 작업 결과가 사라지므로 먼저 다운로드해 주세요.`;
+  refs.translationRecoveryText.textContent = `원문과 완료된 번역을 보존했습니다. 다운로드하거나 ${entry.translationSettings.targetLanguage}의 남은 번역만 다시 시도할 수 있습니다. 응답을 받지 못한 요청의 재시도에는 추가 비용이 발생할 수 있습니다. 새로고침하면 작업 결과가 사라지므로 먼저 다운로드해 주세요.`;
   refs.retryTranslationButton.disabled = !canStartSubtitleJob({
     hasFile: true, isBusy: state.isBusy, connectionMode: getConnectionMode(),
     apiKey: getActiveApiKey(), proxyUrl: refs.proxyUrl.value,
@@ -993,12 +1013,11 @@ async function retryTranslation() {
   setBusy(true);
   setProgress(0, '저장된 원문 번역 중');
   try {
-    const translated = await translateSubtitles({
-      subtitles: state.subtitles, settings, signal: controller.signal,
+    const translated = await translateWithCheckpoint(entry, {
+      subtitles: state.subtitles, settings, signal: controller.signal, resume: true,
       onProgress: ({ batchIndex, batchCount }) => setProgress(100 * batchIndex / Math.max(1, batchCount), `번역 중 ${batchIndex}/${batchCount}`),
-    });
-    controller.signal.throwIfAborted();
-    finishTranslation(entry, splitLongSubtitles(translated, settings.maxSubtitleChars));
+    }, true);
+    finishTranslation(entry, getTranslationFailures(translated).length ? translated : splitLongSubtitles(translated, settings.maxSubtitleChars));
     setProgress(100, entry.translationPending ? '일부 번역 실패 · 원문 보존' : '번역 완료', entry.translationPending ? 'failed' : 'done');
   } catch (error) {
     const cancelled = controller.signal.aborted;
