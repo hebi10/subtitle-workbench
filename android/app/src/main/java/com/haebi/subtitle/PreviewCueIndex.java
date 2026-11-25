@@ -8,10 +8,20 @@ import java.util.List;
 
 /** Immutable playback index built off the main thread; overlapping cues retain chronological priority. */
 final class PreviewCueIndex {
+    enum DisplayMode { TRANSLATED, ORIGINAL, BOTH }
+
     private static final class Cue {
         final double start, end;
-        final String text;
-        Cue(double start, double end, String text) { this.start = start; this.end = end; this.text = text; }
+        final String original, translated;
+        Cue(double start, double end, String original, String translated) {
+            this.start = start; this.end = end; this.original = original; this.translated = translated;
+        }
+        String text(DisplayMode mode) {
+            if (mode == DisplayMode.ORIGINAL) return original;
+            if (translated.isEmpty()) return original;
+            if (mode != DisplayMode.BOTH || original.isEmpty() || original.equals(translated)) return translated;
+            return original + "\n" + translated;
+        }
     }
     private final List<Cue> cues = new ArrayList<>();
     private final double[] maxEnds;
@@ -24,7 +34,7 @@ final class PreviewCueIndex {
             if (!Double.isFinite(start) || !Double.isFinite(end) || end <= start) continue;
             String original = item.optString("original", "").trim(), translated = item.optString("translated", "").trim();
             boolean failed = "failed".equals(item.optString("status")) || "[번역 실패]".equals(translated) || "[번역 불가]".equals(translated);
-            cues.add(new Cue(start, end, failed || translated.isEmpty() ? original : translated));
+            cues.add(new Cue(start, end, original, failed ? "" : translated));
         }
         cues.sort(Comparator.comparingDouble((Cue cue) -> cue.start).thenComparingDouble(cue -> cue.end));
         maxEnds = new double[cues.size()];
@@ -36,6 +46,10 @@ final class PreviewCueIndex {
     }
 
     String textAt(double seconds) {
+        return textAt(seconds, DisplayMode.TRANSLATED);
+    }
+
+    String textAt(double seconds, DisplayMode mode) {
         if (!Double.isFinite(seconds)) return "";
         int low = 0, high = cues.size();
         while (low < high) {
@@ -43,6 +57,6 @@ final class PreviewCueIndex {
             if (maxEnds[mid] > seconds) high = mid;
             else low = mid + 1;
         }
-        return low < cues.size() && cues.get(low).start <= seconds ? cues.get(low).text : "";
+        return low < cues.size() && cues.get(low).start <= seconds ? cues.get(low).text(mode) : "";
     }
 }
