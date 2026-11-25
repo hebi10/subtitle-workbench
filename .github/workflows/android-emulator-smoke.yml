@@ -32,7 +32,7 @@ jobs:
     needs: validate-source
     name: Android 15 emulator integration
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 65
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -114,6 +114,15 @@ jobs:
             sleep 5
             mkdir -p ../output
             adb exec-out screencap -p > ../output/subtitle-emulator-home.png
+            # Reuse this final emulator, after all review captures have been pulled.
+            python3 ../scripts/release/final_device_qa.py --output ../output/final-device-qa
+      - name: Recheck frozen main after device QA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)" == "$GITHUB_SHA" ]]
       - name: Upload emulator screenshot and device reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -123,6 +132,7 @@ jobs:
             output/subtitle-emulator-home.png
             output/editorial-native-3c/
             output/editorial-5a/
+            output/final-device-qa/
             android/app/build/outputs/androidTest-results/connected/
             android/app/build/reports/androidTests/connected/
           if-no-files-found: warn
