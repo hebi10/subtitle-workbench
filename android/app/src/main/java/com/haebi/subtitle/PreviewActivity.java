@@ -74,6 +74,7 @@ public final class PreviewActivity extends Activity {
         view = new PlayerView(this);
         frame.addView(view, new FrameLayout.LayoutParams(-1, -1));
         subtitle = new TextView(this);
+        subtitle.setTag("preview-caption");
         subtitle.setTextSize(20);
         subtitle.setTextColor(Color.WHITE);
         subtitle.setBackgroundColor(0xB0000000);

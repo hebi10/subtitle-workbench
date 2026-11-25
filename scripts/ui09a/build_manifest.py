@@ -13,6 +13,8 @@ SCREENS = [
     'results-with-real-video', 'editor-with-27-cues', 'editor-cue-second-page',
     'results-without-video', 'editor-without-video', 'settings-collapsed',
     'settings-expanded', 'jobs-seeded-running-status-no-worker',
+    'video-default', 'video-prepared', 'preview-real-video',
+    'settings-personal-form', 'settings-relay-form', 'settings-subscriptions',
 ]
 NATIVE = ['on-device', 'cloud-live', 'vosk-local']
 
@@ -55,7 +57,7 @@ def build_device(root):
             item['sourceType'] = 'Android 15 API35 native screen, actual running app'
             item['dataKind'] = 'initial state: no microphone recording, no model download'
             screens.append(item)
-    assert len(screens) == 60
+    assert len(screens) == 84
     return screens
 
 
@@ -103,6 +105,8 @@ def main():
             'errors': 'QA-only injected error text, not a recorded failure of a real provider',
             'web': 'Browser tests use Chromium Playwright with mock Native Bridge / deterministic fixtures. Not an Android screenshot.',
             'native': 'Initial native recognition screens; no actual microphone, paid model, or Vosk download run',
+            'preview': 'Actual Media3 playback of the synthetic video, paused at 1s with a stored QA caption',
+            'settings': 'Unsaved connection drafts and actual available/unavailable subscription state; no purchase or credential',
         },
         'notTested': [
             'Physical smartphone TalkBack or IME',

@@ -120,6 +120,14 @@ test('4-A desktop and mobile workspaces preserve UI, source import and exports',
     }
 
     await page.emulateMedia({ colorScheme: 'light' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.locator('#tab-generate').click();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    assert.equal(await page.locator('.workspace-tabs').evaluate(node => getComputedStyle(node).flexDirection), 'column');
+    await page.screenshot({ path: join(out, 'design-W01-1440-light.png'), animations: 'disabled' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.locator('.workspace-tabs').evaluate(node => getComputedStyle(node).flexDirection), 'row');
+    await page.setViewportSize({ width: 1280, height: 844 });
     await page.locator('#subtitleFile').setInputFiles({
       name: '4a-fixture.srt',
       mimeType: 'text/plain',
@@ -139,6 +147,10 @@ test('4-A desktop and mobile workspaces preserve UI, source import and exports',
     await page.locator('#editorSearch').fill('');
     assert.equal(await page.locator('#editorWorkspaceStatus').getAttribute('data-state'), 'ready');
     await page.screenshot({ path: join(out, 'edit-imported-1280-light.png'), animations: 'disabled' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: join(out, 'design-W02-1440-light.png'), animations: 'disabled' });
+    await page.setViewportSize({ width: 1280, height: 844 });
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.screenshot({ path: join(out, 'edit-imported-1280-dark.png'), animations: 'disabled' });
     await page.emulateMedia({ colorScheme: 'light' });
@@ -153,6 +165,10 @@ test('4-A desktop and mobile workspaces preserve UI, source import and exports',
     assert.ok(downloads.some(d => d.filename.endsWith('.json')));
     assert.ok(downloads.every(d => d.href?.startsWith('blob:')));
     await page.screenshot({ path: join(out, 'export-imported-1280-light.png'), animations: 'disabled' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: join(out, 'design-W03-1440-light.png'), animations: 'disabled' });
+    await page.setViewportSize({ width: 1280, height: 844 });
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.screenshot({ path: join(out, 'export-imported-1280-dark.png'), animations: 'disabled' });
     assert.deepEqual(errors, [], 'No client errors should arise from moving the workspace panels');

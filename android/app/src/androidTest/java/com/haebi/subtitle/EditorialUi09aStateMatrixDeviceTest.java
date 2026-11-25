@@ -3,6 +3,7 @@ package com.haebi.subtitle;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
@@ -11,6 +12,9 @@ import android.provider.MediaStore;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
+import android.widget.TextView;
+import androidx.media3.common.Player;
+import androidx.media3.ui.PlayerView;
 
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.core.app.ApplicationProvider;
@@ -102,6 +106,13 @@ public final class EditorialUi09aStateMatrixDeviceTest {
                 capture(context, "jobs-state-second-page-" + label, web);
                 evaluate(web, "document.getElementById('prevJobs').click();true");
 
+                show(web, "navVideo", "videoView");
+                waitFor(web, "document.getElementById('firstRunGuide').hidden && !document.getElementById('preparedJobsHeading').hidden");
+                capture(context, "video-default-" + label, web);
+                evaluate(web, "document.querySelector('#preparedJobs .prepared-editor').open=true;document.getElementById('preparedJobs').scrollIntoView({block:'start'});true");
+                waitFor(web, "Boolean(document.querySelector('#preparedJobs .prepared-editor[open]'))");
+                capture(context, "video-prepared-" + label, web);
+
                 show(web, "navResults", "resultsView");
                 selectResult(web, attached, VIDEO);
                 assertEquals("false", evaluate(web, "document.getElementById('resultPreview').disabled"));
@@ -110,6 +121,8 @@ public final class EditorialUi09aStateMatrixDeviceTest {
                 waitFor(web, "Boolean(!document.getElementById('editorView').hidden && document.querySelector('#cueList .cue') && document.getElementById('editorCuePosition').textContent.includes('27개'))");
                 assertEquals("false", evaluate(web, "document.getElementById('previewSelectedCue').disabled"));
                 capture(context, "editor-with-27-cues-" + label, web);
+                capturePreview(context, media, attached, label);
+                waitFor(web, "Boolean(!document.getElementById('editorView').hidden)");
                 evaluate(web, "document.getElementById('nextPage').click();true");
                 waitFor(web, "Boolean(document.querySelector('#cueList [data-index=\"12\"]'))");
                 capture(context, "editor-cue-second-page-" + label, web);
@@ -128,6 +141,15 @@ public final class EditorialUi09aStateMatrixDeviceTest {
                 capture(context, "settings-collapsed-" + label, web);
                 evaluate(web, "document.getElementById('apiSettings').open=true;true");
                 capture(context, "settings-expanded-" + label, web);
+                evaluate(web, "document.getElementById('apiSettings').scrollIntoView({block:'start'});true");
+                capture(context, "settings-personal-form-" + label, web);
+                evaluate(web, "(()=>{const mode=document.getElementById('cloudMode');mode.value='relay';mode.dispatchEvent(new Event('change',{bubbles:true}));return true})()");
+                waitFor(web, "Boolean(!document.getElementById('reviewRelaySettings').hidden && document.getElementById('reviewRelayCode').value==='')");
+                evaluate(web, "document.getElementById('apiSettings').scrollIntoView({block:'start'});true");
+                capture(context, "settings-relay-form-" + label, web);
+                // Do not save a connection, request model access, or trigger purchase.
+                evaluate(web, "document.getElementById('apiSettings').open=false;document.getElementById('privacySettings').open=true;document.getElementById('privacySettings').scrollIntoView({block:'start'});true");
+                capture(context, "settings-subscriptions-" + label, web);
 
                 // Seed only a UI status; no service starts, no network or audio requests.
                 try (JobStore store = new JobStore(context)) {
@@ -235,6 +257,61 @@ public final class EditorialUi09aStateMatrixDeviceTest {
                 "true", evaluate(web, "(function(){const nav=document.querySelector('.app-nav');" +
                         "return document.documentElement.scrollWidth<=innerWidth+1 && " +
                         "[...nav.querySelectorAll('button')].every(b=>b.getBoundingClientRect().height>=48);})()"));
+        saveScreenshot(context, name);
+    }
+
+    private static void capturePreview(Context context, Uri media, String jobId, String label) throws Exception {
+        Intent intent = new Intent(context, PreviewActivity.class)
+                .putExtra("uri", media.toString()).putExtra("jobId", jobId).putExtra("positionMs", 1000L);
+        try (ActivityScenario<PreviewActivity> scene = ActivityScenario.launch(intent)) {
+            long deadline = System.currentTimeMillis() + 15000L;
+            boolean ready = false;
+            while (System.currentTimeMillis() < deadline && !ready) {
+                AtomicReference<Boolean> state = new AtomicReference<>(false);
+                scene.onActivity(activity -> {
+                    PlayerView playerView = findPlayerView(activity.findViewById(android.R.id.content));
+                    if (playerView == null || playerView.getPlayer() == null) return;
+                    Player player = playerView.getPlayer();
+                    if (player.getPlaybackState() == Player.STATE_READY && player.getDuration() >= 36000L) {
+                        player.pause();
+                        player.seekTo(1000L);
+                        playerView.showController();
+                        state.set(true);
+                    }
+                });
+                ready = state.get();
+                if (!ready) Thread.sleep(200);
+            }
+            assertTrue("Real preview must load the synthetic video", ready);
+            long cueDeadline = System.currentTimeMillis() + 8000L;
+            boolean cueVisible = false;
+            while (System.currentTimeMillis() < cueDeadline && !cueVisible) {
+                AtomicReference<Boolean> visible = new AtomicReference<>(false);
+                scene.onActivity(activity -> {
+                    TextView cue = activity.findViewById(android.R.id.content).findViewWithTag("preview-caption");
+                    visible.set(cue != null && cue.getText().toString().contains("UI09A"));
+                });
+                cueVisible = visible.get();
+                if (!cueVisible) Thread.sleep(200);
+            }
+            assertTrue("Actual timed subtitle must be visible in preview", cueVisible);
+            saveScreenshot(context, "preview-real-video-" + label);
+        }
+    }
+
+    private static PlayerView findPlayerView(View root) {
+        if (root instanceof PlayerView) return (PlayerView) root;
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int index = 0; index < group.getChildCount(); index++) {
+                PlayerView child = findPlayerView(group.getChildAt(index));
+                if (child != null) return child;
+            }
+        }
+        return null;
+    }
+
+    private static void saveScreenshot(Context context, String name) throws Exception {
         Thread.sleep(550);
         Bitmap bitmap = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
         assertNotNull("Actual Android screenshot " + name, bitmap);
