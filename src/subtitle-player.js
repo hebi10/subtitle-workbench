@@ -36,16 +36,38 @@ export function parseSubtitleFileText(text, fileName = '') {
   throw new Error('지원하지 않는 자막 파일 형식입니다. SRT, VTT, JSON 파일을 선택해 주세요.');
 }
 
-export function findActiveSubtitle(subtitles, currentTime, offsetSeconds = 0) {
-  const effectiveTime = toNumber(currentTime, 0) - toNumber(offsetSeconds, 0);
+// Build once per edit/import, then find the earliest active cue in O(log n), including overlapping intervals.
+export function createSubtitleLookup(subtitles) {
+  const entries = (subtitles ?? []).flatMap((subtitle, index) => {
+    if (!subtitle || subtitle.start == null || subtitle.end == null) return [];
+    const start = Number(subtitle.start), end = Number(subtitle.end);
+    return Number.isFinite(start) && Number.isFinite(end) && end > start
+      ? [{ subtitle, index, start, end }] : [];
+  }).sort((a, b) => a.start - b.start || a.end - b.end || a.index - b.index);
+  const maxEnds = [];
+  let maxEnd = -Infinity;
+  for (const entry of entries) {
+    maxEnd = Math.max(maxEnd, entry.end);
+    maxEnds.push(maxEnd);
+  }
+  return {
+    at(currentTime, offsetSeconds = 0) {
+      const time = Number(currentTime) - Number(offsetSeconds);
+      if (!Number.isFinite(time)) return null;
+      let low = 0, high = entries.length;
+      while (low < high) {
+        const mid = low + Math.floor((high - low) / 2);
+        if (maxEnds[mid] > time) high = mid;
+        else low = mid + 1;
+      }
+      const entry = entries[low];
+      return entry && entry.start <= time ? { subtitle: entry.subtitle, index: entry.index } : null;
+    },
+  };
+}
 
-  return (
-    sortSubtitles(subtitles).find((subtitle) => {
-      const start = toNumber(subtitle.start, 0);
-      const end = toNumber(subtitle.end, start);
-      return effectiveTime >= start && effectiveTime < end;
-    }) ?? null
-  );
+export function findActiveSubtitle(subtitles, currentTime, offsetSeconds = 0) {
+  return createSubtitleLookup(subtitles).at(currentTime, offsetSeconds)?.subtitle ?? null;
 }
 
 export function formatSubtitleForMode(subtitle, mode = 'translated') {
@@ -54,7 +76,8 @@ export function formatSubtitleForMode(subtitle, mode = 'translated') {
   }
 
   const original = cleanSubtitleText(subtitle.original ?? subtitle.text ?? '');
-  const translated = cleanSubtitleText(subtitle.translated ?? '');
+  const candidate = cleanSubtitleText(subtitle.translated ?? '');
+  const translated = subtitle.status === 'failed' || ['[번역 실패]', '[번역 불가]'].includes(candidate) ? '' : candidate;
 
   if (mode === 'original') {
     return {
