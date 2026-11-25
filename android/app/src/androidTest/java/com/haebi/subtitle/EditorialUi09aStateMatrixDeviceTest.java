@@ -69,7 +69,15 @@ public final class EditorialUi09aStateMatrixDeviceTest {
                 waitFor(web, "Boolean(document.getElementById('jobsSummary').textContent.includes('전체 0개'))");
 
                 show(web, "navVideo", "videoView");
+                waitFor(web, "Boolean(!document.getElementById('firstRunGuide').hidden)");
                 capture(context, "video-empty-" + label, web);
+                evaluate(web, "document.getElementById('dismissFirstRunGuide').click();true");
+                waitFor(web, "Boolean(document.getElementById('firstRunGuide').hidden && document.activeElement.id==='chooseFile')");
+                assertEquals("First-use dismissal preserves access to ordinary task choices", "true",
+                        evaluate(web, "(function(){const choices=document.getElementById('sourceChoices');" +
+                                "return getComputedStyle(choices).display!=='none' && " +
+                                "[...choices.querySelectorAll('button')].every(b=>b.getBoundingClientRect().height>=48) && " +
+                                "!document.getElementById('importSubtitles').disabled && document.documentElement.scrollWidth<=innerWidth+1;})()"));
                 show(web, "navJobs", "jobsView");
                 capture(context, "jobs-empty-" + label, web);
 
