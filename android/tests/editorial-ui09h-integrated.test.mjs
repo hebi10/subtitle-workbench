@@ -310,7 +310,7 @@ test('UI-10-H traces all eight Android screen contracts plus the browser three-t
     assert.equal((web.match(new RegExp('id="' + id + '"', 'g')) || []).length, 1, id);
   }
   assert.match(webApp, /다운로드 요청됨 · 실제 저장 여부는 브라우저 다운로드 내역에서 확인/);
-  assert.match(web, /현재 페이지의 임시 데이터/);
+  assert.match(web, /꺼져 있으면 현재 페이지의 임시 데이터/);
   assert.equal(JSON.parse(manifest).images.phoneScreenshots.length, 8);
   assert.match(await readFile(join(root, 'AGENTS.md'), 'utf8'), /Play 배포 승인이 아니다/);
 });

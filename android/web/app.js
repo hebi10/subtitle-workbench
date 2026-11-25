@@ -1,5 +1,5 @@
 import { sortSubtitles, formatTimestamp, formatSrt, formatVtt, toSubtitleJson, sanitizeFileBase, speakerMarkedText, describeApiWorkload } from '../shared/core.js';
-import { updateSubtitleTextAt, updateSubtitleTimingAt, updateSpeakerAt, splitSubtitleAt, mergeSubtitleWithNext } from '../shared/subtitle-editor.js';
+import { updateSubtitleTextAt, updateSubtitleTimingAt, updateSpeakerAt, canSplitSubtitle, splitSubtitleAt, mergeSubtitleWithNext } from '../shared/subtitle-editor.js';
 import { createEditHistory, commitEdit, undoEdit, redoEdit } from '../shared/edit-history.js';
 import { parseSubtitleFileText } from '../shared/subtitle-player.js';
 
@@ -868,7 +868,10 @@ function syncEditorButtons() {
   $('preview').disabled = !current?.uri;
   $('exportNote').textContent = editable() ? '번역이 없는 자막은 원문으로 내보냅니다.' : '현재까지 저장된 부분 자막을 내보냅니다. 번역이 없으면 원문을 사용합니다.';
   document.querySelectorAll('[data-export]').forEach((node) => { node.disabled = resultExportInFlight || changingJob || refreshingResultId === current?.id || !history.present.length; });
-  document.querySelectorAll('#cueList input, #cueList textarea, #cueList [data-edit]').forEach((node) => { node.disabled = !editable(); });
+  document.querySelectorAll('#cueList input, #cueList textarea, #cueList [data-edit]').forEach((node) => {
+    node.disabled = !editable() ||
+      (node.dataset.splitIndex != null && !canSplitSubtitle(history.present[Number(node.dataset.splitIndex)]));
+  });
   document.querySelectorAll('[data-last]').forEach((node) => { node.disabled = true; });
   const pages = Math.max(1, Math.ceil(filteredIndices().length / PAGE_SIZE));
   $('prevPage').disabled = page === 0;
@@ -944,7 +947,7 @@ function renderCues() {
     detail.append(actions);
     const details = el('details'); details.append(el('summary', '자막 분할 · 병합'));
     const editing = el('div', undefined, 'cue-actions');
-    const split = button('중간에서 분할', () => changed(splitSubtitleAt(history.present, index)), !editable()); split.dataset.edit = '';
+    const split = button('중간에서 분할', () => changed(splitSubtitleAt(history.present, index)), !editable() || !canSplitSubtitle(cue)); split.dataset.edit = ''; split.dataset.splitIndex = String(index);
     const nextCue = history.present[index + 1];
     const differentSpeaker = Boolean(nextCue && ((cue.speaker || '') !== (nextCue.speaker || '') || (cue.speakerScope ?? null) !== (nextCue.speakerScope ?? null)));
     const merge = button('다음 자막과 병합', () => changed(mergeSubtitleWithNext(history.present, index)), !editable() || index === history.present.length - 1 || differentSpeaker); merge.dataset.edit = '';

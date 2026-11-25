@@ -7,6 +7,7 @@ import './subtitle-player.test.mjs';
 import './ui-state.test.mjs';
 import './ffmpeg-pipeline.test.mjs';
 import './job-history.test.mjs';
+import './workspace-storage.test.mjs';
 import './zip-download.test.mjs';
 import './credential-vault.test.mjs';
 import './connection-settings.test.mjs';

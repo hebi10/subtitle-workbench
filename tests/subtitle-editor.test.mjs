@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   filterSubtitles,
+  canSplitSubtitle,
   getSubtitleEditMetrics,
   mergeShortSubtitles,
   mergeSubtitleWithNext,
@@ -157,4 +158,29 @@ test('getSubtitleEditMetrics reports duration length and cps warnings', () => {
   assert.equal(metrics.length, 41);
   assert.equal(metrics.cps, 41);
   assert.deepEqual(metrics.warnings, ['long-text', 'long-duration', 'high-cps']);
+});
+
+test('split refuses one-millisecond intervals and single-grapheme-only cues', () => {
+  const short = [{ start: 1, end: 1.001, original: 'Two words', translated: '' }];
+  assert.equal(canSplitSubtitle(short[0]), false);
+  assert.deepEqual(splitSubtitleAt(short, 0), short);
+  const single = [{ start: 1, end: 2, original: '한', translated: '[번역 실패]', status: 'failed' }];
+  assert.equal(canSplitSubtitle(single[0]), false);
+  assert.deepEqual(splitSubtitleAt(single, 0), single);
+});
+
+test('split preserves Unicode glyphs, positive millisecond intervals, and failure markers', () => {
+  const cue = { start: 1, end: 1.002, original: '😀한', translated: '[번역 실패]', status: 'failed', speaker: 'A' };
+  const split = splitSubtitleAt([cue], 0);
+  assert.deepEqual(split.map(x => [x.start, x.end, x.original, x.translated, x.speaker]), [
+    [1, 1.001, '😀', '[번역 실패]', 'A'], [1.001, 1.002, '한', '[번역 실패]', 'A'],
+  ]);
+});
+
+test('manual translations are marked edited for selective retry, even on a previously pending cue', () => {
+  const original = [{ start: 0, end: 1, original: 'Hello', translated: '' }];
+  const edited = updateSubtitleTextAt(original, 0, 'translated', '수동 번역');
+  assert.equal(edited[0].status, 'edited');
+  assert.equal(updateSubtitleTextAt(edited, 0, 'translated', '')[0].status, 'transcribed');
+  assert.equal(original[0].translated, '');
 });
