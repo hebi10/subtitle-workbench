@@ -42,6 +42,8 @@ async function selectVideos(names) {
 async function runBatch(names, mode = 'success') {
   io.mode = mode;
   await selectVideos(names);
+  assert($('#generateCostStatus').textContent.includes('0:10'), 'preflight must show known source duration');
+  if (names.length > 1) assert($('#generateCostStatus').textContent.includes('나머지 길이는 처리 시 확인'), 'batch estimate must not imply known total duration');
   $('#startButton').click();
   await waitFor(() => $('#cancelButton').disabled && !$('#videoFile').disabled, 'batch completion and lock release');
 }

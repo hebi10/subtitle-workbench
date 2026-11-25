@@ -218,7 +218,9 @@
                   <div><dt>파일</dt><dd id="generateFileStatus">파일 선택 필요</dd></div>
                   <div><dt>연결 정보</dt><dd id="generateConnectionStatus">API 키 입력 필요</dd></div>
                   <div><dt>언어</dt><dd id="generateLanguageStatus">자동 감지 → 한국어</dd></div>
+                  <div><dt>예상 처리량</dt><dd id="generateCostStatus" role="status">파일 길이를 확인하면 예상 처리량을 안내합니다.</dd></div>
                 </dl>
+                <p class="form-help">개인 OpenAI API 사용료는 ChatGPT 구독 및 앱 광고 제거 구독과 별도입니다. 단가·토큰·패딩·재시도에 따라 달라지며 실제 청구액이나 잔액은 확인하지 않습니다. <a href="https://openai.com/api/pricing/" target="_blank" rel="noopener noreferrer">OpenAI API 가격표</a></p>
               </section>
 
               <div id="runControls" class="run-controls" aria-label="자막 생성 실행">
@@ -353,6 +355,7 @@
             <ol id="stepList" class="step-list"></ol>
 
 
+            <p id="plannedAudioStatus" class="form-help" role="status" hidden></p>
             <details id="chunksDetails" class="chunks-details">
               <summary>
                 <span>분할 조각</span>
@@ -392,6 +395,8 @@
                 <li><strong>03 · 생성 및 검수</strong><span>음성 인식 결과를 편집에서 확인하고 자막 파일로 내보냅니다.</span></li>
               </ol>
               <p class="form-help">입력한 영상 원본은 브라우저 안에서 처리합니다. 음성 인식과 번역에는 별도 API 이용 요금이 발생할 수 있습니다.</p>
+              <p class="form-help">이미 자막 파일이 있다면 API 연결 없이 편집하고 내보낼 수 있습니다.</p>
+              <button id="generateImportSubtitles" class="ghost-button" type="button">기존 자막 불러오기</button>
             </aside>
           </div>
         </section>

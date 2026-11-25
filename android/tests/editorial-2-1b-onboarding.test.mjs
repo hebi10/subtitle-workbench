@@ -14,7 +14,7 @@ test('1-B guide is conditional, non-destructive, and uses real native entry poin
   ]);
   assert.match(html, /id="firstRunGuide"[^>]*hidden/);
   assert.match(html, /id="firstRunGuideHeading"/);
-  for (const id of ['dismissFirstRunGuide', 'guideFile', 'guideMic', 'guideOffline']) {
+  for (const id of ['dismissFirstRunGuide', 'guideFile', 'guideMic', 'guideOffline', 'guideImportSubtitles']) {
     assert.match(html, new RegExp('id="' + id + '"'));
     assert.match(js, new RegExp("\\$\\('" + id + "'\\)"));
   }
@@ -39,4 +39,14 @@ test('1-B does not create a new backend or expose secrets in guide copy', async 
   assert.doesNotMatch(guide, /sk-[a-z0-9]|API_KEY=|Bearer /i);
   assert.match(guide, /개인 API 없이/);
   assert.match(guide, /테스트 서버 연결/);
+});
+
+
+test('SW-FIX-08 distinguishes paid API, locally processed work, and existing subtitle import', async () => {
+  const [html, js] = await Promise.all([readFile(join(root, 'android/web/index.html'), 'utf8'), readFile(join(root, 'android/web/app.js'), 'utf8')]);
+  assert.match(html, /개인 API는 별도 사용료/);
+  assert.match(html, /앱 광고 제거 구독에는 API 비용이 포함되지 않습니다/);
+  assert.match(js, /guideImportSubtitles'\)\.addEventListener\('click', \(\) => \$\('importSubtitles'\)\.click\(\)\)/);
+  assert.match(js, /describeApiWorkload\(\{/);
+  assert.match(js, /실제 청구액·잔액·토큰 사용량은 앱에서 확인하지 않습니다/);
 });
