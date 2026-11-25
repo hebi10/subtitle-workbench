@@ -170,12 +170,23 @@ test('UI-10-A returning user gets one source selector, real prepared jobs and re
           doc: document.documentElement.scrollWidth,
           actions: [...document.querySelectorAll('#videoView .source-choice-grid button')]
             .map(x => ({ height: x.getBoundingClientRect().height, width: x.getBoundingClientRect().width })),
-          button: document.querySelector('#importSubtitles').getBoundingClientRect().height,
+          fileActions: ['pickVideo', 'importSubtitles'].map(id => {
+            const rect = document.getElementById(id).getBoundingClientRect();
+            return { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right, height: rect.height };
+          }),
         }));
         assert.ok(geometry.doc <= geometry.viewport + 1, width + '/' + theme + ': no horizontal overflow');
         assert.ok(geometry.actions.every(x => x.height >= 48 && x.width > 0),
           width + '/' + theme + ': source choices remain reachable');
-        assert.ok(geometry.button >= 48, width + '/' + theme + ': subtitle import is reachable');
+        const [pick, importFile] = geometry.fileActions;
+        assert.ok(geometry.fileActions.every(rect => rect.height >= 48),
+          width + '/' + theme + ': both file actions remain reachable');
+        if (width === 320) {
+          assert.ok(importFile.top >= pick.bottom - 1, 'Narrow phones keep separate full-width action rows');
+        } else {
+          assert.ok(Math.abs(pick.top - importFile.top) <= 1 && importFile.left >= pick.right - 1,
+            'File selection and subtitle import share one row at normal text size');
+        }
         if (width === 390) {
           await page.screenshot({
             path: join(output, 'ui10a-returning-' + width + '-' + theme + '.png'), fullPage: true,

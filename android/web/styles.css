@@ -2563,3 +2563,59 @@ main > section > .page-description { margin: 0 0 12px; font-size: 13px; line-hei
 @media (max-width: 360px) {
   #editorView .editor-file-row #inlinePreview { flex-basis: 100%; }
 }
+
+/* SW-DESIGN-07-B: improve the first visible task controls without hiding status or recovery actions. */
+#videoView > .page-description,
+#jobsView > .page-description {
+  margin-bottom: 6px;
+}
+#videoView .file-source .start-actions button {
+  min-height: 48px;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+@media (min-width: 361px) and (max-width: 619px) {
+  #videoView .file-source .start-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  #videoView .file-source .start-actions button {
+    flex: 1 1 9em;
+    width: auto;
+    padding: 8px;
+    gap: 6px;
+    justify-content: center;
+  }
+}
+#jobsView .jobs-quick-filters { margin-block: 6px; }
+#jobsView .job-list { gap: 6px; margin-top: 6px; }
+#jobsView .job { padding: 10px; }
+#jobsView .job.prepared-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 10px;
+  gap: 8px;
+}
+#jobsView .job.prepared-link > .job-card-heading {
+  flex: 3 1 13em;
+  min-width: 0;
+}
+#jobsView .job.prepared-link > .job-actions {
+  flex: 1 1 6.5em;
+  min-width: 0;
+  margin: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+#jobsView .job.prepared-link .job-actions > button {
+  grid-column: 1 / -1;
+  min-height: 48px;
+  padding-inline: 6px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 360px) {
+  #jobsView .job.prepared-link > .job-card-heading,
+  #jobsView .job.prepared-link > .job-actions { flex-basis: 100%; }
+}
