@@ -390,7 +390,19 @@ test('SW-DESIGN-01 quick filters and result rows use existing authoritative sele
     await filters.locator('[data-job-filter="all"]').click();
     assert.equal(await page.locator('#jobList .job').count(), 2);
     await page.locator('#navResults').click();
+    const browse = page.locator('#resultBrowse');
+    const browseSummary = browse.locator('summary');
     const results = page.locator('#resultQuickList');
+    await browse.waitFor({ state: 'visible' });
+    assert.equal(await browse.evaluate(node => node.open), false);
+    assert.equal(await results.isVisible(), false);
+    assert.equal(await page.locator('#resultJobSelector').isVisible(), true);
+    assert.ok(await browse.evaluate(node => Boolean(node.compareDocumentPosition(document.querySelector('#resultContent')) & Node.DOCUMENT_POSITION_FOLLOWING)),
+      'Quick result navigation precedes selected result actions');
+    await browseSummary.focus();
+    await browseSummary.press('Enter');
+    assert.equal(await browse.evaluate(node => node.open), true);
+    assert.match(await page.locator('#resultBrowseHint').innerText(), /결과 2개/);
     await results.locator('[data-result-id="partial-1"]').click();
     await page.waitForFunction(() => document.getElementById('resultJobSelector').value === 'partial-1'
       && !document.getElementById('resultJobSelector').disabled);
@@ -407,9 +419,38 @@ test('SW-DESIGN-01 quick filters and result rows use existing authoritative sele
         await page.emulateMedia({ colorScheme: theme });
         await measure(page, 'android-webview-mock', 'design-result-rows', width, theme);
         const rows = await results.locator('button').evaluateAll(nodes => nodes.map(n => n.getBoundingClientRect().height));
-        assert.ok(rows.every(height => height >= 48));
+        assert.ok(rows.length === 2 && rows.every(height => height >= 48));
       }
     }
+    await browseSummary.focus();
+    await browseSummary.press('Enter');
+    assert.equal(await browse.evaluate(node => node.open), false);
+    assert.equal(await results.isVisible(), false);
+    assert.equal(await page.locator('#resultJobSelector').inputValue(), 'complete-1');
+
+    await page.evaluate(() => {
+      const template = window.mockNative.jobs.find(job => job.id === 'complete-1');
+      for (const id of ['browse-extra-1', 'browse-extra-2']) {
+        window.mockNative.jobs.push({ ...template, id, name: id + '.mp4' });
+        window.mockNative.cues[id] = window.mockNative.cues[template.id].map(cue => ({ ...cue }));
+      }
+      window.nativeEvent({ type: 'status' });
+    });
+    await page.waitForFunction(() => [...document.querySelector('#resultJobSelector').options]
+      .filter(option => option.value).length === 4);
+    await browseSummary.click();
+    assert.equal(await results.locator('button').count(), 3);
+    assert.match(await page.locator('#resultBrowseHint').innerText(), /전체 4개 중 3개/);
+    const other = await page.evaluate(() => {
+      const quickIds = [...document.querySelectorAll('#resultQuickList button')].map(node => node.dataset.resultId);
+      return [...document.querySelector('#resultJobSelector').options]
+        .find(option => option.value && !quickIds.includes(option.value))?.value;
+    });
+    assert.ok(other, 'The full selector reaches results outside the quick list');
+    await page.locator('#resultJobSelector').selectOption(other);
+    await page.waitForFunction(id => document.querySelector('#resultJobSelector').value === id
+      && !document.querySelector('#resultJobSelector').disabled, other);
+    assert.equal(await results.locator('[aria-pressed="true"]').getAttribute('data-result-id'), other);
     assert.equal(await page.evaluate(() => window.mockNative.calls.some(c =>
       ['resume','pause','deleteJob','setKey','setReviewRelay','buySubscription'].includes(c.method))), false);
   });

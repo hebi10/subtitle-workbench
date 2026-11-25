@@ -116,6 +116,16 @@ public final class EditorialUi09aStateMatrixDeviceTest {
                 show(web, "navResults", "resultsView");
                 selectResult(web, attached, VIDEO);
                 assertEquals("false", evaluate(web, "document.getElementById('resultPreview').disabled"));
+                waitFor(web, "Boolean(!document.getElementById('resultBrowse').hidden && !document.getElementById('resultJobSelector').disabled)");
+                assertEquals("true", evaluate(web, "!document.getElementById('resultBrowse').open"));
+                evaluate(web, "document.getElementById('resultBrowseSummary').click();true");
+                assertEquals("Accessible quick result list at the actual Android font scale", "true",
+                        evaluate(web, "(function(){const browse=document.getElementById('resultBrowse');" +
+                                "const rows=[...document.querySelectorAll('#resultQuickList button')];" +
+                                "return browse.open && rows.length>=2 && rows.some(b=>b.getAttribute('aria-pressed')==='true') && " +
+                                "rows.every(b=>b.getBoundingClientRect().height>=48) && document.documentElement.scrollWidth<=innerWidth+1;})()"));
+                evaluate(web, "document.getElementById('resultBrowseSummary').click();window.scrollTo(0,0);true");
+                assertEquals("true", evaluate(web, "!document.getElementById('resultBrowse').open"));
                 capture(context, "results-with-real-video-" + label, web);
                 evaluate(web, "document.getElementById('editResult').click();true");
                 waitFor(web, "Boolean(!document.getElementById('editorView').hidden && document.querySelector('#cueList .cue') && document.getElementById('editorCuePosition').textContent.includes('27개'))");

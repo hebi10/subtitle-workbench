@@ -2619,3 +2619,39 @@ main > section > .page-description { margin: 0 0 12px; font-size: 13px; line-hei
   #jobsView .job.prepared-link > .job-card-heading,
   #jobsView .job.prepared-link > .job-actions { flex-basis: 100%; }
 }
+
+/* SW-DESIGN-07-C: result navigation remains beside the full selector, with detail actions below. */
+#resultsView .result-selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px;
+  margin: 8px 0 10px;
+  min-width: 0;
+}
+#resultsView .result-selection > .job-selector {
+  flex: 1 1 9em;
+  min-width: 0;
+  margin: 0;
+}
+#resultsView .result-selection > .result-browse {
+  flex: 0 1 auto;
+  max-width: 100%;
+  min-width: 0;
+  background: var(--es-surface);
+  border: 1px solid var(--es-border);
+}
+#resultsView .result-selection > .result-browse[open] { flex: 1 1 100%; }
+#resultsView .result-browse > summary {
+  display: list-item;
+  min-height: 48px;
+  padding: 8px;
+  align-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+#resultsView #resultBrowseHint { margin: 0 8px 6px; font-size: 12px; }
+#resultsView .result-browse .result-quick-list { margin: 0; padding: 0 8px 8px; }
