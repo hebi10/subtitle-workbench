@@ -2495,3 +2495,53 @@ main > section > .page-description { margin: 0 0 12px; font-size: 13px; line-hei
   #jobsView .job-actions:has(> button:nth-child(3):last-child) > button:last-child { grid-column: auto; }
   #jobsView .job-actions:has(> button:nth-child(3):last-child) > button { padding-inline: 4px; }
 }
+
+
+/* SW-DESIGN-05: compact truthful connection rows and actual Play subscription choices. */
+#settingsView .settings-overview > .settings-overview-card {
+  background: var(--es-surface); gap: 4px 8px; padding: 8px 10px;
+}
+#settingsView .settings-overview .settings-overview-label { font-size: 11px; }
+#settingsView .settings-overview-state #settingsConnectionSummary { flex: 0 1 auto; font-size: 15px; }
+#settingsView .settings-overview .settings-health-badge[data-state="verified"] {
+  background: #eaf5ee; color: #155c36; border-color: #a4c8af;
+}
+#settingsView .settings-overview .settings-health-badge[data-state="missing"] {
+  background: var(--es-surface-alt); color: var(--es-ink);
+}
+#settingsView .settings-overview-help { line-height: 1.4; }
+#settingsView .settings-group > summary { min-height: 52px; padding-block: 8px; }
+#settingsView .settings-group > .settings-section,
+#settingsView .settings-group #personalApiSettings > .settings-section,
+#settingsView .settings-group #reviewRelaySettings > .settings-section { gap: 8px; }
+#settingsView #connectionStatus { margin: 8px 0 12px; overflow-wrap: anywhere; }
+#settingsView .settings-monetization .subscription-overview {
+  display: grid; gap: 8px; padding: 12px; background: var(--es-surface-alt);
+  border: 1px solid var(--es-border);
+}
+#settingsView .subscription-title { display: flex; gap: 8px; align-items: center; }
+#settingsView .subscription-title h3 { margin: 0; font-size: 16px; }
+#settingsView #subtitleSubscriptionStatus { font-size: 13px; color: var(--es-ink); overflow-wrap: anywhere; }
+#settingsView #subtitleSubscriptionStatus[data-state="verified"] { color: #155c36; font-weight: 700; }
+#settingsView #subtitleSubscriptionPlans:not(:empty) { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+#settingsView #subtitleSubscriptionPlans:empty { display: none; }
+#settingsView #subtitleSubscriptionPlans .subscription-plan {
+  display: grid; gap: 6px; min-width: 0; width: 100%; min-height: 84px; padding: 10px;
+  justify-items: start; text-align: start; white-space: normal; overflow-wrap: anywhere;
+}
+#settingsView .subscription-plan-label { font-size: 12px; font-weight: 600; }
+#settingsView .subscription-plan-price { font-size: 18px; font-variant-numeric: tabular-nums; }
+#settingsView .subscription-plan-benefit { font-size: 12px; color: var(--es-muted); font-weight: 400; }
+#settingsView .settings-monetization .subscription-management { display: flex; flex-wrap: wrap; gap: 6px; }
+#settingsView .subscription-management button { flex: 1 1 110px; width: auto; min-height: 48px; }
+#settingsView .privacy-action-list { display: grid; gap: 6px; margin-top: 4px; }
+#settingsView .privacy-action-list button { width: 100%; min-height: 48px; text-align: start; }
+@media (max-width: 360px) {
+  #settingsView #subtitleSubscriptionPlans:not(:empty) { grid-template-columns: minmax(0,1fr); }
+}
+@media (prefers-color-scheme: dark) {
+  #settingsView .settings-overview .settings-health-badge[data-state="verified"] {
+    background: #25372b; color: #b0e1c2; border-color: #60856b;
+  }
+  #settingsView #subtitleSubscriptionStatus[data-state="verified"] { color: #b0e1c2; }
+}
