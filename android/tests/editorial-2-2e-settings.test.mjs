@@ -39,7 +39,7 @@ test('2-E preserves encrypted settings contracts and scopes all status UI to exi
   assert.match(css, /#settingsView \.settings-overview-action:focus-visible/);
   assert.match(css, /#settingsView \.settings-health-badge\[data-state="error"\]/);
   assert.match(html, /class="settings-overview-state"/);
-  assert.match(html, /id="settingsEditHeading"[^>]*>상세 설정/);
+  assert.match(html, /id="settingsEditHeading"[^>]*>설정 항목/);
   assert.match(css, /@media \(max-width: 619px\)/);
 });
 
@@ -92,6 +92,7 @@ test('2-E gives honest connection state and opens the original encrypted forms',
     assert.equal(await page.locator('#settingsConnectionHealth').getAttribute('data-state'), 'saved');
     assert.match(await page.locator('#settingsConnectionHelp').innerText(), /연결 확인/);
     assert.match(await page.locator('#settingsConnectionSummary').innerText(), /개인 API/);
+    assert.equal(await page.locator('#apiSettingsSummary').innerText(), '개인 API · 연결 미확인');
     assert.match(await page.locator('#settingsDefaultsOverview').innerText(), /whisper-1/);
     await page.locator('#settingsOpenConnection').click();
     assert.equal(await page.locator('#apiSettings').evaluate(node => node.open), true);
@@ -160,10 +161,44 @@ test('2-E never marks a failed connection check as verified', { skip: !enabled }
     await page.waitForFunction(() => document.getElementById('settingsConnectionHealth').dataset.state === 'error');
     assert.match(await page.locator('#settingsConnectionHealth').innerText(), /확인 실패/);
     assert.match(await page.locator('#settingsConnectionHelp').innerText(), /실패 원인/);
+    assert.equal(await page.locator('#apiSettingsSummary').innerText(), '개인 API · 확인 실패');
     assert.equal(await page.locator('#settingsConnectionHealth').getAttribute('data-state'), 'error');
     await page.evaluate(() => { window.mockNative.failConnection = false; });
     await page.locator('#checkConnection').click();
     await page.waitForFunction(() => document.getElementById('settingsConnectionHealth').dataset.state === 'verified');
     assert.match(await page.locator('#settingsConnectionHealth').innerText(), /확인됨/);
+  });
+});
+
+
+test('SW-DESIGN-05 subscription presents only verified eligible live price options', { skip: !enabled }, async () => {
+  await withApp(async page => {
+    await page.locator('#navSettings').click();
+    await page.locator('#privacySettings > summary').click();
+    assert.match(await page.locator('.subscription-overview').innerText(), /API 사용료가 포함되지 않습니다/);
+    await page.evaluate(() => {
+      window.mockNative.subscriptionOptions = { available: true, purchaseEnabled: false, verificationConfigured: true,
+        plans: [{ basePlanId:'monthly', price:'₩1,234' }, { basePlanId:'yearly', price:'₩12,345' }] };
+    });
+    await page.locator('#subtitleCheckSubscriptions').click();
+    await page.waitForFunction(() => document.getElementById('subtitleSubscriptionStatus').dataset.state === 'unavailable');
+    assert.equal(await page.locator('#subtitleSubscriptionPlans button').count(), 0);
+    await page.evaluate(() => { window.mockNative.subscriptionOptions.purchaseEnabled = true; });
+    await page.locator('#subtitleCheckSubscriptions').click();
+    await page.getByRole('button', {name:'월간 구독 · ₩1,234', exact:true}).waitFor();
+    assert.deepEqual(await page.locator('.subscription-plan-price').allTextContents(), ['₩1,234','₩12,345']);
+    for (const width of [320,390,800]) {
+      await page.setViewportSize({width,height:844});
+      for (const theme of ['light','dark']) {
+        await page.emulateMedia({colorScheme:theme});
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
+        const heights = await page.locator('.subscription-plan').evaluateAll(nodes => nodes.map(n=>n.getBoundingClientRect().height));
+        assert.ok(heights.every(h=>h>=48));
+      }
+    }
+    await page.evaluate(() => window.nativeEvent({type:'subscription',verified:true}));
+    await page.waitForFunction(() => document.getElementById('subtitleSubscriptionStatus').dataset.state === 'verified');
+    assert.equal(await page.locator('#subtitleSubscriptionPlans button').count(),0);
+    assert.equal(await page.evaluate(() => window.mockNative.calls.some(c=>c.method==='buySubscription')),false);
   });
 });

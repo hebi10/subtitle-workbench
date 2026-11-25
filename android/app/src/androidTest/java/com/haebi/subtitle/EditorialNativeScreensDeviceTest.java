@@ -49,6 +49,7 @@ public final class EditorialNativeScreensDeviceTest {
                         activity.getResources().getDisplayMetrics().density);
                 assertText(root, "OpenAI API 키나 API 이용 요금은 필요하지 않습니다");
                 assertButton(root, "마이크 인식 시작");
+                assertActionPair(activity, root, "언어 지원 확인", "온디바이스 언어 모델 다운로드 요청");
                 Button stop = button(root, "인식 종료");
                 Button save = button(root, "완료 자막 저장 및 편집");
                 assertNotNull(stop); assertFalse(stop.isEnabled());
@@ -72,7 +73,12 @@ public final class EditorialNativeScreensDeviceTest {
                 assertWorkflow(root, "연결", "인식", "저장");
                 assertHelp(root, "시간·전송 안내");
                 assertHelp(root, "연결·전송·요금 상세");
-                assertTrue(findTag(root, "editorial-cloud-disclosure") instanceof TextView);
+                View disclosure = findTag(root, "editorial-cloud-disclosure");
+                assertTrue(disclosure instanceof TextView);
+                Button start = button(root, "GPT 실시간 인식 시작");
+                assertNotNull(start);
+                assertFalse("Fresh device without connection cannot start a paid request", start.isEnabled());
+                assertTrue("Connection and cost disclosure precedes start", absoluteY(disclosure) < absoluteY(start));
                 assertText(root, "GPT 실시간 마이크 자막");
                 assertText(root, "API 이용 요금");
                 assertButton(root, "인식 종료 및 결과 확정");
@@ -100,6 +106,8 @@ public final class EditorialNativeScreensDeviceTest {
                 assertText(root, "인터넷과 OpenAI API 키 없이");
                 assertText(root, "오프라인 인식은 최대 60분");
                 assertButton(root, "선택 모델 다운로드·설치");
+                assertActionPair(activity, root, "선택 모델 다운로드·설치", "다운로드한 모델 삭제");
+                assertActionPair(activity, root, "오프라인 음성 인식 시작", "다운로드·인식 중단");
                 assertButton(root, "영상·오디오 파일 선택");
                 Button run = button(root, "오프라인 음성 인식 시작");
                 assertNotNull(run); assertFalse(run.isEnabled());
@@ -107,6 +115,28 @@ public final class EditorialNativeScreensDeviceTest {
             });
             screenshot("vosk-local-" + theme[0]);
         }
+    }
+
+    private static int absoluteY(View view) {
+        int[] point = new int[2];
+        view.getLocationInWindow(point);
+        return point[1];
+    }
+
+    private static void assertActionPair(Activity activity, View root, String first, String second) {
+        Button a = button(root, first), b = button(root, second);
+        assertNotNull(a);
+        assertNotNull(b);
+        assertSame("Actions share the same responsive group", a.getParent(), b.getParent());
+        LinearLayout row = (LinearLayout) a.getParent();
+        boolean horizontal = activity.getResources().getConfiguration().screenWidthDp >= 360
+                && activity.getResources().getConfiguration().fontScale <= 1.15f;
+        assertEquals(horizontal ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL, row.getOrientation());
+        assertEquals(ViewGroup.LayoutParams.WRAP_CONTENT, a.getLayoutParams().height);
+        assertEquals(ViewGroup.LayoutParams.WRAP_CONTENT, b.getLayoutParams().height);
+        int minHeight = Math.round(52 * activity.getResources().getDisplayMetrics().density);
+        assertTrue(a.getMinHeight() >= minHeight);
+        assertTrue(b.getMinHeight() >= minHeight);
     }
 
     private static void assertWorkflow(View root, String first, String second, String third) {

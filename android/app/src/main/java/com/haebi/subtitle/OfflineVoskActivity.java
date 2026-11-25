@@ -72,7 +72,7 @@ public final class OfflineVoskActivity extends Activity {
 
         float density = getResources().getDisplayMetrics().density;
         NativeDesignSystem.header(root, "OFFLINE / LOCAL AI", "독립 로컬 AI 자막",
-                "앱이 직접 다운로드한 Vosk 언어 모델로 영상·음성 파일을 전사합니다. 모델 설치 후에는 인터넷과 OpenAI API 키 없이 사용할 수 있습니다.", density);
+                "Vosk 언어 모델 설치 후 인터넷과 OpenAI API 키 없이 영상·음성을 전사합니다.", density);
         workflow = NativeDesignSystem.workflow(root, density, "모델", "파일", "전사");
 
         LinearLayout models = NativeDesignSystem.section(root, "01 / MODEL", "언어 모델 준비", density);
@@ -94,6 +94,7 @@ public final class OfflineVoskActivity extends Activity {
         NativeDesignSystem.statusPanel(modelStatus, density);
         download = button(models, "선택 모델 다운로드·설치", true, this::downloadSelected);
         delete = button(models, "다운로드한 모델 삭제", false, this::requestDelete);
+        NativeDesignSystem.pairActions(models, download, delete, density);
         modelDetails = NativeDesignSystem.helpDisclosure(models, "모델 상세·설치 조건",
                 "선택한 언어 모델의 설치·용량·인식 특성을 확인합니다. 다운로드에는 네트워크 연결이 필요합니다.", density);
 
@@ -101,7 +102,7 @@ public final class OfflineVoskActivity extends Activity {
         sourceStatus = label(media, "선택한 영상·오디오가 없습니다.", 14, false);
         NativeDesignSystem.statusPanel(sourceStatus, density);
         pick = button(media, "영상·오디오 파일 선택", false, this::pickFile);
-        label(media, "파일 최대 60분 · 원본은 기기의 파일 선택기로 연결합니다.", 13, false);
+        label(media, "최대 60분 · 원본 파일은 그대로 유지", 13, false);
         NativeDesignSystem.helpDisclosure(media, "파일 길이·원본 안내",
                 "오프라인 인식은 최대 60분 파일을 지원합니다. 기기 성능에 따라 처리 시간이 길어질 수 있습니다. 원본은 복사하지 않고 파일 선택기의 읽기 권한으로 미리보기와 연결합니다.", density);
 
@@ -109,6 +110,7 @@ public final class OfflineVoskActivity extends Activity {
         run = button(transcription, "오프라인 음성 인식 시작", true, this::runTranscription);
         cancel = button(transcription, "다운로드·인식 중단", false, () -> { cancelled.set(true); status.setText("중단 요청을 처리하고 있습니다…"); });
         cancel.setEnabled(false);
+        NativeDesignSystem.pairActions(transcription, run, cancel, density);
         status = label(transcription, "언어 모델과 영상·오디오를 선택하세요.", 14, false);
         NativeDesignSystem.statusPanel(status, density);
         label(transcription, "인식된 자막", 15, true);
