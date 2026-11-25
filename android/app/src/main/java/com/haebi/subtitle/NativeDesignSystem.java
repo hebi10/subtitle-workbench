@@ -5,6 +5,13 @@ import android.os.Build;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.RectF;
+import android.graphics.ColorFilter;
+import android.graphics.PixelFormat;
+import android.graphics.drawable.Drawable;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
@@ -82,13 +89,56 @@ final class NativeDesignSystem {
         view.setPadding(dp(density, 12), dp(density, 10), dp(density, 12), dp(density, 10));
     }
 
+    /** A microphone-shaped primary action, retaining the original accessible button label. */
+    static void microphoneAction(Button view, float density) {
+        Context context = view.getContext();
+        Drawable mark = new Drawable() {
+            private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            @Override public void draw(Canvas canvas) {
+                Rect b = getBounds();
+                float centerX = b.exactCenterX(), centerY = b.exactCenterY();
+                float radius = Math.min(b.width(), b.height()) / 2f - 2f;
+                if (radius <= 0f) return;
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(view.isEnabled() ? ink(context) : muted(context));
+                canvas.drawCircle(centerX, centerY, radius, paint);
+                paint.setColor(onAction(context));
+                float unit = radius / 24f;
+                canvas.drawRoundRect(new RectF(centerX - 4 * unit, centerY - 13 * unit,
+                        centerX + 4 * unit, centerY + 4 * unit), 4 * unit, 4 * unit, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(2 * unit);
+                paint.setStrokeCap(Paint.Cap.ROUND);
+                canvas.drawArc(new RectF(centerX - 9 * unit, centerY - 8 * unit,
+                        centerX + 9 * unit, centerY + 9 * unit), 0, 180, false, paint);
+                canvas.drawLine(centerX, centerY + 9 * unit, centerX, centerY + 14 * unit, paint);
+                canvas.drawLine(centerX - 6 * unit, centerY + 14 * unit, centerX + 6 * unit, centerY + 14 * unit, paint);
+            }
+            @Override public void setAlpha(int alpha) { paint.setAlpha(alpha); }
+            @Override public void setColorFilter(ColorFilter filter) { paint.setColorFilter(filter); }
+            @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+            @Override public boolean isStateful() { return true; }
+            @Override protected boolean onStateChange(int[] state) { invalidateSelf(); return true; }
+        };
+        int size = dp(density, 64);
+        mark.setBounds(0, 0, size, size);
+        // Use a normal secondary surface for the clickable area; the record circle is
+        // the single prominent pictogram, and the button's enabled state still governs.
+        button(view, false, density);
+        view.setCompoundDrawables(null, mark, null, null);
+        view.setCompoundDrawablePadding(dp(density, 6));
+        view.setGravity(android.view.Gravity.CENTER);
+        view.setMinHeight(dp(density, 106));
+        view.setPadding(dp(density, 8), dp(density, 10), dp(density, 8), dp(density, 10));
+    }
+
     static void text(TextView view, int size, boolean strong, float density) {
         Context context = view.getContext();
         view.setTextSize(size);
         view.setTextColor(strong ? ink(context) : muted(context));
         view.setTypeface(Typeface.DEFAULT, strong ? Typeface.BOLD : Typeface.NORMAL);
         view.setLineSpacing(dp(density, 2), 1f);
-        view.setPadding(0, dp(density, 8), 0, dp(density, 10));
+        view.setPadding(0, dp(density, 5), 0, dp(density, 6));
     }
 
     static void surfaceText(TextView view, float density) {
@@ -118,7 +168,7 @@ final class NativeDesignSystem {
         TextView eyebrow = line(root, kicker, 11, true, density);
         eyebrow.setTextColor(muted(root.getContext()));
         eyebrow.setPadding(0, 0, 0, dp(density, 4));
-        TextView heading = line(root, title, 22, true, density);
+        TextView heading = line(root, title, 20, true, density);
         heading.setPadding(0, 0, 0, dp(density, 6));
         if (Build.VERSION.SDK_INT >= 28) heading.setAccessibilityHeading(true);
         TextView intro = line(root, description, 14, false, density);
@@ -129,11 +179,11 @@ final class NativeDesignSystem {
         LinearLayout group = new LinearLayout(context);
         group.setOrientation(LinearLayout.VERTICAL);
         group.setBackground(surface(paper(context), line(context), density));
-        group.setPadding(dp(density, 14), dp(density, 12), dp(density, 14), dp(density, 14));
+        group.setPadding(dp(density, 12), dp(density, 9), dp(density, 12), dp(density, 10));
         group.setElevation(0f);
         group.setTag("editorial-section:" + index);
         LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2);
-        layout.topMargin = dp(density, 12);
+        layout.topMargin = dp(density, 8);
         parent.addView(group, layout);
         TextView kicker = line(group, index, 11, true, density);
         kicker.setTextColor(muted(context));

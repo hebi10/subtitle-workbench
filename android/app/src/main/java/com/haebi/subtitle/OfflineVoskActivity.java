@@ -66,7 +66,7 @@ public final class OfflineVoskActivity extends Activity {
         });
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(20), dp(18), dp(20), dp(36));
+        root.setPadding(dp(16), dp(12), dp(16), dp(24));
         scroll.addView(root);
         setContentView(scroll);
 

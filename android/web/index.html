@@ -92,6 +92,12 @@
       <div class="section-heading"><div><p class="page-kicker">02 / HISTORY</p><h2 id="jobsHeading">작업 관리</h2></div><div class="jobs-heading-actions"><button id="startNewJob" type="button" class="primary"><span class="es-icon es-icon--add" aria-hidden="true"></span>새 작업</button><button id="refreshJobs" type="button"><span class="es-icon es-icon--refresh" aria-hidden="true"></span>새로고침</button></div></div>
       <p class="page-description">진행 중인 작업과 저장된 자막을 관리합니다.</p>
       <p id="jobsSummary" class="jobs-overview" role="status" aria-live="polite">작업 상태를 확인하는 중입니다.</p>
+      <div id="jobsQuickFilters" class="jobs-quick-filters" role="group" aria-label="작업 상태 바로 선택">
+        <button type="button" data-job-filter="all" aria-pressed="true">전체</button>
+        <button type="button" data-job-filter="active" aria-pressed="false">진행 중</button>
+        <button type="button" data-job-filter="completed" aria-pressed="false">완료</button>
+        <button type="button" data-job-filter="error" aria-pressed="false">오류</button>
+      </div>
       <details id="jobsBrowse" class="jobs-browse">
         <summary>파일명 검색 · 상태 필터 · 정렬</summary>
         <div class="jobs-browse-fields">
@@ -124,6 +130,7 @@
       <div class="section-heading"><div><p class="page-kicker">03 / RESULTS</p><h2 id="resultsHeading">결과 확인</h2></div></div>
       <p class="page-description">자막을 확인한 다음 편집하거나 원하는 형식으로 저장합니다.</p>
       <label id="resultJobLabel" class="job-selector">작업 선택<select id="resultJobSelector"></select></label>
+      <div id="resultQuickList" class="result-quick-list" role="group" aria-label="결과 바로 선택" hidden></div>
       <div id="resultEmpty" hidden><p class="empty">아직 확인할 결과가 없습니다.</p><div class="start-actions"><button id="openResultJobs" type="button">작업 확인</button><button id="openResultVideo" type="button">영상 추가</button></div></div>
       <div id="resultContent" hidden>
         <section class="result-overview" aria-label="현재 결과 요약">
@@ -155,8 +162,7 @@
     </section>
 
     <section id="editorView" aria-labelledby="editorHeading" hidden>
-      <button id="backToJobs" type="button"><span class="es-icon es-icon--back" aria-hidden="true"></span>결과로</button>
-      <div class="section-heading"><div><p class="page-kicker">03 / REVIEW</p><h2 id="editorHeading">자막 편집</h2></div><span id="cueCount"></span></div>
+      <div class="section-heading"><div class="editor-title-row"><button id="backToJobs" type="button"><span class="es-icon es-icon--back" aria-hidden="true"></span>결과로</button><div><p class="page-kicker">03 / REVIEW</p><h2 id="editorHeading">자막 편집</h2></div></div><span id="cueCount"></span></div>
       <p id="editorName" class="file-name"></p>
       <p id="readOnlyNote" class="hint" hidden>완료 전 작업은 조회와 부분 내보내기만 가능합니다. 생성이 완료되면 편집할 수 있습니다.</p>
       <div id="editorFeedback" class="editor-feedback"><div class="save-feedback"><p id="saveStatus" role="status">저장된 자막</p><button id="retrySave" type="button" hidden>저장 다시 시도</button></div><nav class="pagination" aria-label="자막 페이지"><button id="prevPage" type="button">이전</button><span id="pageInfo"></span><button id="nextPage" type="button">다음</button></nav></div>
@@ -205,7 +211,7 @@
         </div>
       </div>
       <h3 id="settingsEditHeading" class="settings-edit-heading">상세 설정</h3>
-      <details id="apiSettings" class="settings-group"><summary><span class="settings-index" aria-hidden="true">01 / CONNECTION</span>OpenAI API 연결<span id="apiSettingsSummary"></span></summary>
+      <details id="apiSettings" class="settings-group"><summary><span class="es-icon es-icon--settings settings-row-icon" aria-hidden="true"></span><span class="settings-index" aria-hidden="true">01 / CONNECTION</span><span class="settings-row-title">OpenAI API 연결</span><span id="apiSettingsSummary"></span></summary>
       <div class="settings-section"><label>클라우드 연결 방식<select id="cloudMode"><option value="personal">개인 OpenAI API</option><option value="relay">테스트 서버</option></select></label><p id="connectionModeStatus" class="hint" role="status"></p></div>
       <section id="personalApiSettings">
       <form id="keyForm" class="settings-section"><p id="keyStatus" role="status">API 키 상태 확인 중</p><label>본인의 OpenAI API 키<input id="apiKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="새 API 키 입력" required /></label><button class="primary" type="submit">API 키 암호화 저장</button><p class="hint">키는 이 기기의 Android Keystore로 암호화해 보관합니다. 저장된 키는 화면에 다시 표시하지 않습니다.</p></form>
@@ -219,7 +225,7 @@
       </section>
       <div class="connection-actions"><button id="checkConnection" type="button" disabled><span class="es-icon es-icon--settings" aria-hidden="true"></span>연결 확인</button></div><p id="connectionStatus" class="hint" role="status">연결 확인은 현재 연결의 인증과 선택 모델 접근만 검사합니다. 결제 상태나 잔액은 확인하지 않습니다.</p>
       </details>
-      <details id="defaultSettings" class="settings-group"><summary><span class="settings-index" aria-hidden="true">02 / DEFAULTS</span>다음 영상의 기본 설정<span id="defaultSettingsSummary"></span></summary>
+      <details id="defaultSettings" class="settings-group"><summary><span class="es-icon es-icon--edit settings-row-icon" aria-hidden="true"></span><span class="settings-index" aria-hidden="true">02 / DEFAULTS</span><span class="settings-row-title">다음 영상의 기본 설정</span><span id="defaultSettingsSummary"></span></summary>
       <form id="settingsForm" class="settings-section">
         <label>원본 언어<select id="sourceLanguage"><option value="auto">자동 감지</option><option value="ko">한국어</option><option value="en">영어</option><option value="ja">일본어</option><option value="zh">중국어</option><option value="es">스페인어</option><option value="fr">프랑스어</option><option value="de">독일어</option></select></label>
         <label class="check-label"><input id="translate" type="checkbox" checked />자막 번역하기</label>
@@ -230,7 +236,7 @@
           <option value="gpt-4o-transcribe-diarize">화자 자동 구분 (2027년 종료 예정)</option>
         </select></label><p class="hint">GPT Transcribe는 약 30초 단위로 작업하지만 자막 시각은 추정값입니다. 화자 자동 구분 모델의 인물 ID는 작업 구간별로 다를 수 있습니다.</p><label>번역 모델<input id="translationModel" type="text" value="gpt-6-luna" spellcheck="false" autocapitalize="off" maxlength="100" required /></label><p class="hint">기본 번역 모델은 gpt-6-luna입니다. 계정에서 사용할 수 있는 모델 이름을 입력하세요.</p></details><p id="settingsModel" class="hint">번역 모델: gpt-6-luna</p><p class="hint">Whisper와 화자 구분 모델은 2027년 2월 26일 지원 종료 예정입니다. 정확한 시간 싱크를 중시하면 기존 Whisper를 사용하고, 새 GPT 모델 결과는 영상과 비교해 시간을 수정하세요.</p><div class="settings-actions"><button type="submit">설정 저장</button><button id="discardSettings" type="button" disabled>변경 취소</button></div><p id="settingsStatus" role="status">저장한 설정은 새로 선택하는 영상에 적용됩니다.</p>
       </form></details>
-      <details id="dataSettings" class="settings-group"><summary><span class="settings-index" aria-hidden="true">03 / DATA</span>전송 데이터 · 비용 · 이어하기</summary>
+      <details id="dataSettings" class="settings-group"><summary><span class="es-icon es-icon--results settings-row-icon" aria-hidden="true"></span><span class="settings-index" aria-hidden="true">03 / DATA</span><span class="settings-row-title">전송 데이터 · 비용 · 이어하기</span></summary>
         <div class="settings-section settings-data-guide">
           <section><h4>전송 데이터</h4><p class="hint">파일 자막 생성 시 영상에서 추출한 오디오 구간과 번역에 필요한 자막 텍스트만 선택한 API/테스트 서버로 전송됩니다. 원본 영상 파일 자체를 클라우드에 보관하는 기능은 없습니다. 기기 온디바이스·Vosk 인식은 별도 실행 방식입니다.</p></section>
           <section><h4>요금 및 사용량</h4><p class="hint">개인 API는 본인 OpenAI 계정으로 실제 요청한 만큼 청구될 수 있습니다. ChatGPT 구독 및 앱 광고 제거 구독에는 API 비용이 포함되지 않습니다. 생성 전 파일 길이와 전사 구간을 확인하고 OpenAI API 가격표에서 선택 모델의 단가를 확인하세요. 연결 확인은 결제 상태·잔액·월 누적 비용을 조회하지 않습니다. 테스트 서버는 해당 서버의 공유 사용량 한도를 적용합니다.</p></section>
@@ -239,7 +245,7 @@
         </div>
       </details>
       <details id="privacySettings" class="settings-group">
-        <summary><span class="settings-index" aria-hidden="true">04 / PRIVACY</span>개인정보 · 광고 및 구독</summary>
+        <summary><span class="es-icon es-icon--settings settings-row-icon" aria-hidden="true"></span><span class="settings-index" aria-hidden="true">04 / PRIVACY</span><span class="settings-row-title">개인정보 · 광고 및 구독</span></summary>
         <div class="settings-section settings-monetization">
           <h3>광고 및 구독</h3>
           <p class="hint">광고는 새 자막 작업 화면에만 표시됩니다.</p>
