@@ -7,6 +7,9 @@ import android.graphics.Color;
 import android.view.Gravity;
 import android.view.WindowInsets;
 import android.widget.Button;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -26,6 +29,7 @@ public final class PreviewActivity extends Activity {
     private ExoPlayer player;
     private PlayerView view;
     private TextView subtitle;
+    private PreviewCueIndex.DisplayMode displayMode = PreviewCueIndex.DisplayMode.TRANSLATED;
     private PreviewCueIndex cues = new PreviewCueIndex(new JSONArray());
     private boolean playbackError;
     private boolean cueLoadError;
@@ -38,7 +42,7 @@ public final class PreviewActivity extends Activity {
         @Override public void run() {
             if (player == null || playbackError) return;
             String text = cueLoadError ? "저장된 자막을 불러올 수 없습니다. 편집 화면으로 돌아가 확인해 주세요."
-                    : cues.textAt(player.getCurrentPosition() / 1000.0);
+                    : cues.textAt(player.getCurrentPosition() / 1000.0, displayMode);
             if (!text.contentEquals(subtitle.getText())) subtitle.setText(text);
             handler.postDelayed(this, 100);
         }
@@ -48,6 +52,12 @@ public final class PreviewActivity extends Activity {
         super.onCreate(state);
         position = state == null ? getIntent().getLongExtra("positionMs", 0) : state.getLong("position");
         playWhenReady = state == null || state.getBoolean("playing", true);
+        if (state != null) {
+            int selected = state.getInt("displayMode", 0);
+            if (selected >= 0 && selected < PreviewCueIndex.DisplayMode.values().length) {
+                displayMode = PreviewCueIndex.DisplayMode.values()[selected];
+            }
+        }
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setBackgroundColor(NativeDesignSystem.canvas(this));
@@ -69,6 +79,34 @@ public final class PreviewActivity extends Activity {
         title.setGravity(Gravity.CENTER);
         toolbar.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
         layout.addView(toolbar, new LinearLayout.LayoutParams(-1, -2));
+
+        LinearLayout modeRow = new LinearLayout(this);
+        boolean horizontal = getResources().getConfiguration().screenWidthDp >= 360
+                && getResources().getConfiguration().fontScale <= 1.15f;
+        modeRow.setOrientation(horizontal ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
+        modeRow.setGravity(Gravity.CENTER_VERTICAL);
+        modeRow.setPadding(Math.round(12 * density), 0, Math.round(12 * density), Math.round(4 * density));
+        modeRow.setBackgroundColor(NativeDesignSystem.paper(this));
+        TextView modeLabel = new TextView(this);
+        modeLabel.setText("자막 표시");
+        NativeDesignSystem.text(modeLabel, 13, true, density);
+        Spinner mode = new Spinner(this);
+        mode.setId(android.view.View.generateViewId());
+        mode.setTag("preview-display-mode");
+        modeLabel.setLabelFor(mode.getId());
+        mode.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item,
+                new String[]{"번역 우선", "원문", "원문 + 번역"}));
+        NativeDesignSystem.language(mode, density);
+        mode.setSelection(displayMode.ordinal());
+        mode.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> parent, android.view.View selected, int index, long id) {
+                displayMode = PreviewCueIndex.DisplayMode.values()[index];
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) {}
+        });
+        modeRow.addView(modeLabel, new LinearLayout.LayoutParams(horizontal ? 0 : -1, -2, horizontal ? 1f : 0f));
+        modeRow.addView(mode, new LinearLayout.LayoutParams(horizontal ? 0 : -1, -2, horizontal ? 2f : 0f));
+        layout.addView(modeRow, new LinearLayout.LayoutParams(-1, -2));
         FrameLayout frame = new FrameLayout(this);
         frame.setBackgroundColor(Color.BLACK);
         view = new PlayerView(this);
@@ -118,6 +156,7 @@ public final class PreviewActivity extends Activity {
     @Override protected void onSaveInstanceState(Bundle state) {
         state.putLong("position", player == null ? position : player.getCurrentPosition());
         state.putBoolean("playing", player == null ? playWhenReady : player.getPlayWhenReady());
+        state.putInt("displayMode", displayMode.ordinal());
         super.onSaveInstanceState(state);
     }
 

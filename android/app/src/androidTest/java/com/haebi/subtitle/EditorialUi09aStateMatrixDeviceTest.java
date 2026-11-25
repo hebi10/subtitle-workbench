@@ -13,6 +13,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
 import android.widget.TextView;
+import android.widget.Spinner;
 import androidx.media3.common.Player;
 import androidx.media3.ui.PlayerView;
 
@@ -342,6 +343,32 @@ public final class EditorialUi09aStateMatrixDeviceTest {
                 if (!cueVisible) Thread.sleep(200);
             }
             assertTrue("Actual timed subtitle must be visible in preview", cueVisible);
+            for (int mode : new int[]{1, 2, 0}) {
+                scene.onActivity(activity -> {
+                    Spinner control = activity.findViewById(android.R.id.content).findViewWithTag("preview-display-mode");
+                    assertNotNull("Native subtitle display selector", control);
+                    assertTrue(control.getHeight() >= Math.round(48 * activity.getResources().getDisplayMetrics().density));
+                    control.setSelection(mode);
+                });
+                String expected = mode == 1 ? "UI09A 기기 QA 원문 자막 1"
+                        : mode == 2 ? "UI09A 기기 QA 원문 자막 1\nUI09A 번역 표시 검증 문장 1"
+                        : "UI09A 번역 표시 검증 문장 1";
+                long modeDeadline = System.currentTimeMillis() + 5000L;
+                boolean displayed = false;
+                while (System.currentTimeMillis() < modeDeadline && !displayed) {
+                    AtomicReference<Boolean> matched = new AtomicReference<>(false);
+                    scene.onActivity(activity -> {
+                        TextView cue = activity.findViewById(android.R.id.content).findViewWithTag("preview-caption");
+                        PlayerView playerView = findPlayerView(activity.findViewById(android.R.id.content));
+                        matched.set(cue != null && expected.contentEquals(cue.getText())
+                                && playerView != null && playerView.getPlayer() != null
+                                && !playerView.getPlayer().getPlayWhenReady());
+                    });
+                    displayed = matched.get();
+                    if (!displayed) Thread.sleep(100);
+                }
+                assertTrue("Display mode " + mode + " must use the same paused cue", displayed);
+            }
             saveScreenshot(context, "preview-real-video-" + label);
         }
     }
