@@ -327,6 +327,7 @@ function renderJobs() {
         old.querySelector('.job-state').lastChild.textContent = `${formatDuration(job.durationMs)} · ${Number(job.totalChunks) || 0}구간`;
         old.querySelector('.prepared-summary').textContent = settingsSummary(job.settings || {});
         old.querySelector('.job-ready-note').textContent = jobTransmissionNotice(job);
+        old.querySelector('.job-workload-detail').textContent = jobWorkloadDetail(job);
         const mismatch = old.querySelector('.job-destination-warning');
         mismatch.hidden = sameDestination;
         mismatch.textContent = jobDestinationWarning(job);
@@ -375,10 +376,12 @@ function renderJobs() {
     progress.setAttribute('aria-label', `${job.name} 처리 진행률`);
     if (!ready && job.status !== 'completed') {
       const label = el('div', undefined, 'job-progress-label');
-      label.append(el('span', measured ? '저장된 결과 기준' : '저장 완료 구간 기준'), el('strong', `${Number(percent.toFixed(1))}%`));
-      article.append(label, progress);
+      const progressContext = el('div', undefined, 'job-progress-context');
+      progressContext.append(el('span', measured ? '저장된 결과 기준' : '저장 완료 구간 기준'));
       const processedMs = nonnegative(detail.processedMs);
-      article.append(el('p', typeof detail.processedMs === 'number' ? `처리 완료 ${formatDuration(processedMs)} / ${formatDuration(durationMs)}` : `${done} / ${total}구간 저장 완료`, 'job-processed-note hint'));
+      progressContext.append(el('p', typeof detail.processedMs === 'number' ? `처리 완료 ${formatDuration(processedMs)} / ${formatDuration(durationMs)}` : `${done} / ${total}구간 저장 완료`, 'job-processed-note hint'));
+      label.append(progressContext, el('strong', `${Number(percent.toFixed(1))}%`));
+      article.append(label, progress);
     }
     const details = el('dl', undefined, 'job-details');
     const row = (label, value) => { const line = el('div'); line.append(el('dt', label), el('dd', value)); details.append(line); };
@@ -405,6 +408,7 @@ function renderJobs() {
     }
     if (ready || ['paused', 'error'].includes(job.status)) {
       if (!ready) inspection.append(el('p', jobTransmissionNotice(job), 'job-ready-note'));
+      inspection.append(el('p', jobWorkloadDetail(job), 'job-workload-detail hint'));
       const warning = el('p', jobDestinationWarning(job), 'job-destination-warning hint');
       warning.hidden = sameDestination;
       article.append(warning);
@@ -415,7 +419,6 @@ function renderJobs() {
     const secondaryActions = el('div', undefined, 'job-secondary-actions');
     secondaryActions.setAttribute('role', 'group');
     secondaryActions.setAttribute('aria-label', '완료 작업의 파일 저장 및 기록 관리');
-    secondaryActions.append(el('p', '파일 저장 · 기록 관리', 'job-secondary-title'));
     if (!ready) {
       const open = actionIcon(button(job.status === 'completed' ? '자막 편집' : '자막 보기', () => openJob(job.id)), 'edit');
       if (job.status === 'completed') open.classList.add('primary');
@@ -1064,14 +1067,21 @@ function matchesJobDestination(job) {
 }
 function jobTransmissionNotice(job) {
   const destination = jobDestination(job);
-  const notice = destination.mode === 'relay' ? relayTransmissionNotice(destination.origin) : '개인 API 연결: 생성 시작 시 추출한 오디오와 번역할 자막을 OpenAI로 전송합니다. API 사용 요금은 본인 계정에 청구됩니다. ChatGPT 구독과 앱 광고 제거 구독에는 포함되지 않습니다.';
+  const data = job.settings?.translate === false ? '추출 오디오' : '추출 오디오·번역용 자막';
+  const retry = '분할·재요청으로 사용량이 늘 수 있습니다.';
+  if (destination.mode === 'relay') {
+    return `테스트 서버 ${destination.origin || '(주소 미설정)'} → OpenAI로 ${data} 전송. 개인 API 계정에는 요금이 청구되지 않으며 서버 공유 한도가 적용됩니다. ${retry}`;
+  }
+  return `개인 API · ${data} OpenAI 전송. API 사용 요금은 본인 계정에 청구됩니다(앱·ChatGPT 구독 별도). ${retry}`;
+}
+function jobWorkloadDetail(job) {
   const workload = describeApiWorkload({
     durationSeconds: Number(job.durationMs) / 1000,
     chunkCount: Number(job.totalChunks),
     translationEnabled: job.settings?.translate !== false,
   });
-  const scope = isPrepared(job) ? '예상 처리량' : '전체 작업 기준 · 저장된 결과는 다시 처리하지 않음';
-  return `${notice} ${scope}: ${workload}. 실제 청구액·잔액·토큰 사용량은 앱에서 확인하지 않습니다.`;
+  const scope = isPrepared(job) ? '예상 처리량' : '전체 작업 기준 · 저장된 체크포인트를 활용해 이어하기';
+  return `${scope}: ${workload}. 실제 청구액·잔액·토큰 사용량은 앱에서 확인하지 않습니다. 요청을 다시 전송하면 추가 비용이 발생할 수 있습니다.`;
 }
 function jobDestinationWarning(job) {
   const destination = jobDestination(job);
@@ -1094,7 +1104,7 @@ function syncConnection() {
   $('keyHint').hidden = connection.hasKey && !connectionError;
   $('keyHint').textContent = connection.hasKey && connectionError
     ? '연결 확인에 실패했습니다. API 연결 설정에서 인증과 모델을 다시 확인해 주세요.'
-    : '영상 자동 자막은 개인 API 또는 테스트 서버 연결 후 사용할 수 있습니다.';
+    : '파일 자막 생성에 연결이 필요합니다.';
   $('keyStatus').textContent = connection.hasPersonalKey ? `API 키가 암호화되어 저장되어 있습니다.${running ? ' 키를 바꾸거나 삭제하려면 작업을 일시정지해 주세요.' : ''}` : '저장된 API 키가 없습니다. 본인의 키를 입력해 주세요.';
   $('connectionSummary').textContent = `${modeLabel} · ${!connection.hasKey ? '연결 정보 저장 필요' : connectionError ? '연결 확인 실패 · 설정을 확인해 주세요.' : matches ? '인증 · 모델 접근 확인됨' : '저장됨 · 연결 미확인'}`;
   $('connectionCard').classList.toggle('connected', connection.hasKey);
@@ -1108,8 +1118,6 @@ function syncConnection() {
     ? '연결 저장됨 · 전송·요금은 시작 전에 확인'
     : '개인 API 또는 테스트 서버 연결 필요';
   $('connectionHeading').hidden = connection.hasKey;
-  $('activeModel').hidden = connection.hasKey;
-  $('activeModel').textContent = `음성 인식: ${savedSettings.sttModel || DEFAULT_STT_MODEL} · ${savedSettings.translate ? `번역: ${savedSettings.translationModel}` : '번역 안 함'}`;
   $('settingsModel').textContent = `음성 인식: ${selected.sttModel} · ${selected.translate ? `번역: ${selected.translationModel}` : '번역 안 함'}`;
   $('apiSettingsSummary').textContent = `${modeLabel} · ${connection.hasKey ? (matches ? '연결 확인됨' : '연결 저장됨') : '연결 필요'}`;
   $('defaultSettingsSummary').textContent = settingsSummary(savedSettings);

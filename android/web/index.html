@@ -21,10 +21,10 @@
     <div id="messageBar" class="message-bar" hidden><p id="appMessage" class="message" role="status" hidden></p><button id="dismissMessage" type="button" aria-label="알림 닫기">닫기</button></div>
     <section id="videoView" aria-labelledby="videoHeading" hidden>
       <div class="section-heading"><div><p class="page-kicker">01 / NEW TASK</p><h2 id="videoHeading">새 자막 작업</h2></div></div>
-      <p class="page-description">파일을 선택하거나 마이크·오프라인 AI로 자막을 만듭니다.</p>
+      <p class="page-description">파일·마이크·오프라인 AI로 자막을 만드세요.</p>
       <section id="firstRunGuide" class="es2-state-panel first-run-guide" aria-labelledby="firstRunGuideHeading" hidden>
         <div class="first-run-heading"><h3 id="firstRunGuideHeading" class="es2-section-title">처음 시작하시나요?</h3><button id="dismissFirstRunGuide" type="button" aria-label="처음 사용 안내 닫기">닫기</button></div>
-        <p class="es2-supporting-text">만들려는 자막의 입력 방식을 선택해 주세요.</p>
+        <p class="es2-supporting-text">사용할 작업 방식을 선택하세요.</p>
         <div class="es2-action-row first-run-actions" role="group" aria-label="처음 사용할 작업 방식">
           <button id="guideFile" type="button" aria-pressed="false"><strong>영상·음성 파일</strong><span>API 연결 필요</span></button>
           <button id="guideMic" type="button" aria-pressed="false"><strong>마이크 인식</strong><span>기기 인식은 API 불필요</span></button>
@@ -50,17 +50,15 @@
           <div><p class="source-kicker">01 / FILE</p><h3 id="fileSourceHeading">파일에서 자막 만들기</h3></div>
           <span class="source-capacity">영상 최대 3시간</span>
         </div>
-        <p class="source-description">영상·음성 파일을 선택해 자막을 생성합니다.</p>
         <div class="start-actions">
           <button id="pickVideo" class="primary" type="button" disabled><span class="es-icon es-icon--video" aria-hidden="true"></span>영상 선택</button>
           <button id="importSubtitles" type="button"><span class="es-icon es-icon--add" aria-hidden="true"></span>자막 불러오기</button>
         </div>
         <p class="source-import-note">SRT·VTT·JSON은 API 없이 불러올 수 있습니다.</p>
-        <section id="connectionCard" class="connection-summary" aria-labelledby="connectionHeading" data-state="missing">
-          <div><h3 id="connectionHeading">자막 생성 연결 상태</h3><p id="connectionSummary" class="hint" role="status">API 연결 상태를 확인하고 있습니다.</p><p id="activeModel" class="hint">모델 설정을 확인하고 있습니다.</p></div>
+        <section id="connectionCard" class="connection-summary" aria-label="API 연결 상태" data-state="missing">
+          <div><h3 id="connectionHeading">API 연결</h3><p id="connectionSummary" class="hint" role="status">API 연결 상태를 확인하고 있습니다.</p><p id="keyHint" class="hint">파일 자막 생성에 연결이 필요합니다.</p></div>
           <button id="openConnection" type="button">API 연결 설정</button>
         </section>
-        <p id="keyHint" class="hint">영상 자동 자막은 개인 API 또는 테스트 서버 연결 후 사용할 수 있습니다.</p>
         <p id="cloudTransmissionNotice" class="job-ready-note" hidden></p>
         <div class="default-summary"><p id="videoSettingsSummary" class="hint"></p><button id="openDefaultSettings" type="button">기본 설정</button></div>
         <h4 id="preparedJobsHeading" class="prepared-jobs-heading" hidden>준비된 작업</h4>
@@ -94,7 +92,7 @@
       <p id="jobsSummary" class="jobs-overview" role="status" aria-live="polite">작업 상태를 확인하는 중입니다.</p>
       <div id="jobsQuickFilters" class="jobs-quick-filters" role="group" aria-label="작업 상태 바로 선택">
         <button type="button" data-job-filter="all" aria-pressed="true">전체</button>
-        <button type="button" data-job-filter="active" aria-pressed="false">진행 중</button>
+        <button type="button" data-job-filter="active" aria-pressed="false">진행·대기</button>
         <button type="button" data-job-filter="completed" aria-pressed="false">완료</button>
         <button type="button" data-job-filter="error" aria-pressed="false">오류</button>
       </div>
