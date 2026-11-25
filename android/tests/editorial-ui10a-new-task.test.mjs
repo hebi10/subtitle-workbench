@@ -136,6 +136,50 @@ test('UI-10-A first-use guide selects free paths without creating paid requests'
   });
 });
 
+test('SW-DESIGN-07-E dismisses optional first-use guidance without losing focus or task access', { skip: !enabled }, async () => {
+  await withNativeFixture(async page => {
+    const emptyJobs = async () => {
+      await page.evaluate(() => {
+        window.mockNative.jobs = [];
+        window.mockNative.hasPersonalKey = false;
+        window.mockNative.keyCheck = null;
+        window.nativeEvent({ type: 'status' });
+      });
+      await page.waitForFunction(() => document.querySelector('#jobsSummary').textContent.includes('전체 0개')
+        && document.querySelector('#chooseFileStatus').textContent.includes('API 연결 필요'));
+      await page.locator('#navVideo').click();
+    };
+    await emptyJobs();
+    assert.equal(await page.locator('#firstRunGuide').isVisible(), true);
+    await page.locator('#guideMic').click();
+    await page.locator('#dismissFirstRunGuide').click();
+    assert.equal(await page.locator('#firstRunGuide').isVisible(), false);
+    assert.equal(await page.locator('#sourceChoices').isVisible(), true);
+    assert.equal(await page.locator('#chooseMicrophone').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('#chooseMicrophone').evaluate(node => node === document.activeElement), true);
+    await page.locator('#chooseOffline').click();
+    assert.equal(await page.locator('#openOfflineModel').evaluate(node => node === document.activeElement), true);
+    await page.locator('#chooseFile').click();
+    assert.equal(await page.locator('#settingsView').isVisible(), true);
+    assert.equal(await page.locator('#apiSettings').evaluate(node => node.open), true);
+    await page.locator('#navVideo').click();
+    assert.equal(await page.locator('#firstRunGuide').isVisible(), false);
+    assert.equal(await page.locator('#importSubtitles').isEnabled(), true);
+    assert.equal(await page.evaluate(() => window.mockNative.calls.some(call =>
+      ['pickVideo', 'resume', 'openOnDevice', 'openCloudLive', 'openOfflineModel', 'checkConnection'].includes(call.method))), false);
+    await page.reload();
+    await page.waitForFunction(() => window.mockNative?.calls.some(item => item.method === 'status'));
+    await emptyJobs();
+    assert.equal(await page.locator('#firstRunGuide').isVisible(), false, 'dismissal survives reload even without jobs');
+    assert.equal(await page.locator('#sourceChoices').isVisible(), true);
+    assert.equal(await page.locator('#importSubtitles').isEnabled(), true);
+    await page.locator('#chooseMicrophone').click();
+    assert.equal(await page.locator('#openOnDevice').evaluate(node => node === document.activeElement), true);
+    assert.equal(await page.evaluate(() => window.mockNative.calls.some(call =>
+      ['pickVideo', 'resume', 'openOnDevice', 'openCloudLive', 'openOfflineModel', 'checkConnection'].includes(call.method))), false);
+  });
+});
+
 test('UI-10-A returning user gets one source selector, real prepared jobs and responsive actions', { skip: !enabled }, async () => {
   await withNativeFixture(async page => {
     await page.locator('#navVideo').click();

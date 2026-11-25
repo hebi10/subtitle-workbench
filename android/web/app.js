@@ -65,6 +65,8 @@ function dismissFirstRunGuide() {
   firstRunDismissed = true;
   try { localStorage.setItem(FIRST_RUN_GUIDE_KEY, 'dismissed'); } catch {}
   updateFirstRunGuide();
+  const selected = $('sourceChoices').querySelector('button[aria-pressed="true"]') || $('chooseFile');
+  selected.focus();
 }
 
 function selectSource(mode) {
