@@ -2198,3 +2198,32 @@ html { scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
 .settings-monetization { display: grid; gap: 10px; }
 .settings-monetization .hint { margin: 0; }
 .settings-monetization button { width: fit-content; }
+
+/* SW-FIX-09: measured navigation clearance for folding, rotation and enlarged system text. */
+html {
+  scroll-padding-top: var(--editor-top-clearance, 12px);
+  scroll-padding-bottom: calc(var(--app-nav-height, 112px) + 12px);
+}
+body main, body.is-editor main {
+  padding-bottom: calc(var(--app-nav-height, 112px) + 16px);
+}
+.app-nav button {
+  min-height: 48px;
+  min-width: 0;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  flex-wrap: wrap;
+}
+#settingsView :is(input,select,textarea,button),
+#editorView :is(input,select,textarea,button),
+#videoView :is(input,select,textarea,button),
+#resultsView :is(input,select,textarea,button) {
+  scroll-margin-bottom: 8px;
+}
+#editorView .cue {
+  scroll-margin-block: 12px 8px;
+}
+@media (max-height: 500px) {
+  #editorView .editor-feedback { position: static; }
+}

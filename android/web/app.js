@@ -803,9 +803,30 @@ function issueReasons(cue, index) {
 }
 function cueClock(value) { return Number.isFinite(Number(value)) && Number(value) >= 0 ? formatTimestamp(Number(value), '.') : '시간 확인 필요'; }
 function updateFeedbackSpace() {
-  const height = $('editorFeedback').getBoundingClientRect().height;
-  if (height) document.body.style.setProperty('--editor-status-height', `${Math.ceil(height)}px`);
+  const feedback = $('editorFeedback');
+  const height = Math.ceil(feedback.getBoundingClientRect().height);
+  const navHeight = Math.ceil(document.querySelector('.app-nav').getBoundingClientRect().height);
+  if (height) document.body.style.setProperty('--editor-status-height', `${height}px`);
   document.body.style.removeProperty('--editor-feedback-height');
+  if (navHeight) document.documentElement.style.setProperty('--app-nav-height', `${navHeight}px`);
+  const sticky = document.body.classList.contains('is-editor') && height > 0 && getComputedStyle(feedback).position === 'sticky';
+  document.documentElement.style.setProperty('--editor-top-clearance', `${sticky ? height + 12 : 12}px`);
+}
+
+function keepFocusedEditorControlVisible() {
+  requestAnimationFrame(() => {
+    const active = document.activeElement;
+    if (!active?.matches('#editorView input, #editorView textarea, #editorView select')) return;
+    const bounds = active.getBoundingClientRect();
+    const navTop = document.querySelector('.app-nav').getBoundingClientRect().top;
+    const feedback = $('editorFeedback');
+    const feedbackBounds = feedback.getBoundingClientRect();
+    const top = getComputedStyle(feedback).position === 'sticky' && feedbackBounds.top <= 1
+      ? feedbackBounds.bottom + 8 : 8;
+    if (bounds.top < top || bounds.bottom > navTop - 8) {
+      active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+  });
 }
 function updateEditorCueContext() {
   const cue = history.present[selectedIndex];
@@ -1370,6 +1391,14 @@ document.querySelectorAll('[data-export]').forEach((node) => node.addEventListen
 })));
 document.addEventListener('visibilitychange', () => { if (!document.hidden) void refresh(); else void flushSave().catch(() => {}); });
 setInterval(() => { if (!document.hidden) void refresh(); }, 3500);
-if (typeof ResizeObserver === 'function') new ResizeObserver(updateFeedbackSpace).observe($('editorFeedback'));
-window.addEventListener('resize', updateFeedbackSpace);
+if (typeof ResizeObserver === 'function') {
+  const layoutObserver = new ResizeObserver(updateFeedbackSpace);
+  layoutObserver.observe($('editorFeedback'));
+  layoutObserver.observe(document.querySelector('.app-nav'));
+}
+window.addEventListener('resize', () => {
+  updateFeedbackSpace();
+  keepFocusedEditorControlVisible();
+});
+updateFeedbackSpace();
 void refresh();

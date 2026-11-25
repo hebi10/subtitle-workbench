@@ -314,3 +314,61 @@ test('UI-10-H traces all eight Android screen contracts plus the browser three-t
   assert.equal(JSON.parse(manifest).images.phoneScreenshots.length, 8);
   assert.match(await readFile(join(root, 'AGENTS.md'), 'utf8'), /Play 배포 승인이 아니다/);
 });
+
+
+test('SW-FIX-09 Android navigation clearance follows actual height and short landscape editor reflows', { skip: !enabled }, async () => {
+  await useBrowser(true, async page => {
+    await page.locator('#navResults').click();
+    await page.locator('#resultJobSelector').selectOption('complete-1');
+    await page.waitForFunction(() => document.getElementById('resultName').textContent === '150분 인터뷰 테스트.mp4');
+    await page.locator('#editResult').click();
+    const input = page.locator('#editorView .cue.selected textarea').first();
+    await input.waitFor();
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.evaluate(() => {
+      const nav = document.querySelector('.app-nav');
+      nav.style.paddingTop = '64px'; // Deliberately enlarge nav beyond previous fixed padding.
+      nav.querySelectorAll('button').forEach(button => { button.style.fontSize = '20px'; });
+    });
+    await page.waitForFunction(() => {
+      const nav = document.querySelector('.app-nav');
+      return nav.getBoundingClientRect().height > 112 &&
+        parseFloat(getComputedStyle(document.querySelector('main')).paddingBottom) >= nav.getBoundingClientRect().height + 15 &&
+        parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom) >= nav.getBoundingClientRect().height + 11;
+    });
+    await measure(page, 'android-webview-mock', 'large-labels', 320, 'light');
+    await page.evaluate(() => {
+      const nav = document.querySelector('.app-nav');
+      nav.style.removeProperty('padding-top');
+      nav.querySelectorAll('button').forEach(button => button.style.removeProperty('font-size'));
+    });
+    await input.fill('폴더블 회전 후에도 보존');
+    await input.focus();
+    await page.setViewportSize({ width: 800, height: 360 });
+    await page.waitForFunction(() => getComputedStyle(document.getElementById('editorFeedback')).position === 'static' &&
+      getComputedStyle(document.documentElement).scrollPaddingTop === '12px');
+    assert.equal(await input.inputValue(), '폴더블 회전 후에도 보존');
+    assert.equal(await input.evaluate(n => n === document.activeElement), true);
+    await input.evaluate(node => node.scrollIntoView({ block: 'center', inline: 'nearest' }));
+    const visible = await input.evaluate(node => {
+      const box = node.getBoundingClientRect();
+      const nav = document.querySelector('.app-nav').getBoundingClientRect();
+      return box.top >= -1 && box.bottom <= nav.top + 1;
+    });
+    assert.equal(visible, true, 'focused editor remains above navigation in short landscape viewport');
+    await measure(page, 'android-webview-mock', 'folded-landscape', 800, 'light');
+  });
+});
+
+test('SW-FIX-09 wide short web viewport keeps preview and editing controls reachable', { skip: !enabled }, async () => {
+  await useBrowser(false, async page => {
+    await page.setViewportSize({ width: 1280, height: 360 });
+    await page.locator('#tab-edit').click();
+    assert.equal(await page.locator('#panel-edit .player-card').evaluate(node => getComputedStyle(node).position), 'static');
+    await measure(page, 'web', 'wide-short-edit', 1280, 'light');
+    await page.setViewportSize({ width: 1280, height: 844 });
+    assert.equal(await page.locator('#panel-edit .player-card').evaluate(node => getComputedStyle(node).position), 'sticky');
+    await page.setViewportSize({ width: 320, height: 480 });
+    await measure(page, 'web', 'narrow-short-edit', 320, 'dark');
+  });
+});

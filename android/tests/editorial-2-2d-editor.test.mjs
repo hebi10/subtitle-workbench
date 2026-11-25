@@ -170,7 +170,7 @@ test('2-D cue navigation honors search and does not invent video availability', 
   });
 });
 
-test('2-D keyboard viewport preserves the selected edit and sticky save feedback', { skip: !enabled }, async () => {
+test('2-D keyboard viewport preserves the selected edit and responsive save feedback', { skip: !enabled }, async () => {
   await withApp(async page => {
     await openEditor(page);
     await page.setViewportSize({ width: 390, height: 480 });
@@ -183,8 +183,19 @@ test('2-D keyboard viewport preserves the selected edit and sticky save feedback
       position: getComputedStyle(node).position,
       scrollMargin: getComputedStyle(document.querySelector('.cue.selected')).scrollMarginTop,
     }));
-    assert.equal(bar.position, 'sticky');
+    assert.equal(bar.position, 'static', 'short viewport releases the sticky header to preserve editing space');
     assert.match(bar.scrollMargin, /px/);
+    await textarea.evaluate(node => node.scrollIntoView({ block: 'center', inline: 'nearest' }));
+    assert.equal(await textarea.evaluate(node => {
+      const box = node.getBoundingClientRect();
+      return box.top >= -1 && box.bottom <= document.querySelector('.app-nav').getBoundingClientRect().top + 1;
+    }), true, 'the focused field fits above the bottom navigation');
+    await page.waitForFunction(() => document.getElementById('saveStatus').textContent.includes('기기에 저장됨'));
+    await page.locator('#editorFeedback').scrollIntoViewIfNeeded();
+    assert.equal(await page.locator('#saveStatus').isVisible(), true);
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.locator('#editorFeedback').evaluate(node => getComputedStyle(node).position), 'sticky');
+    assert.equal(await textarea.inputValue(), '키보드 축소 화면 테스트');
   });
 });
 
