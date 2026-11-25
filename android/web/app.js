@@ -693,10 +693,17 @@ async function ensureResult() {
 }
 function renderResultQuickList(candidates) {
   const list = $('resultQuickList');
+  const browse = $('resultBrowse');
   const items = candidates.slice(0, 3);
   const selected = candidates.find(job => job.id === current?.id);
   if (selected && !items.some(job => job.id === selected.id)) items[items.length - 1] = selected;
   list.hidden = candidates.length < 2;
+  browse.hidden = list.hidden;
+  if (browse.hidden) browse.open = false;
+  $('resultBrowseSummary').textContent = '빠른 선택';
+  $('resultBrowseHint').textContent = candidates.length > items.length
+    ? `전체 ${candidates.length}개 중 ${items.length}개 · 전체 목록은 작업 선택에서 확인하세요.`
+    : `결과 ${candidates.length}개`;
   const key = JSON.stringify([items.map(job => [job.id, job.name, job.status, job.durationMs, Boolean(job.uri)]), current?.id, changingJob, refreshingResultId]);
   if (list.dataset.renderKey === key) return;
   const focusedId = list.contains(document.activeElement) ? document.activeElement.dataset.resultId : null;
@@ -717,7 +724,10 @@ function renderResultQuickList(candidates) {
     return node;
   });
   list.replaceChildren(...rows);
-  if (focusedId) rows.find(node => node.dataset.resultId === focusedId && !node.disabled)?.focus({ preventScroll: true });
+  if (focusedId && !browse.hidden) {
+    const target = rows.find(node => node.dataset.resultId === focusedId && !node.disabled) || $('resultBrowseSummary');
+    target.focus({ preventScroll: true });
+  }
 }
 
 function renderResults() {
