@@ -454,3 +454,37 @@ test('SW-DESIGN-03 prepared rows keep preflight disclosure, update workload and 
     assert.equal(await page.evaluate(() => window.mockNative.calls.some(c => ['resume','pause','buySubscription','setKey','setReviewRelay'].includes(c.method))), false);
   });
 });
+
+
+test('SW-DESIGN-04 inline preview flushes edits before opening and rejects missing media', { skip: !enabled }, async () => {
+  await useBrowser(true, async page => {
+    await page.locator('#navResults').click();
+    await page.locator('#resultJobSelector').selectOption('complete-1');
+    await page.waitForFunction(() => document.getElementById('resultName').textContent === '150분 인터뷰 테스트.mp4');
+    await page.locator('#editResult').click();
+    const field = page.locator('#cueList .cue.selected textarea').first();
+    await field.fill('저장된 수정 자막을 함께 보기');
+    await page.locator('#inlinePreview').click();
+    await page.waitForFunction(() => window.mockNative.inlinePreviewJob === 'complete-1');
+    const calls = await page.evaluate(() => window.mockNative.calls);
+    const opened = calls.findIndex(c => c.method === 'openInlinePreview');
+    const saved = calls.findIndex(c => c.method === 'saveCues' && c.params.cues[0].original === '저장된 수정 자막을 함께 보기');
+    assert.ok(saved >= 0 && opened > saved);
+    assert.equal(calls[opened].params.jobId, 'complete-1');
+    assert.deepEqual(Object.keys(calls[opened].params).sort(), ['jobId','positionMs']);
+    await field.fill('저장 실패 검증');
+    await page.evaluate(() => { window.mockNative.failSave = true; });
+    await page.locator('#inlinePreview').click();
+    await page.locator('#retrySave').waitFor({ state: 'visible' });
+    assert.equal(await page.evaluate(() => window.mockNative.calls.filter(c => c.method === 'openInlinePreview').length), 1);
+    assert.equal(await field.inputValue(), '저장 실패 검증');
+    await page.evaluate(() => { window.mockNative.failSave = false; });
+    await page.locator('#retrySave').click();
+    await page.locator('#navResults').click();
+    await page.waitForFunction(() => window.mockNative.inlinePreviewJob === null);
+    await page.locator('#navVideo').click();
+    await page.locator('#importSubtitles').click();
+    await page.waitForFunction(() => !document.getElementById('editorView').hidden && document.getElementById('editorName').textContent.includes('가져온'));
+    assert.equal(await page.locator('#inlinePreview').isDisabled(), true);
+  });
+});
