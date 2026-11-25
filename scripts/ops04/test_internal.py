@@ -57,6 +57,31 @@ class Ops04SafetyTests(unittest.TestCase):
                     internal.guard()
                 api.assert_not_called()
 
+    def test_eleven_digit_build_id_checks_api_provenance(self):
+        data = self.environment(mode="check")
+        data["BUILD_RUN_ID"] = "45564726965"
+        data["BUILD_WORKFLOW_FILE"] = ".github/workflows/play-internal.yml"
+        run = {
+            "id": 45564726965,
+            "head_sha": data["EXPECTED_MAIN_SHA"],
+            "head_branch": "main",
+            "event": "workflow_dispatch",
+            "status": "completed",
+            "conclusion": "success",
+            "repository": {"full_name": data["GITHUB_REPOSITORY"]},
+            "path": data["BUILD_WORKFLOW_FILE"],
+        }
+        main = {"object": {"sha": data["EXPECTED_MAIN_SHA"]}}
+        artifacts = {"total_count": 1, "artifacts": [{
+            "name": data["ARTIFACT_NAME"], "expired": False, "size_in_bytes": 10001,
+        }]}
+        with patch.dict(os.environ, data, clear=True):
+            with patch.object(internal, "github", side_effect=[main, run, artifacts]):
+                internal.guard()
+            with patch.object(internal, "github", side_effect=[main, dict(run, id=45564726966)]):
+                with self.assertRaisesRegex(internal.GateError, "Build run source or status differs"):
+                    internal.guard()
+
     def test_missing_bundle_fails_closed(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(internal, "BUNDLE_PATH", Path(folder)):

@@ -64,12 +64,14 @@ env:
   APPROVAL_PHRASE: ${{ inputs.approval_phrase }}
   APP_PACKAGE: com.haebi.subtitle
   BUILD_WORKFLOW_FILE: .github/workflows/play-internal.yml
-  PINNED_UPLOAD_CERT: ${{ secrets.ANDROID_UPLOAD_CERT_SHA256 }}
-  ANDROID_UPLOAD_CERT_SHA256: ${{ secrets.ANDROID_UPLOAD_CERT_SHA256 }}
 jobs:
   verify:
     if: github.repository == 'hebi10/subtitle-workbench' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment: google-play
+    permissions:
+      contents: read
+      actions: read
     outputs:
       result: ${{ steps.verify.outputs.aab }}
     steps:
@@ -100,6 +102,8 @@ jobs:
         id: verify
         env:
           BUNDLETOOL_JAR: ${{ runner.temp }}/bundletool.jar
+          PINNED_UPLOAD_CERT: ${{ secrets.ANDROID_UPLOAD_CERT_SHA256 }}
+          ANDROID_UPLOAD_CERT_SHA256: ${{ secrets.ANDROID_UPLOAD_CERT_SHA256 }}
         run: python3 scripts/ops04/internal.py verify
       - uses: actions/upload-artifact@v4
         with:
@@ -144,6 +148,8 @@ jobs:
         id: verified
         env:
           BUNDLETOOL_JAR: ${{ runner.temp }}/bundletool.jar
+          PINNED_UPLOAD_CERT: ${{ secrets.ANDROID_UPLOAD_CERT_SHA256 }}
+          ANDROID_UPLOAD_CERT_SHA256: ${{ secrets.ANDROID_UPLOAD_CERT_SHA256 }}
         run: python3 scripts/ops04/internal.py verify
       - name: Require existing app-scoped Play WIF
         env:
