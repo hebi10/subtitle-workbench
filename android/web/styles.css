@@ -2359,7 +2359,7 @@ main > section > .page-description { margin: 0 0 12px; font-size: 13px; line-hei
 #jobsView .job-inspection > summary { min-height: 48px; }
 
 /* A03 / selectable result rows, backed by existing job selection (no synthetic thumbnail). */
-.result-quick-list { display: grid; gap: 6px; margin: 0 0 10px; }
+.result-quick-list { display: grid; gap: 6px; margin: 10px 0 0; }
 .result-quick-row {
   display: grid; grid-template-columns: 36px minmax(0, 1fr) 10px;
   align-items: center; gap: 10px; min-width: 0; min-height: 54px;
