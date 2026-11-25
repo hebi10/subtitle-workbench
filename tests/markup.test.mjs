@@ -124,12 +124,14 @@ test('subtitle quality settings remain in the generator form', () => {
   assert.ok(html.includes('id="maxSubtitleCps" type="number" value="18"'));
 });
 
-test('batch input and persistent page-session result selector remain available', () => {
+test('batch input and optional local result storage remain available', () => {
   const html = readFileSync('index.html', 'utf8');
 
   assert.ok(html.includes('id="videoFile" class="visually-hidden-file" type="file" accept="video/*,audio/*" multiple'));
   assert.ok(html.includes('id="jobResultSelect"'));
-  assert.ok(html.includes('결과와 편집 내용은 현재 페이지에서 유지됩니다.'));
+  assert.match(html, /자동 저장 상태를 확인하세요/);
+  assert.match(html, /id="workspaceStorageToggle"[^>]*>자동 저장 켜기<\/button>/);
+  assert.match(html, /꺼져 있으면 현재 페이지의 임시 데이터/);
 });
 
 test('mobile video picker and metadata loading have fallbacks', () => {
@@ -187,7 +189,8 @@ test('Editorial Studio 2.0 3-B keeps existing web editor controls and moves medi
   const editor = html.slice(html.indexOf('id="panel-edit"'), html.indexOf('id="panel-export"'));
   assert.ok(editor.indexOf('class="panel-card player-card"') < editor.indexOf('class="editor-main panel-card"'));
   assert.ok(editor.indexOf('id="editorCueContext"') < editor.indexOf('id="editorBody"'));
-  assert.match(editor, /수정 내용은 현재 페이지에서 유지됩니다/);
+  assert.match(editor, /자동 저장을 켜면 최신 편집 내용과 싱크가 복구됩니다/);
+  assert.match(editor, /실행 취소·다시 실행 이력은 현재 탭에서만 유지됩니다/);
   for (const id of [
     'editorCueContext', 'editorCuePosition', 'editorCueTiming', 'editorCueSpeaker',
     'editorCueOriginal', 'editorCueTranslated', 'editorPrevCue', 'editorNextCue', 'editorFocusCue',
