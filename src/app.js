@@ -2,6 +2,7 @@ import {
   buildChunkPlan,
   createTranslationFailureLogDownload,
   createSubtitleDownloads,
+  describeApiWorkload,
   formatTimestamp,
   formatVtt,
   getTranslationFailures,
@@ -28,12 +29,13 @@ import {
   visibleSubtitlePreview,
 } from './ui-state.js';
 import {
-  findActiveSubtitle,
+  createSubtitleLookup,
   formatSubtitleForMode,
   parseSubtitleFileText,
 } from './subtitle-player.js';
 import {
   filterSubtitles,
+  canSplitSubtitle,
   getSubtitleEditMetrics,
   mergeShortSubtitles,
   mergeSubtitleWithNext,
@@ -67,6 +69,7 @@ const state = {
   duration: 0,
   subtitles: [],
   playerSubtitles: [],
+  playerLookup: createSubtitleLookup([]),
   activeSubtitleIndex: -1,
   editorSelectedCueIndex: -1,
   editorVisibleCueIndices: [],
@@ -158,6 +161,9 @@ const refs = {
   credentialError: document.querySelector('#credentialError'),
   startRequirement: document.querySelector('#startRequirement'),
   generateFileStatus: document.querySelector('#generateFileStatus'),
+  generateCostStatus: document.querySelector('#generateCostStatus'),
+  plannedAudioStatus: document.querySelector('#plannedAudioStatus'),
+  generateImportSubtitles: document.querySelector('#generateImportSubtitles'),
   generateConnectionStatus: document.querySelector('#generateConnectionStatus'),
   generateLanguageStatus: document.querySelector('#generateLanguageStatus'),
   generateWorkflowStatus: document.querySelector('#generateWorkflowStatus'),
@@ -418,6 +424,7 @@ function bindEvents() {
   refs.workspaceStorageRetry.addEventListener('click', () => queueWorkspaceSave());
   refs.settingsForm.addEventListener('submit', (event) => event.preventDefault());
   refs.retryTranslationButton.addEventListener('click', retryTranslation);
+  refs.generateImportSubtitles.addEventListener('click', () => refs.subtitleFileInput.click());
   refs.attachMediaFile.addEventListener('change', () => {
     const [file] = refs.attachMediaFile.files;
     if (file) attachMediaToResult(file);
@@ -732,6 +739,12 @@ function updateStartButtonState() {
   refs.generateFileStatus.textContent = preparation.file;
   refs.generateConnectionStatus.textContent = preparation.connection;
   refs.generateLanguageStatus.textContent = preparation.language;
+  const workload = describeApiWorkload({
+    durationSeconds: hasFile && hasDuration ? state.duration : 0,
+    fileCount: state.selectedFiles.length || 1,
+    translationEnabled: refs.translationEnabled.checked,
+  });
+  if (refs.generateCostStatus.textContent !== workload) refs.generateCostStatus.textContent = workload;
   const next = state.isBusy
     ? { state: 'running', text: '자막 생성 진행 중 · 오른쪽 진행 상태에서 처리 과정을 확인하세요.' }
     : refs.statusBadge.dataset.state === 'failed'
@@ -925,6 +938,12 @@ async function runPipelineForCurrentFile(batchInfo, settings, signal) {
   });
 
   renderChunks(chunks);
+  refs.plannedAudioStatus.textContent = describeApiWorkload({
+    durationSeconds: state.duration, chunkCount: chunks.length,
+    extractedSeconds: chunks.reduce((total, chunk) => total + chunk.extractEnd - chunk.extractStart, 0),
+    translationEnabled: settings.translationEnabled,
+  });
+  refs.plannedAudioStatus.hidden = false;
   setStep('split', 'active');
   setStepProgress('split', 0);
   setProgress(30, `${chunks.length}개 오디오 조각 준비 중`);
@@ -1270,8 +1289,12 @@ function updateEditControls() {
   [refs.applyGlobalOffset, refs.mergeShortSubtitles].forEach((button) => {
     button.disabled = state.isBusy || state.subtitles.length === 0;
   });
+  const cues = sortSubtitles(state.subtitles);
   refs.editorBody.querySelectorAll('input, textarea, button').forEach((control) => {
-    control.disabled = state.isBusy;
+    const action = control.dataset.editorAction;
+    control.disabled = state.isBusy ||
+      (action === 'split' && !canSplitSubtitle(cues[Number(control.dataset.editIndex)])) ||
+      (action === 'seek' && !state.file);
   });
   updateEditorCueNavigation();
 }
@@ -1728,7 +1751,7 @@ function handleEditorAction(button) {
 
   if (button.dataset.editorAction === 'seek') {
     const subtitle = sortSubtitles(state.subtitles)[index];
-    if (subtitle) {
+    if (subtitle && state.file) {
       refs.videoPreview.currentTime = Math.max(0, Number(subtitle.start || 0) + state.subtitleOffsetSeconds);
       renderSubtitlePlayer();
     }
@@ -1763,6 +1786,7 @@ function applyGlobalSubtitleOffset() {
 function syncSubtitleOutputs() {
   state.subtitles = sortSubtitles(state.subtitles);
   state.playerSubtitles = sortSubtitles(state.subtitles);
+  state.playerLookup = createSubtitleLookup(state.playerSubtitles);
   renderPreview(state.subtitles);
   renderEditor();
   renderSubtitlePlayer();
@@ -1780,6 +1804,7 @@ function setPlayerSubtitles(subtitles, label, options = {}) {
   }
 
   state.playerSubtitles = sortSubtitles(subtitles);
+  state.playerLookup = createSubtitleLookup(state.playerSubtitles);
   refs.subtitleFileMeta.textContent = label;
   renderSubtitlePlayer();
   refreshDownloadsForCurrentOffset();
@@ -1787,6 +1812,7 @@ function setPlayerSubtitles(subtitles, label, options = {}) {
 
 function clearPlayerSubtitles() {
   state.playerSubtitles = [];
+  state.playerLookup = createSubtitleLookup([]);
   state.subtitleOffsetSeconds = 0;
   refs.subtitleFileInput.value = '';
   refs.subtitleFileMeta.textContent = 'SRT, VTT, JSON 자막 파일을 다시 불러올 수 있습니다.';
@@ -1819,17 +1845,13 @@ function renderSubtitlePlayer() {
     : '영상이나 오디오를 선택하면 이곳에서 미리 볼 수 있습니다.';
   refs.subtitleOffsetValue.textContent = `${state.subtitleOffsetSeconds.toFixed(1)}초`;
 
-  const activeSubtitle = findActiveSubtitle(
-    state.playerSubtitles,
-    refs.videoPreview.currentTime || 0,
-    state.subtitleOffsetSeconds,
-  );
-  const nextActiveIndex = activeSubtitle ? state.playerSubtitles.indexOf(activeSubtitle) : -1;
+  const active = hasMedia ? state.playerLookup.at(refs.videoPreview.currentTime || 0, state.subtitleOffsetSeconds) : null;
+  const activeSubtitle = active?.subtitle ?? null;
+  const nextActiveIndex = active?.index ?? -1;
   if (nextActiveIndex !== state.activeSubtitleIndex) {
+    refs.editorBody.querySelector(`[data-cue-index="${state.activeSubtitleIndex}"]`)?.classList.remove('is-active-cue');
     state.activeSubtitleIndex = nextActiveIndex;
-    refs.editorBody.querySelectorAll('[data-cue-index]').forEach((row) => {
-      row.classList.toggle('is-active-cue', Number(row.dataset.cueIndex) === nextActiveIndex);
-    });
+    refs.editorBody.querySelector(`[data-cue-index="${nextActiveIndex}"]`)?.classList.add('is-active-cue');
   }
   const mode = refs.subtitleDisplayMode.value;
   const { primary, secondary } = formatSubtitleForMode(activeSubtitle, mode);
@@ -2039,6 +2061,8 @@ function clearOutputs() {
     refs.chunksList.parentElement.open = false;
   }
   refs.chunkSummary.textContent = '없음';
+  refs.plannedAudioStatus.hidden = true;
+  refs.plannedAudioStatus.textContent = '';
   refs.subtitleCount.textContent = '0개';
   refs.logOutput.textContent = '';
   renderPreview([]);
@@ -2082,6 +2106,7 @@ function setBusy(isBusy) {
   });
   refs.fileInput.disabled = isBusy;
   refs.subtitleFileInput.disabled = isBusy;
+  refs.generateImportSubtitles.disabled = isBusy;
   refs.attachMediaFile.disabled = isBusy;
   ['importSubtitlesEmpty', 'importSubtitlesExport', 'goGenerateEmpty', 'goGenerateExport'].forEach((id) => {
     document.getElementById(id).disabled = isBusy;

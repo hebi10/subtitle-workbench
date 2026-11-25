@@ -18,7 +18,6 @@ import androidx.media3.common.Player;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.ui.PlayerView;
 import org.json.JSONArray;
-import org.json.JSONObject;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -27,7 +26,9 @@ public final class PreviewActivity extends Activity {
     private ExoPlayer player;
     private PlayerView view;
     private TextView subtitle;
-    private JSONArray cues = new JSONArray();
+    private PreviewCueIndex cues = new PreviewCueIndex(new JSONArray());
+    private boolean playbackError;
+    private boolean cueLoadError;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private long position;
     private boolean playWhenReady = true;
@@ -35,18 +36,10 @@ public final class PreviewActivity extends Activity {
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final Runnable update = new Runnable() {
         @Override public void run() {
-            if (player == null) return;
-            double seconds = player.getCurrentPosition() / 1000.0;
-            String text = "";
-            for (int i = 0; i < cues.length(); i++) {
-                JSONObject cue = cues.optJSONObject(i);
-                if (cue != null && cue.optDouble("start") <= seconds && cue.optDouble("end") > seconds) {
-                    text = cue.optString("translated");
-                    if (text.isEmpty()) text = cue.optString("original");
-                    break;
-                }
-            }
-            subtitle.setText(text);
+            if (player == null || playbackError) return;
+            String text = cueLoadError ? "저장된 자막을 불러올 수 없습니다. 편집 화면으로 돌아가 확인해 주세요."
+                    : cues.textAt(player.getCurrentPosition() / 1000.0);
+            if (!text.contentEquals(subtitle.getText())) subtitle.setText(text);
             handler.postDelayed(this, 100);
         }
     };
@@ -80,18 +73,22 @@ public final class PreviewActivity extends Activity {
         setContentView(layout);
         io.execute(() -> {
             try (JobStore store = new JobStore(this)) {
-                JSONArray loaded = store.cues(getIntent().getStringExtra("jobId"));
+                PreviewCueIndex loaded = new PreviewCueIndex(store.cues(getIntent().getStringExtra("jobId")));
                 handler.post(() -> { if (!destroyed) cues = loaded; });
-            } catch (Exception ignored) { }
+            } catch (Exception ignored) {
+                handler.post(() -> { if (!destroyed) cueLoadError = true; });
+            }
         });
     }
 
     @Override protected void onStart() {
         super.onStart();
+        playbackError = false;
         player = new ExoPlayer.Builder(this).build();
         view.setPlayer(player);
         player.addListener(new Player.Listener() {
             @Override public void onPlayerError(PlaybackException error) {
+                playbackError = true;
                 handler.removeCallbacks(update);
                 subtitle.setText("영상을 재생할 수 없습니다. 원본 파일의 위치와 지원 코덱을 확인해 주세요.");
             }

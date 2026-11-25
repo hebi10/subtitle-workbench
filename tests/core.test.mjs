@@ -615,3 +615,20 @@ test('last extracted media boundary caps timestamps without generating zero-leng
   assert.equal(split.length, 1);
   assert.equal(split[0].end, 0.001);
 });
+
+
+test('API workload guidance separates source length, planned extracted audio and unknown billing', async () => {
+  const { describeApiWorkload } = await import('../src/core.js');
+  assert.match(describeApiWorkload(), /파일 길이를 확인/);
+  const threeHours = describeApiWorkload({ durationSeconds: 10800, chunkCount: 26, translationEnabled: false });
+  assert.match(threeHours, /3:00:00/);
+  assert.match(threeHours, /26구간/);
+  assert.match(threeHours, /번역 안 함/);
+  const multi = describeApiWorkload({ durationSeconds: 600, fileCount: 3, chunkCount: 2, extractedSeconds: 601 });
+  assert.match(multi, /현재 파일 길이 10:00/);
+  assert.match(multi, /2구간/);
+  assert.match(multi, /10:01 \(패딩 포함\)/);
+  assert.match(multi, /인식 후 토큰 사용량 결정/);
+  assert.match(multi, /나머지 길이는 처리 시 확인/);
+  assert.doesNotMatch(multi, /[₩$]|원 청구/);
+});

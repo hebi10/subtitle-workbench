@@ -84,9 +84,13 @@ export function updateSubtitleTextAt(subtitles, index, field, value) {
       [safeField]: cleanSubtitleText(value),
     };
 
-    if (safeField === 'translated' && next.status === 'failed' && next.translated) {
-      next.status = 'edited';
-      delete next.translationError;
+    if (safeField === 'translated' && next.translated !== cleanSubtitleText(subtitle.translated ?? '')) {
+      if (next.translated && !isFailureMarker(next.translated)) {
+        next.status = 'edited';
+        delete next.translationError;
+      } else if (next.status === 'translated' || next.status === 'edited') {
+        next.status = 'transcribed';
+      }
     }
 
     return next;
@@ -139,18 +143,28 @@ export function updateSubtitleTimingAt(subtitles, index, timing = {}) {
   });
 }
 
+export function canSplitSubtitle(subtitle) {
+  if (!subtitle) return false;
+  const start = Number(subtitle.start), end = Number(subtitle.end);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 ||
+      Math.round(end * 1000) - Math.round(start * 1000) < 2) return false;
+  return [subtitle.original ?? subtitle.text ?? '', subtitle.translated ?? '']
+    .some(value => !isFailureMarker(value) && graphemes(cleanSubtitleText(value)).length > 1);
+}
+
 export function splitSubtitleAt(subtitles, index) {
   const sorted = sortSubtitles(subtitles);
   const subtitle = sorted[index];
-  if (!subtitle) {
-    return sorted;
-  }
+  if (!canSplitSubtitle(subtitle)) return sorted;
 
-  const start = toNumber(subtitle.start, 0);
-  const end = Math.max(toNumber(subtitle.end, start + 0.001), start + 0.001);
-  const midpoint = roundSeconds(start + (end - start) / 2);
+  const startMs = Math.round(Number(subtitle.start) * 1000);
+  const endMs = Math.round(Number(subtitle.end) * 1000);
+  const start = startMs / 1000, end = endMs / 1000;
+  const midpoint = (startMs + Math.floor((endMs - startMs) / 2)) / 1000;
   const [originalA, originalB] = splitTextInHalf(subtitle.original ?? subtitle.text ?? '');
-  const [translatedA, translatedB] = splitTextInHalf(subtitle.translated ?? '');
+  const [translatedA, translatedB] = isFailureMarker(subtitle.translated)
+    ? [subtitle.translated, subtitle.translated] : splitTextInHalf(subtitle.translated ?? '');
+  if ((!originalA && !translatedA) || (!originalB && !translatedB)) return sorted;
 
   const first = {
     ...subtitle,
@@ -286,6 +300,14 @@ function toNumber(value, fallback) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+const graphemeSegmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
+function graphemes(value) {
+  return graphemeSegmenter ? Array.from(graphemeSegmenter.segment(value), item => item.segment) : Array.from(value);
+}
+function isFailureMarker(value) {
+  return ['[번역 실패]', '[번역 불가]'].includes(cleanSubtitleText(value ?? ''));
+}
+
 function splitTextInHalf(value) {
   const text = cleanSubtitleText(value);
   if (!text) {
@@ -294,8 +316,9 @@ function splitTextInHalf(value) {
 
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length <= 1) {
-    const midpoint = Math.ceil(text.length / 2);
-    return [text.slice(0, midpoint).trim(), text.slice(midpoint).trim()];
+    const units = graphemes(text);
+    const midpoint = Math.ceil(units.length / 2);
+    return [units.slice(0, midpoint).join('').trim(), units.slice(midpoint).join('').trim()];
   }
 
   const midpoint = Math.ceil(words.length / 2);

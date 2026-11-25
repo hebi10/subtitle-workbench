@@ -32,7 +32,9 @@
         </div>
         <details class="first-run-requirements">
           <summary>작업 방식별 연결 안내</summary>
-          <p class="es2-supporting-text">파일 자막과 GPT 실시간 인식에는 개인 API 또는 테스트 서버 연결이 필요합니다. 기기 마이크와 설치된 오프라인 모델은 개인 API 없이 이용할 수 있습니다.</p>
+          <p class="es2-supporting-text">파일 자막과 GPT 실시간 인식에는 개인 API 또는 테스트 서버 연결이 필요합니다. 개인 API는 별도 사용료가 발생합니다. 기기 마이크와 설치된 오프라인 모델은 개인 API 없이 이용할 수 있습니다. 모델 다운로드에는 데이터 통신이 필요할 수 있습니다.</p>
+          <p class="es2-supporting-text">이미 SRT·VTT·JSON이 있다면 인식 없이 바로 편집할 수 있습니다.</p>
+          <button id="guideImportSubtitles" type="button">기존 자막 불러오기</button>
         </details>
       </section>
       <section id="sourceChoices" class="source-choices" aria-labelledby="sourceChoicesHeading">
@@ -231,8 +233,8 @@
       <details id="dataSettings" class="settings-group"><summary><span class="settings-index" aria-hidden="true">03 / DATA</span>전송 데이터 · 비용 · 이어하기</summary>
         <div class="settings-section settings-data-guide">
           <section><h4>전송 데이터</h4><p class="hint">파일 자막 생성 시 영상에서 추출한 오디오 구간과 번역에 필요한 자막 텍스트만 선택한 API/테스트 서버로 전송됩니다. 원본 영상 파일 자체를 클라우드에 보관하는 기능은 없습니다. 기기 온디바이스·Vosk 인식은 별도 실행 방식입니다.</p></section>
-          <section><h4>요금 및 사용량</h4><p class="hint">개인 API는 본인 OpenAI 계정으로 실제 요청한 만큼 청구될 수 있습니다. 연결 확인은 결제 상태·잔액·월 누적 비용을 조회하지 않습니다. 테스트 서버는 해당 서버의 공유 사용량 한도를 적용합니다.</p></section>
-          <section><h4>작업 이어하기</h4><p class="hint">처리한 구간과 자막이 기기에 저장된 경우 남은 구간부터 수동으로 이어할 수 있습니다. 강제 중지·재부팅 후에는 앱을 다시 열고 작업 관리에서 '이어하기'를 선택하세요. 자동 재시작 기능은 제공하지 않습니다.</p></section>
+          <section><h4>요금 및 사용량</h4><p class="hint">개인 API는 본인 OpenAI 계정으로 실제 요청한 만큼 청구될 수 있습니다. ChatGPT 구독 및 앱 광고 제거 구독에는 API 비용이 포함되지 않습니다. 생성 전 파일 길이와 전사 구간을 확인하고 OpenAI API 가격표에서 선택 모델의 단가를 확인하세요. 연결 확인은 결제 상태·잔액·월 누적 비용을 조회하지 않습니다. 테스트 서버는 해당 서버의 공유 사용량 한도를 적용합니다.</p></section>
+          <section><h4>작업 이어하기</h4><p class="hint">처리한 구간과 자막이 기기에 저장된 경우 남은 구간부터 수동으로 이어할 수 있습니다. 강제 중지·재부팅 후에는 앱을 다시 열고 작업 관리에서 '이어하기'를 선택하세요. 시스템이 재시작을 허용하는 안전한 단계는 이어질 수 있습니다. 서버 처리 여부가 불확실한 유료 요청은 일시정지되며 수동 재요청 시 비용이 추가될 수 있습니다.</p></section>
           <section><h4>원본 파일</h4><p class="hint">원본 파일을 이동하거나 삭제하면 이어하기와 미리보기가 불가능할 수 있습니다.</p></section>
         </div>
       </details>

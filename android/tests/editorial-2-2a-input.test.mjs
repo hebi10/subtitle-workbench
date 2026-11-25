@@ -171,7 +171,13 @@ test('UI-09-C identifies API prerequisites without changing original launch gate
     assert.equal(await page.evaluate(() => window.mockNative.calls.some(c => c.method === 'pickVideo')),
       false, 'connection needed: must not launch picker');
     await page.locator('#navVideo').click();
-    await page.locator('#importSubtitles').click();
+    await page.evaluate(() => {
+      window.mockNative.jobs.splice(0);
+      window.nativeEvent({ type: 'status' });
+    });
+    await page.locator('#firstRunGuide').waitFor({ state: 'visible' });
+    await page.locator('#firstRunGuide .first-run-requirements > summary').click();
+    await page.locator('#guideImportSubtitles').click();
     await page.waitForFunction(() => window.mockNative.calls.some(c => c.method === 'importSubtitles'));
     await page.locator('#editorView').waitFor({ state: 'visible' });
     assert.equal(await page.evaluate(() => window.mockNative.calls.some(c => c.method === 'pickVideo')),

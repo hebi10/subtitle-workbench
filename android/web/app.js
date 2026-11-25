@@ -1,5 +1,5 @@
-import { sortSubtitles, formatTimestamp, formatSrt, formatVtt, toSubtitleJson, sanitizeFileBase, speakerMarkedText } from '../shared/core.js';
-import { updateSubtitleTextAt, updateSubtitleTimingAt, updateSpeakerAt, splitSubtitleAt, mergeSubtitleWithNext } from '../shared/subtitle-editor.js';
+import { sortSubtitles, formatTimestamp, formatSrt, formatVtt, toSubtitleJson, sanitizeFileBase, speakerMarkedText, describeApiWorkload } from '../shared/core.js';
+import { updateSubtitleTextAt, updateSubtitleTimingAt, updateSpeakerAt, canSplitSubtitle, splitSubtitleAt, mergeSubtitleWithNext } from '../shared/subtitle-editor.js';
 import { createEditHistory, commitEdit, undoEdit, redoEdit } from '../shared/edit-history.js';
 import { parseSubtitleFileText } from '../shared/subtitle-player.js';
 
@@ -889,7 +889,10 @@ function syncEditorButtons() {
   $('preview').disabled = !current?.uri;
   $('exportNote').textContent = editable() ? '번역이 없는 자막은 원문으로 내보냅니다.' : '현재까지 저장된 부분 자막을 내보냅니다. 번역이 없으면 원문을 사용합니다.';
   document.querySelectorAll('[data-export]').forEach((node) => { node.disabled = resultExportInFlight || changingJob || refreshingResultId === current?.id || !history.present.length; });
-  document.querySelectorAll('#cueList input, #cueList textarea, #cueList [data-edit]').forEach((node) => { node.disabled = !editable(); });
+  document.querySelectorAll('#cueList input, #cueList textarea, #cueList [data-edit]').forEach((node) => {
+    node.disabled = !editable() ||
+      (node.dataset.splitIndex != null && !canSplitSubtitle(history.present[Number(node.dataset.splitIndex)]));
+  });
   document.querySelectorAll('[data-last]').forEach((node) => { node.disabled = true; });
   const pages = Math.max(1, Math.ceil(filteredIndices().length / PAGE_SIZE));
   $('prevPage').disabled = page === 0;
@@ -965,7 +968,7 @@ function renderCues() {
     detail.append(actions);
     const details = el('details'); details.append(el('summary', '자막 분할 · 병합'));
     const editing = el('div', undefined, 'cue-actions');
-    const split = button('중간에서 분할', () => changed(splitSubtitleAt(history.present, index)), !editable()); split.dataset.edit = '';
+    const split = button('중간에서 분할', () => changed(splitSubtitleAt(history.present, index)), !editable() || !canSplitSubtitle(cue)); split.dataset.edit = ''; split.dataset.splitIndex = String(index);
     const nextCue = history.present[index + 1];
     const differentSpeaker = Boolean(nextCue && ((cue.speaker || '') !== (nextCue.speaker || '') || (cue.speakerScope ?? null) !== (nextCue.speakerScope ?? null)));
     const merge = button('다음 자막과 병합', () => changed(mergeSubtitleWithNext(history.present, index)), !editable() || index === history.present.length - 1 || differentSpeaker); merge.dataset.edit = '';
@@ -1020,7 +1023,14 @@ function matchesJobDestination(job) {
 }
 function jobTransmissionNotice(job) {
   const destination = jobDestination(job);
-  return destination.mode === 'relay' ? relayTransmissionNotice(destination.origin) : '개인 API 연결: 생성 시작 시 추출한 오디오와 번역할 자막을 OpenAI로 전송합니다. API 사용 요금은 본인 계정에 청구됩니다. 긴 영상일수록 시간과 비용이 늘어납니다.';
+  const notice = destination.mode === 'relay' ? relayTransmissionNotice(destination.origin) : '개인 API 연결: 생성 시작 시 추출한 오디오와 번역할 자막을 OpenAI로 전송합니다. API 사용 요금은 본인 계정에 청구됩니다. ChatGPT 구독과 앱 광고 제거 구독에는 포함되지 않습니다.';
+  const workload = describeApiWorkload({
+    durationSeconds: Number(job.durationMs) / 1000,
+    chunkCount: Number(job.totalChunks),
+    translationEnabled: job.settings?.translate !== false,
+  });
+  const scope = isPrepared(job) ? '예상 처리량' : '전체 작업 기준 · 저장된 결과는 다시 처리하지 않음';
+  return `${notice} ${scope}: ${workload}. 실제 청구액·잔액·토큰 사용량은 앱에서 확인하지 않습니다.`;
 }
 function jobDestinationWarning(job) {
   const destination = jobDestination(job);
@@ -1201,6 +1211,7 @@ function focusOfflineSource() {
 $('guideFile').addEventListener('click', focusFileSource);
 $('guideMic').addEventListener('click', focusMicrophoneSource);
 $('guideOffline').addEventListener('click', focusOfflineSource);
+$('guideImportSubtitles').addEventListener('click', () => $('importSubtitles').click());
 $('chooseFile').addEventListener('click', focusFileSource);
 $('chooseMicrophone').addEventListener('click', focusMicrophoneSource);
 $('chooseOffline').addEventListener('click', focusOfflineSource);

@@ -1,4 +1,7 @@
 import importlib.util
+import json
+import shutil
+import tempfile
 from pathlib import Path
 import unittest
 
@@ -37,6 +40,22 @@ class Ui10iPreflightTests(unittest.TestCase):
                 self.assertEqual(result["status"], "assets-technically-verified")
                 self.assertEqual(result["validImageCount"], 10)
                 self.assertEqual(result["blockers"], [])
+
+    def test_isolated_review_assets_reject_mismatched_run_or_record(self):
+        original = "b57afccc2850f35cb675a837ff0d5437edad0936"
+        with tempfile.TemporaryDirectory() as directory:
+            assets = Path(directory) / "review"
+            shutil.copytree(ROOT / "assets/play-store/ko-KR", assets)
+            self.assertEqual(MODULE.audit(ROOT, original, assets)["status"], "assets-technically-verified")
+            evidence_path = assets / "capture-provenance-ui10.json"
+            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+            evidence["emulatorRunId"] = 1
+            evidence["sourceScreenshots"][0]["source"]["sourceSHA256"] = "0" * 64
+            evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+            result = MODULE.audit(ROOT, original, assets)
+            self.assertEqual(result["status"], "blocked")
+            self.assertTrue(any("evidence run" in b for b in result["blockers"]))
+            self.assertTrue(any("provenance records differ" in b for b in result["blockers"]))
 
     def test_read_only_checker_does_not_include_play_api_mutations(self):
         source = SOURCE.read_text(encoding="utf-8")

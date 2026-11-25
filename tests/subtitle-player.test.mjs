@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   findActiveSubtitle,
+  createSubtitleLookup,
   formatSubtitleForMode,
   parseJsonSubtitles,
   parseSrt,
@@ -105,4 +106,37 @@ test('formatSubtitleForMode prefers translated text when available', () => {
     primary: 'Translated line',
     secondary: 'Original line',
   });
+});
+
+test('indexed playback matches chronological first active cue, including nested overlaps and backward seeks', () => {
+  const cues = [
+    { start: 7, end: 10, original: 'late' },
+    { start: 1, end: 8, original: 'long' },
+    { start: 2, end: 3, original: 'nested' },
+    { start: 1, end: 2, original: 'short' },
+    { start: 10, end: 11, original: 'adjacent' },
+    { start: 4, end: 4, original: 'invalid' },
+  ];
+  const index = createSubtitleLookup(cues);
+  for (const [time, expected] of [[0, null], [1, 'short'], [2, 'long'], [7, 'long'], [8, 'late'], [10, 'adjacent'], [11, null], [2.5, 'long']]) {
+    assert.equal(index.at(time)?.subtitle.original ?? null, expected);
+  }
+  assert.equal(index.at(8.5, 1).index, 1);
+  assert.equal(index.at(NaN), null);
+});
+
+test('long indexed playback stays correct at repeated arbitrary seek positions', () => {
+  const cues = Array.from({ length: 20000 }, (_, i) => ({ start: i * 0.5, end: i * 0.5 + 0.5, original: String(i) }));
+  const lookup = createSubtitleLookup(cues);
+  for (let i = 0; i < 1000; i++) {
+    const n = (i * 7919) % cues.length;
+    assert.equal(lookup.at(n * 0.5).index, n);
+  }
+});
+
+test('failed or placeholder translations display original in preview rather than an error caption', () => {
+  for (const cue of [{ original: 'Hello', translated: '[번역 실패]', status: 'failed' }, { original: 'Hello', translated: '[번역 불가]' }]) {
+    assert.deepEqual(formatSubtitleForMode(cue), { primary: 'Hello', secondary: '' });
+    assert.deepEqual(formatSubtitleForMode(cue, 'both'), { primary: 'Hello', secondary: '' });
+  }
 });

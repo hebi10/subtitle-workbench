@@ -21,12 +21,12 @@ def png_dimensions(data):
     return struct.unpack(">II", data[16:24])
 
 
-def audit(repo_root, verified_android_sha=None):
+def audit(repo_root, verified_android_sha=None, assets_dir=None):
     root = Path(repo_root)
-    assets = root / "assets" / "play-store" / "ko-KR"
+    assets = Path(assets_dir) if assets_dir is not None else root / "assets" / "play-store" / "ko-KR"
     blockers, checks = [], []
     manual_gates = [
-        "E/F/G/H merged and verified on identical latest main source",
+        "All planned SW-FIX changes merged and verified on the frozen main source",
         "Actual latest Android 15 source screenshots and hashes verified",
         "Store icon, feature graphic and all screenshots visually approved",
         "Separate authorization for signed AAB build and Play internal upload",
@@ -92,7 +92,11 @@ def audit(repo_root, verified_android_sha=None):
                 source = entry.get("source") or {}
                 if (source.get("sourceCommit") != recorded
                         or (sha != recorded and source.get("mainEquivalentCommit") != sha)
-                        or not source.get("sourcePath")):
+                        or source.get("type") != "real-android-emulator-capture"
+                        or source.get("captionOutsideUncroppedCapture") is not True
+                        or not re.fullmatch(r"[0-9a-f]{64}", str(source.get("sourceSHA256", "")))
+                        or not source.get("sourcePath")
+                        or str(source.get("sourceRunId")) != str(capture.get("sourceWorkflowRun"))):
                     blockers.append(filename + ": no matching current Android capture provenance")
                     continue
             checked["valid"] = True
@@ -108,6 +112,18 @@ def audit(repo_root, verified_android_sha=None):
                 blockers.append("Screenshot evidence does not match verified Android source")
             if evidence.get("app") != listing.get("title"):
                 blockers.append("Screenshot evidence uses old brand instead of 자막라인")
+            if str(evidence.get("emulatorRunId")) != str(capture.get("sourceWorkflowRun")):
+                blockers.append("Screenshot evidence run does not match manifest")
+            originals = evidence.get("sourceScreenshots")
+            names = (manifest.get("images") or {}).get("phoneScreenshots") or []
+            if not isinstance(originals, list) or len(originals) != len(names):
+                blockers.append("Screenshot evidence count differs from manifest")
+            else:
+                evidence_by_file = {item.get("file"): item for item in originals if isinstance(item, dict)}
+                if len(evidence_by_file) != len(names) or any(
+                    evidence_by_file.get(name) != records.get(name) for name in names
+                ):
+                    blockers.append("Screenshot provenance records differ from manifest")
         except (OSError, UnicodeError, ValueError):
             blockers.append("Cannot verify original Android screenshot evidence")
 
@@ -123,9 +139,10 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repository", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--capture-sha", help="Verified latest Android 15 screen capture source SHA")
+    parser.add_argument("--assets-dir", type=Path, help="Optional isolated review artifact directory")
     parser.add_argument("--require-assets-ready", action="store_true")
     args = parser.parse_args(argv)
-    result = audit(args.repository, args.capture_sha)
+    result = audit(args.repository, args.capture_sha, args.assets_dir)
     print(json.dumps(result, indent=2, ensure_ascii=False))
     return 2 if args.require_assets_ready and result["status"] == "blocked" else 0
 

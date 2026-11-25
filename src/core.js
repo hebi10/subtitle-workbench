@@ -342,6 +342,23 @@ export function secondsToClock(seconds) {
   return `${minutes}:${pad(secs, 2)}`;
 }
 
+// Describes the work submitted to the API, not a price or a quota/billing guarantee.
+export function describeApiWorkload({ durationSeconds, fileCount = 1, chunkCount, extractedSeconds, translationEnabled = true } = {}) {
+  const duration = Number(durationSeconds);
+  if (!Number.isFinite(duration) || duration <= 0) return '파일 길이를 확인하면 예상 처리량을 안내합니다.';
+  const multiple = Number.isSafeInteger(fileCount) && fileCount > 1;
+  const parts = [`${multiple ? '현재 파일' : '원본'} 길이 ${secondsToClock(Math.ceil(duration))}`];
+  if (Number.isSafeInteger(chunkCount) && chunkCount > 0) parts.push(`예정 전사 ${chunkCount}구간`);
+  if (Number.isFinite(extractedSeconds) && extractedSeconds > 0) {
+    parts.push(`계획된 추출 음성 약 ${secondsToClock(Math.ceil(extractedSeconds))} (패딩 포함)`);
+  } else {
+    parts.push('분할 패딩·재시도에 따라 전송량 증가 가능');
+  }
+  parts.push(translationEnabled ? '번역 별도 · 인식 후 토큰 사용량 결정' : '번역 안 함');
+  if (multiple) parts.push(`선택 ${fileCount}개 파일 중 현재 파일 기준 · 나머지 길이는 처리 시 확인`);
+  return parts.join(' · ');
+}
+
 export function subtitleText(subtitle, preferredField = 'translated') {
   const preferred = cleanSubtitleText(subtitle?.[preferredField] ?? '');
   if (preferred) {
