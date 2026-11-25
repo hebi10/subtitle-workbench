@@ -132,6 +132,34 @@ final class NativeDesignSystem {
         view.setPadding(dp(density, 8), dp(density, 10), dp(density, 8), dp(density, 10));
     }
 
+    /** Group existing actions without changing their handlers, labels, or availability. */
+    static void pairActions(LinearLayout parent, Button first, Button second, float density) {
+        Context context = parent.getContext();
+        int index = parent.indexOfChild(first);
+        if (index < 0 || parent.indexOfChild(second) != index + 1) {
+            throw new IllegalArgumentException("Actions must be adjacent in the same section");
+        }
+        parent.removeView(second);
+        parent.removeView(first);
+        LinearLayout row = new LinearLayout(context);
+        // At large font sizes keep a single column so Korean labels never clip.
+        boolean horizontal = context.getResources().getConfiguration().screenWidthDp >= 360
+                && context.getResources().getConfiguration().fontScale <= 1.15f;
+        row.setOrientation(horizontal ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams outer = new LinearLayout.LayoutParams(-1, -2);
+        outer.topMargin = dp(density, 6);
+        parent.addView(row, index, outer);
+        LinearLayout.LayoutParams a = horizontal ? new LinearLayout.LayoutParams(0, -2, 1f)
+                : new LinearLayout.LayoutParams(-1, -2);
+        LinearLayout.LayoutParams b = horizontal ? new LinearLayout.LayoutParams(0, -2, 1f)
+                : new LinearLayout.LayoutParams(-1, -2);
+        if (horizontal) b.setMarginStart(dp(density, 6)); else b.topMargin = dp(density, 6);
+        first.setGravity(android.view.Gravity.CENTER);
+        second.setGravity(android.view.Gravity.CENTER);
+        row.addView(first, a);
+        row.addView(second, b);
+    }
+
     static void text(TextView view, int size, boolean strong, float density) {
         Context context = view.getContext();
         view.setTextSize(size);
@@ -145,8 +173,8 @@ final class NativeDesignSystem {
         Context context = view.getContext();
         view.setBackground(surface(paper(context), line(context), density));
         view.setElevation(0f);
-        view.setMinHeight(dp(density, 72));
-        view.setPadding(dp(density, 14), dp(density, 12), dp(density, 14), dp(density, 12));
+        view.setMinHeight(dp(density, 52));
+        view.setPadding(dp(density, 12), dp(density, 8), dp(density, 12), dp(density, 8));
     }
 
     static void language(Spinner spinner, float density) {
@@ -165,9 +193,7 @@ final class NativeDesignSystem {
         return label;
     }
     static void header(LinearLayout root, String kicker, String title, String description, float density) {
-        TextView eyebrow = line(root, kicker, 11, true, density);
-        eyebrow.setTextColor(muted(root.getContext()));
-        eyebrow.setPadding(0, 0, 0, dp(density, 4));
+        // The Korean title and workflow already establish context; no redundant English eyebrow.
         TextView heading = line(root, title, 20, true, density);
         heading.setPadding(0, 0, 0, dp(density, 6));
         if (Build.VERSION.SDK_INT >= 28) heading.setAccessibilityHeading(true);
@@ -185,11 +211,9 @@ final class NativeDesignSystem {
         LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2);
         layout.topMargin = dp(density, 8);
         parent.addView(group, layout);
-        TextView kicker = line(group, index, 11, true, density);
-        kicker.setTextColor(muted(context));
-        kicker.setPadding(0, 0, 0, dp(density, 2));
+        // Preserve the section tag and accessible heading without a repeated English kicker.
         TextView heading = line(group, title, 17, true, density);
-        heading.setPadding(0, 0, 0, dp(density, 8));
+        heading.setPadding(0, 0, 0, dp(density, 4));
         if (Build.VERSION.SDK_INT >= 28) heading.setAccessibilityHeading(true);
         return group;
     }
@@ -298,7 +322,7 @@ final class NativeDesignSystem {
         surfaceText(view, density);
         view.setBackground(surface(soft(context), line(context), density));
         view.setTextColor(ink(context));
-        view.setMinHeight(dp(density, 88));
+        view.setMinHeight(dp(density, 72));
         view.setTextIsSelectable(true);
     }
 

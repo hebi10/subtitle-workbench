@@ -1135,7 +1135,8 @@ function syncConnection() {
     : '개인 API 또는 테스트 서버 연결 필요';
   $('connectionHeading').hidden = connection.hasKey;
   $('settingsModel').textContent = `음성 인식: ${selected.sttModel} · ${selected.translate ? `번역: ${selected.translationModel}` : '번역 안 함'}`;
-  $('apiSettingsSummary').textContent = `${modeLabel} · ${connection.hasKey ? (matches ? '연결 확인됨' : '연결 저장됨') : '연결 필요'}`;
+  // The header state must describe the current saved connection, not the unsaved draft.
+  $('apiSettingsSummary').textContent = `${modeLabel} · ${checkingConnection ? '확인 중' : !connection.hasKey ? '연결 필요' : connectionError ? '확인 실패' : matches ? '연결 확인됨' : '연결 미확인'}`;
   $('defaultSettingsSummary').textContent = settingsSummary(savedSettings);
   $('videoSettingsSummary').textContent = `다음 영상: ${settingsSummary(savedSettings)}`;
   const connectionHealth = checkingConnection ? 'checking' : !connection.hasKey ? 'missing' : connectionError ? 'error' : matches ? 'verified' : 'saved';
@@ -1143,18 +1144,18 @@ function syncConnection() {
   $('settingsConnectionHealth').dataset.state = connectionHealth;
   $('settingsConnectionHealth').textContent = healthLabels[connectionHealth];
   const healthGuides = {
-    checking: '선택한 음성 인식·번역 모델에 접근할 수 있는지 확인하고 있습니다.',
-    missing: '개인 API 키 또는 테스트 서버 연결을 저장해야 파일 자막을 생성할 수 있습니다.',
-    error: '연결 확인에 실패했습니다. 상세 설정에서 실패 원인을 확인해 주세요.',
-    verified: '인증과 선택 모델 접근을 확인했습니다. 결제 상태와 잔액을 확인한 것은 아닙니다.',
-    saved: '연결 정보가 저장됐습니다. 연결 확인을 실행해 선택 모델에 접근할 수 있는지 검사해 주세요.',
+    checking: '인증 및 선택 모델 접근 확인 중입니다.',
+    missing: '파일 자막 생성 전 개인 API 키 또는 테스트 서버 연결을 저장하세요.',
+    error: '상세 설정에서 연결 확인 실패 원인을 확인하세요.',
+    verified: '인증·모델 접근 확인 완료. 결제 상태와 잔액은 확인하지 않습니다.',
+    saved: '연결 확인으로 인증과 선택 모델 접근을 검사하세요.',
   };
   $('settingsConnectionHelp').textContent = connectionModeDraft === 'relay' && !relay
     ? '테스트 서버 전환은 주소와 전용 코드를 입력하고 연결 저장을 눌러야 완료됩니다.'
     : running && connection.hasKey
       ? '실행·대기 중인 작업을 먼저 일시정지해야 연결 정보를 변경하거나 삭제할 수 있습니다.'
       : healthGuides[connectionHealth];
-  $('settingsConnectionSummary').textContent = `${modeLabel} · ${connectionHealth === 'error' ? '연결 확인 실패' : connection.hasKey ? matches ? '인증·모델 확인됨' : '연결 저장됨' : '연결 필요'}`;
+  $('settingsConnectionSummary').textContent = modeLabel;
   $('settingsDefaultsOverview').textContent = settingsSummary(savedSettings);
   const unsavedDefaultChanges = !sameSettings(selected, savedSettings);
   $('settingsDefaultsHelp').textContent = unsavedDefaultChanges
@@ -1287,6 +1288,7 @@ function showSubscriptionStatus(data) {
   const options = $('subtitleSubscriptionPlans');
   const wasVerified = subscriptionVerified;
   subscriptionVerified = data?.entitlementVerified === true;
+  status.dataset.state = subscriptionVerified ? 'verified' : data?.pending ? 'pending' : data?.purchaseEnabled ? 'available' : 'unavailable';
   options.replaceChildren();
   $('subtitleRestoreSubscription').hidden = data?.verificationConfigured !== true;
   $('subtitleManageSubscription').hidden = data?.verificationConfigured !== true;
@@ -1296,14 +1298,20 @@ function showSubscriptionStatus(data) {
     status.textContent = '구독은 자동 갱신됩니다. Google Play에서 해지하거나 관리할 수 있습니다.';
     for (const plan of data.plans ?? []) {
       if (!['monthly', 'yearly'].includes(plan.basePlanId) || !plan.price) continue;
-      options.append(button(`${plan.basePlanId === 'monthly' ? '월간' : '연간'} 구독 · ${plan.price}`, async () => {
+      const label = plan.basePlanId === 'monthly' ? '월간' : '연간';
+      const option = button(`${label} 구독 · ${plan.price}`, async () => {
         if (!await nativeCall('buySubscription', { plan: plan.basePlanId })) {
           showSubscriptionStatus(await nativeCall('getSubscriptionOptions'));
           throw new Error('구매 화면을 열 수 없습니다. Google Play 연결과 현재 구독 상태를 확인해 주세요.');
         }
         options.replaceChildren();
+        status.dataset.state = 'pending';
         status.textContent = 'Google Play에서 결제를 마친 뒤 구독 상태를 확인해 주세요.';
-      }));
+      });
+      option.classList.add('subscription-plan');
+      option.setAttribute('aria-label', `${label} 구독 · ${plan.price}`);
+      option.replaceChildren(el('span', `${label} 구독`, 'subscription-plan-label'), el('strong', plan.price, 'subscription-plan-price'), el('span', '광고 제거 · 자동 갱신', 'subscription-plan-benefit'));
+      options.append(option);
     }
   } else if (data?.hasPurchase || wasVerified) status.textContent = '현재 광고 제거 권한을 확인할 수 없습니다. Google Play 구독 상태를 확인한 뒤 구매 복원을 시도해 주세요.';
   else if (data?.available || data?.verificationAvailable === false && data.verificationConfigured) status.textContent = '지금은 구독 구매를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.';

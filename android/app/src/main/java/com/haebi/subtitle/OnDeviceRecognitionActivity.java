@@ -90,7 +90,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
         setContentView(scroll);
         float density = getResources().getDisplayMetrics().density;
         NativeDesignSystem.header(root, "ON-DEVICE / MICROPHONE", "온디바이스 마이크 자막",
-                "기기의 음성 인식 서비스로 말하는 동안 자막을 만듭니다. OpenAI API 키나 API 이용 요금은 필요하지 않습니다. 인식 품질과 지원 언어는 기기마다 다릅니다.", density);
+                "OpenAI API 키나 API 이용 요금은 필요하지 않습니다. 지원 언어와 인식 품질은 기기마다 다릅니다.", density);
         workflow = NativeDesignSystem.workflow(root, density, "언어", "인식", "저장");
 
         LinearLayout preparation = NativeDesignSystem.section(root, "01 / PREPARE", "인식 언어·모델", density);
@@ -106,6 +106,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
         NativeDesignSystem.statusPanel(status, density);
         checkButton = addButton(preparation, "언어 지원 확인", false, this::checkSupport);
         downloadButton = addButton(preparation, "온디바이스 언어 모델 다운로드 요청", false, this::downloadModel);
+        NativeDesignSystem.pairActions(preparation, checkButton, downloadButton, density);
         NativeDesignSystem.helpDisclosure(preparation, "언어 모델 도움말",
                 "모델은 Android 시스템 인식 서비스가 설치·관리하며 Whisper/Vosk 파일을 다운로드하는 기능이 아닙니다. Android 13 이상에서 다운로드를 요청할 수 있지만 요청 성공이 실제 언어 지원을 보장하지는 않습니다. '언어 지원 확인'으로 다시 확인하세요. 인식 시작 시 마이크 권한을 요청합니다.", density);
 
@@ -123,7 +124,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
         NativeDesignSystem.transcriptPanel(completed, density);
         saveButton = addButton(result, "완료 자막 저장 및 편집", true, this::save);
         saveButton.setEnabled(false);
-        addText(result, "자막 시간은 추정값이며 확정되지 않은 임시 문장은 저장되지 않습니다.", 13, false);
+        addText(result, "시간은 추정값입니다. 확정된 문장만 저장됩니다.", 13, false);
         NativeDesignSystem.helpDisclosure(result, "인식·저장 안내",
                 "말을 마친 후 다음 문장은 인식을 다시 시작하세요. 자막 시간은 마이크 호출 시점을 기준으로 계산된 추정값이며, 확정되지 않은 임시 문장은 저장되지 않습니다.", density);
         addButton(root, "닫기", false, this::closeRequested);
