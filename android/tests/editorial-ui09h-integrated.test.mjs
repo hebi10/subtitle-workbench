@@ -414,3 +414,43 @@ test('SW-DESIGN-01 quick filters and result rows use existing authoritative sele
       ['resume','pause','deleteJob','setKey','setReviewRelay','buySubscription'].includes(c.method))), false);
   });
 });
+
+
+test('SW-DESIGN-03 prepared rows keep preflight disclosure, update workload and preserve API-free routes', { skip: !enabled }, async () => {
+  await useBrowser(true, async page => {
+    await page.locator('#navVideo').click();
+    await page.locator('#pickVideo').click();
+    const card = page.locator('#preparedJobs .job').first();
+    await card.waitFor({ state: 'visible' });
+    const notice = card.locator('.job-ready-note');
+    const detail = card.locator('.job-inspection');
+    const workload = card.locator('.job-workload-detail');
+    assert.match(await notice.innerText(), /OpenAI 전송/);
+    assert.match(await notice.innerText(), /API 사용 요금은 본인 계정에 청구/);
+    assert.match(await notice.innerText(), /재요청/);
+    assert.equal(await notice.isVisible(), true);
+    assert.equal(await workload.isHidden(), true);
+    assert.ok(await notice.evaluate(n => n.getBoundingClientRect().bottom <= n.closest('.job').querySelector('.job-actions').getBoundingClientRect().top + 1), 'cost disclosure precedes start');
+    await detail.locator('summary').click();
+    assert.match(await workload.innerText(), /예상 처리량.*원본 길이/);
+    assert.match(await workload.innerText(), /실제 청구액·잔액·토큰 사용량은 앱에서 확인하지 않습니다/);
+    await card.locator('.prepared-editor > summary').click();
+    await card.locator('.prepared-settings input[name="translate"]').uncheck();
+    await card.getByRole('button', { name: '이 작업에 적용' }).click();
+    await page.waitForFunction(() => document.querySelector('#preparedJobs .job-workload-detail')?.textContent.includes('번역 안 함'));
+    assert.doesNotMatch(await notice.innerText(), /번역용 자막/);
+    assert.match(await workload.innerText(), /번역 안 함/);
+    await page.locator('#navJobs').click();
+    const running = page.locator('#jobList .job[data-job-id="partial-1"]');
+    assert.equal(await running.locator('progress').getAttribute('value'), '12.5');
+    assert.equal(await running.locator('.job-progress-label strong').innerText(), '12.5%');
+    assert.ok(await running.getByRole('button', { name: '이어하기', exact: true }).isEnabled());
+    await page.locator('#navVideo').click();
+    await page.evaluate(() => { window.mockNative.hasKey = false; window.nativeEvent({type: 'status'}); });
+    await page.waitForFunction(() => document.getElementById('pickVideo').disabled);
+    assert.equal(await page.locator('#importSubtitles').isEnabled(), true);
+    assert.equal(await page.locator('#openOnDevice').isEnabled(), true);
+    assert.equal(await card.getByRole('button', {name:'생성 시작',exact:true}).isDisabled(), true);
+    assert.equal(await page.evaluate(() => window.mockNative.calls.some(c => ['resume','pause','buySubscription','setKey','setReviewRelay'].includes(c.method))), false);
+  });
+});

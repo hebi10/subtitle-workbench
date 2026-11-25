@@ -2438,3 +2438,60 @@ main > section > .page-description { margin: 0 0 12px; font-size: 13px; line-hei
     font-size: 12px; padding: 6px; gap: 6px;
   }
 }
+
+
+/* SW-DESIGN-03: shorten duplicated task chrome, not the actual prerequisite or recovery rules. */
+#videoView .file-source .source-heading { margin-bottom: 8px; }
+#videoView .file-source .connection-summary { padding: 8px; gap: 6px; }
+#videoView .file-source .connection-summary h3 { margin: 0 0 2px; font-size: 14px; }
+#videoView .file-source .connection-summary #keyHint { margin: 2px 0 0; }
+#videoView .file-source .connection-summary .hint { line-height: 1.4; }
+#videoView .file-source .default-summary { margin-top: 6px; padding: 8px; }
+#videoView .file-source #preparedJobs > .job { padding: 12px; }
+#videoView #preparedJobs .job-card-heading {
+  display: grid; grid-template-columns: 36px minmax(0, 1fr);
+  gap: 4px 10px; align-items: start;
+}
+#videoView #preparedJobs .job-card-heading > .job-visual-mark { grid-column: 1; grid-row: 1 / span 2; }
+#videoView #preparedJobs .job-card-heading > h3 {
+  grid-column: 2; margin: 0; font-size: 15px; line-height: 1.35; overflow-wrap: anywhere;
+}
+#videoView #preparedJobs .job-card-heading > .job-state {
+  grid-column: 2; justify-content: flex-start; margin: 0; flex-wrap: wrap; gap: 6px;
+}
+#videoView #preparedJobs .job-card-heading .job-status-badge { min-height: 24px; font-size: 12px; padding: 3px 6px; }
+#videoView #preparedJobs .job-meta-text { font-size: 12px; color: var(--es-muted); }
+#videoView #preparedJobs .prepared-summary { margin: 8px 0 0; font-size: 12px; }
+#videoView #preparedJobs .job-ready-note { margin: 8px 0 0; padding: 8px; font-size: 12px; line-height: 1.55; }
+#videoView #preparedJobs .job-actions { margin-top: 8px; gap: 6px; }
+#videoView #preparedJobs .job-actions button { min-height: 48px; }
+#videoView #preparedJobs :is(.prepared-editor,.job-inspection) { margin-top: 4px; }
+#videoView #preparedJobs :is(.prepared-editor,.job-inspection) > summary { min-height: 48px; }
+.job-workload-detail { margin: 8px 0 0; padding: 8px; background: var(--es-surface-alt); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+
+@media (min-width: 361px) {
+  #videoView .first-run-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #videoView .first-run-actions button {
+    display: grid; justify-items: start; align-content: start;
+    min-height: 58px; gap: 4px; padding: 6px;
+  }
+  #videoView .first-run-actions button > span { text-align: start; }
+}
+
+#jobsView .job-progress-label { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: end; margin: 8px 0 4px; }
+#jobsView .job-progress-context { min-width: 0; font-size: 12px; }
+#jobsView .job-progress-context .job-processed-note { margin: 1px 0 0; line-height: 1.4; }
+#jobsView .job-live-stage { margin: 6px 0 0; padding: 6px 8px; font-size: 12px; }
+#jobsView .job-error, #jobsView .job-destination-warning:not([hidden]) { margin-top: 6px; padding: 8px; font-size: 13px; }
+#jobsView .job-secondary-actions { border: 0; padding: 0; margin-top: 6px; background: transparent; }
+#jobsView .job-status-badge[data-phase="completed"],
+#jobsView .job-visual-mark[data-phase="completed"] { background: #eaf5ee; color: #155c36; border-color: #a4c8af; }
+@media (prefers-color-scheme: dark) {
+  #jobsView .job-status-badge[data-phase="completed"],
+  #jobsView .job-visual-mark[data-phase="completed"] { background: #25372b; color: #b0e1c2; border-color: #60856b; }
+}
+@media (min-width: 361px) and (max-width: 619px) {
+  #jobsView .job-actions:has(> button:nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #jobsView .job-actions:has(> button:nth-child(3):last-child) > button:last-child { grid-column: auto; }
+  #jobsView .job-actions:has(> button:nth-child(3):last-child) > button { padding-inline: 4px; }
+}
