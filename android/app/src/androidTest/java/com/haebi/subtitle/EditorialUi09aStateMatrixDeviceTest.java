@@ -57,6 +57,7 @@ public final class EditorialUi09aStateMatrixDeviceTest {
         Uri media = null;
         try {
             media = createTestVideo(context);
+            String attached;
             try (ActivityScenario<MainActivity> scene = ActivityScenario.launch(MainActivity.class)) {
                 AtomicReference<WebView> reference = new AtomicReference<>();
                 scene.onActivity(activity ->
@@ -71,7 +72,6 @@ public final class EditorialUi09aStateMatrixDeviceTest {
                 show(web, "navJobs", "jobsView");
                 capture(context, "jobs-empty-" + label, web);
 
-                String attached;
                 String imported;
                 String prepared;
                 String paused;
@@ -121,8 +121,6 @@ public final class EditorialUi09aStateMatrixDeviceTest {
                 waitFor(web, "Boolean(!document.getElementById('editorView').hidden && document.querySelector('#cueList .cue') && document.getElementById('editorCuePosition').textContent.includes('27개'))");
                 assertEquals("false", evaluate(web, "document.getElementById('previewSelectedCue').disabled"));
                 capture(context, "editor-with-27-cues-" + label, web);
-                capturePreview(context, media, attached, label);
-                waitFor(web, "Boolean(!document.getElementById('editorView').hidden)");
                 evaluate(web, "document.getElementById('nextPage').click();true");
                 waitFor(web, "Boolean(document.querySelector('#cueList [data-index=\"12\"]'))");
                 capture(context, "editor-cue-second-page-" + label, web);
@@ -167,6 +165,9 @@ public final class EditorialUi09aStateMatrixDeviceTest {
                     }
                 }
             }
+            // Capture the separate native player after closing the WebView scenario.
+            // Nested ActivityScenario launches can invalidate the original WebView instance.
+            capturePreview(context, media, attached, label);
         } finally {
             // Only remove our unique QA records and MediaStore video. Do not alter user data.
             try (JobStore store = new JobStore(context)) {
