@@ -31,7 +31,7 @@
 
 ## 검증
 - `android/tests/editorial-components.test.mjs`: 320/390/800px Android 및 320/390/1280px 웹, 라이트·다크, 버튼 크기/보더/그림자, 유효한 라벨, 4개 내비게이션, 키 입력 보존, 화면 가로 넘침을 검증한다.
-- `EditorialComponentsDeviceTest.java`: 네이티브 기본/보조 버튼 활성·비활성 상태, 52dp/72dp, Spinner 탭용 최소 높이를 에뮬레이터에서 검증한다.
+- `EditorialComponentsDeviceTest.java`: 네이티브 기본/보조 버튼 활성·비활성 상태 및 Spinner 최소 52dp를 검증한다. SW-DESIGN-05(#95) 이후 일반 상태 표면·상태 패널 최소 52dp, 자막 표시 패널 최소 72dp와 텍스트 선택, 상태 안내의 접근성 live region을 구분하여 검사한다. 기존 UI-09-A PR 에뮬레이터에서 라이트/다크 및 글꼴 100/160%별로 함께 검증하며, 최종 전체 Android Emulator Smoke는 기존 승인 정책을 유지한다.
 - PR 전체 CI 후 main 병합/재검증 및 내부 테스트 배포를 별도로 확인한다.
 
 ## 후속

@@ -21,6 +21,14 @@ for scale in 100 160; do
       adb shell cmd uimode night yes
     fi
     label="$mode-font$scale"
+    echo "UI09A checking native component metrics: $label"
+    adb shell pm clear com.haebi.subtitle
+    adb shell am instrument -w -e class com.haebi.subtitle.EditorialComponentsDeviceTest \
+      com.haebi.subtitle.test/androidx.test.runner.AndroidJUnitRunner \
+      > ../output/ui09a/device/components-"$label".log
+    cat ../output/ui09a/device/components-"$label".log
+    grep -q 'OK (2 tests)' ../output/ui09a/device/components-"$label".log
+
     echo "UI09A capturing Android 15 state matrix: $label"
     adb shell pm clear com.haebi.subtitle
     adb shell am instrument -w -e class com.haebi.subtitle.EditorialUi09aStateMatrixDeviceTest \

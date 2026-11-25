@@ -12,6 +12,7 @@ on:
       - 'android/app/src/main/java/com/haebi/subtitle/CloudLiveRecognitionActivity.java'
       - 'android/app/src/main/java/com/haebi/subtitle/OfflineVoskActivity.java'
       - 'android/app/src/androidTest/java/com/haebi/subtitle/EditorialNativeScreensDeviceTest.java'
+      - 'android/app/src/androidTest/java/com/haebi/subtitle/EditorialComponentsDeviceTest.java'
       - 'android/tests/editorial-2-2e-settings.test.mjs'
       - 'android/app/src/main/java/com/haebi/subtitle/PreviewActivity.java'
       - 'index.html'
