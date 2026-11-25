@@ -284,6 +284,14 @@ function filteredJobsForList() {
   return entries.map(({ job }) => job);
 }
 
+function jobVisualMark(job, ready = false) {
+  const mark = el('span', undefined, 'job-visual-mark');
+  mark.setAttribute('aria-hidden', 'true');
+  mark.dataset.phase = ready ? 'ready' : job.status;
+  mark.append(el('span', undefined, 'es-icon es-icon--' + (job.uri ? 'video' : 'results')));
+  return mark;
+}
+
 function renderJobs() {
   const focused = document.activeElement;
   const focusedJobId = focused?.closest('.job')?.dataset.jobId;
@@ -293,6 +301,9 @@ function renderJobs() {
   const existing = jobCards;
   const ordered = [...jobs].sort((a, b) => jobPriority(a) - jobPriority(b));
   const matches = filteredJobsForList();
+  for (const control of $('jobsQuickFilters').querySelectorAll('button')) {
+    control.setAttribute('aria-pressed', String(control.dataset.jobFilter === jobsStatusFilter));
+  }
   jobsMatchCount = matches.length;
   const hasCriteria = Boolean(jobsSearchQuery.trim()) || jobsStatusFilter !== 'all';
   $('jobsMatchCount').hidden = !hasCriteria;
@@ -345,7 +356,7 @@ function renderJobs() {
     const article = el('article', undefined, 'job');
     article.dataset.jobId = job.id; article.dataset.status = job.status; article.dataset.renderKey = renderKey; article.dataset.prepared = String(ready); article.tabIndex = -1;
     const cardHeading = el('div', undefined, 'job-card-heading');
-    cardHeading.append(el('h3', job.name));
+    cardHeading.append(jobVisualMark(job, ready), el('h3', job.name));
     const state = el('div', undefined, 'job-state');
     const total = Number(job.totalChunks) || 0;
     const done = Number(job.completedChunks) || 0;
@@ -473,7 +484,7 @@ function renderJobs() {
     if (!isPrepared(job)) return jobCards.get(job.id);
     const summary = el('article', undefined, 'job prepared-link'); summary.dataset.jobId = job.id; summary.tabIndex = -1;
     const heading = el('div', undefined, 'job-card-heading');
-    heading.append(el('h3', job.name));
+    heading.append(jobVisualMark(job, true), el('h3', job.name));
     const preparedState = el('div', undefined, 'job-state');
     const preparedBadge = el('span', '준비됨', 'job-status-badge');
     preparedBadge.dataset.phase = 'ready';
@@ -675,8 +686,38 @@ async function ensureResult() {
   const job = candidates.find((candidate) => candidate.status === 'completed') || candidates.find((candidate) => candidate.completedChunks > 0) || candidates[0];
   if (job) await loadCurrentJob(job.id);
 }
+function renderResultQuickList(candidates) {
+  const list = $('resultQuickList');
+  const items = candidates.slice(0, 3);
+  const selected = candidates.find(job => job.id === current?.id);
+  if (selected && !items.some(job => job.id === selected.id)) items[items.length - 1] = selected;
+  list.hidden = candidates.length < 2;
+  const key = JSON.stringify([items.map(job => [job.id, job.name, job.status, job.durationMs, Boolean(job.uri)]), current?.id, changingJob, refreshingResultId]);
+  if (list.dataset.renderKey === key) return;
+  const focusedId = list.contains(document.activeElement) ? document.activeElement.dataset.resultId : null;
+  list.dataset.renderKey = key;
+  const rows = items.map(job => {
+    const node = el('button', undefined, 'result-quick-row');
+    node.type = 'button';
+    node.dataset.resultId = job.id;
+    node.setAttribute('aria-pressed', String(job.id === current?.id));
+    node.disabled = changingJob || refreshingResultId === current?.id;
+    const text = el('span', undefined, 'result-quick-text');
+    text.append(el('strong', job.name), el('span', (statusNames[job.status] || job.status) + ' · ' + formatDuration(job.durationMs)));
+    node.append(jobVisualMark(job), text);
+    node.addEventListener('click', () => {
+      $('resultJobSelector').value = job.id;
+      $('resultJobSelector').dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    return node;
+  });
+  list.replaceChildren(...rows);
+  if (focusedId) rows.find(node => node.dataset.resultId === focusedId && !node.disabled)?.focus({ preventScroll: true });
+}
+
 function renderResults() {
   const candidates = jobs.filter((job) => !isPrepared(job));
+  renderResultQuickList(candidates);
   updateSelector($('resultJobSelector'), candidates, current?.id);
   $('resultJobLabel').hidden = !candidates.length;
   $('resultEmpty').hidden = Boolean(current);
@@ -1307,6 +1348,12 @@ for (const [id, action] of Object.entries({
 })) $(id).addEventListener('click', (event) => { void run(event.currentTarget, action); });
 $('jobsSearch').addEventListener('input', () => { jobsSearchQuery = $('jobsSearch').value; jobsPage = 0; renderJobs(); });
 $('jobsStatusFilter').addEventListener('change', () => { jobsStatusFilter = $('jobsStatusFilter').value; jobsPage = 0; renderJobs(); });
+$('jobsQuickFilters').addEventListener('click', (event) => {
+  const control = event.target.closest('button[data-job-filter]');
+  if (!control) return;
+  $('jobsStatusFilter').value = control.dataset.jobFilter;
+  $('jobsStatusFilter').dispatchEvent(new Event('change', { bubbles: true }));
+});
 $('jobsSort').addEventListener('change', () => { jobsSortMode = $('jobsSort').value; jobsPage = 0; renderJobs(); });
 $('preparedJobSelector').addEventListener('change', () => { preparedJobId = $('preparedJobSelector').value; renderJobs(); focusJob(preparedJobId); });
 $('resultJobSelector').addEventListener('change', () => {

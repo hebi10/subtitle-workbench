@@ -88,7 +88,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
         });
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(20), dp(20), dp(20), dp(36));
+        root.setPadding(dp(16), dp(12), dp(16), dp(24));
         scroll.addView(root);
         setContentView(scroll);
 
@@ -115,6 +115,7 @@ public final class CloudLiveRecognitionActivity extends Activity {
 
         LinearLayout capture = NativeDesignSystem.section(root, "02 / LIVE", "실시간 음성 인식", density);
         start = button(capture, "유료 GPT 실시간 인식 시작", true, this::requestStart);
+        NativeDesignSystem.microphoneAction(start, density);
         stop = button(capture, "인식 종료 및 결과 확정", false, this::stopRecognition);
         stop.setEnabled(false);
         status = label(capture, "마이크를 시작하지 않았습니다.", 14, false);

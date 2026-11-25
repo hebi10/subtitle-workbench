@@ -123,12 +123,19 @@ test('3-B retry stays visible at deep cue and preserves unsaved edits', {skip:!e
     const field=page.locator('.cue.selected textarea').first();
     await field.fill('저장 실패 후에도 보존할 원문');
     await page.locator('#retrySave').waitFor({state:'visible'});
+    // Verify an actually scrolled editor rather than a fixed pixel offset from the old header.
+    await page.evaluate(()=>{
+      const feedback=document.getElementById('editorFeedback');
+      const target=window.scrollY+feedback.getBoundingClientRect().top+24;
+      window.scrollTo(0,Math.max(window.scrollY,target));
+    });
+    await page.waitForFunction(()=>window.scrollY>0);
     const pos=await page.evaluate(()=>{
       const bar=document.getElementById('editorFeedback').getBoundingClientRect();
       const retry=document.getElementById('retrySave').getBoundingClientRect();
       return {scrollY,barBottom:bar.bottom,retryTop:retry.top,overflow:getComputedStyle(document.getElementById('saveStatus')).overflowY};
     });
-    assert.ok(pos.scrollY>350);
+    assert.ok(pos.scrollY>0,'Editor must be scrolled when verifying sticky retry');
     assert.ok(pos.retryTop>=0&&pos.retryTop<pos.barBottom);
     assert.equal(pos.overflow,'visible');
     assert.equal(await field.inputValue(),'저장 실패 후에도 보존할 원문');

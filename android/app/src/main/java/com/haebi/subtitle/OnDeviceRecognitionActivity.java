@@ -85,7 +85,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
         });
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(20), dp(20), dp(20), dp(36));
+        root.setPadding(dp(16), dp(12), dp(16), dp(24));
         scroll.addView(root);
         setContentView(scroll);
         float density = getResources().getDisplayMetrics().density;
@@ -111,6 +111,7 @@ public final class OnDeviceRecognitionActivity extends Activity {
 
         LinearLayout capture = NativeDesignSystem.section(root, "02 / CAPTURE", "마이크 인식", density);
         startButton = addButton(capture, "마이크 인식 시작", true, this::requestStart);
+        NativeDesignSystem.microphoneAction(startButton, density);
         stopButton = addButton(capture, "인식 종료", false, this::stopListening);
         stopButton.setEnabled(false);
         addText(capture, "인식 중인 문장", 15, true);

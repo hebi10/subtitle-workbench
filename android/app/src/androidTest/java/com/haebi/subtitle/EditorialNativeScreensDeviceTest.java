@@ -221,7 +221,7 @@ public final class EditorialNativeScreensDeviceTest {
      * Android emulator system UI can show an unrelated Pixel Launcher ANR over a healthy
      * activity. Dismiss only that exact system dialog; never dismiss or conceal app ANRs.
      */
-    private static void dismissLauncherAnrIfPresent() throws Exception {
+    static void dismissLauncherAnrIfPresent() throws Exception {
         UiAutomation automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
         for (int attempt = 0; attempt < 3; attempt++) {
             AccessibilityNodeInfo root = automation.getRootInActiveWindow();

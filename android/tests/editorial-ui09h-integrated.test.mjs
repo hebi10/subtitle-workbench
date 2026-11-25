@@ -372,3 +372,45 @@ test('SW-FIX-09 wide short web viewport keeps preview and editing controls reach
     await measure(page, 'web', 'narrow-short-edit', 320, 'dark');
   });
 });
+
+
+test('SW-DESIGN-01 quick filters and result rows use existing authoritative selections', { skip: !enabled }, async () => {
+  await useBrowser(true, async page => {
+    await page.locator('#navJobs').click();
+    const filters = page.locator('#jobsQuickFilters');
+    await filters.locator('[data-job-filter="completed"]').click();
+    assert.equal(await page.locator('#jobsStatusFilter').inputValue(), 'completed');
+    assert.equal(await page.locator('#jobList .job').count(), 1);
+    assert.equal(await page.locator('#jobList .job').getAttribute('data-job-id'), 'complete-1');
+    assert.equal(await filters.locator('[aria-pressed="true"]').count(), 1);
+    await page.locator('#jobsBrowse > summary').click();
+    await page.locator('#jobsStatusFilter').selectOption('paused');
+    assert.equal(await filters.locator('[aria-pressed="true"]').count(), 0);
+    assert.equal(await page.locator('#jobList .job').getAttribute('data-job-id'), 'partial-1');
+    await filters.locator('[data-job-filter="all"]').click();
+    assert.equal(await page.locator('#jobList .job').count(), 2);
+    await page.locator('#navResults').click();
+    const results = page.locator('#resultQuickList');
+    await results.locator('[data-result-id="partial-1"]').click();
+    await page.waitForFunction(() => document.getElementById('resultJobSelector').value === 'partial-1'
+      && !document.getElementById('resultJobSelector').disabled);
+    assert.equal(await results.locator('[data-result-id="partial-1"]').getAttribute('aria-pressed'), 'true');
+    assert.match(await page.locator('#resultStatus').textContent(), /부분 결과/);
+    assert.match(await page.locator('#editResult').textContent(), /자막 보기/);
+    await results.locator('[data-result-id="complete-1"]').click();
+    await page.waitForFunction(() => document.getElementById('resultJobSelector').value === 'complete-1'
+      && !document.getElementById('resultJobSelector').disabled);
+    assert.match(await page.locator('#editResult').textContent(), /자막 편집/);
+    for (const width of [320, 390, 800]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const theme of themes) {
+        await page.emulateMedia({ colorScheme: theme });
+        await measure(page, 'android-webview-mock', 'design-result-rows', width, theme);
+        const rows = await results.locator('button').evaluateAll(nodes => nodes.map(n => n.getBoundingClientRect().height));
+        assert.ok(rows.every(height => height >= 48));
+      }
+    }
+    assert.equal(await page.evaluate(() => window.mockNative.calls.some(c =>
+      ['resume','pause','deleteJob','setKey','setReviewRelay','buySubscription'].includes(c.method))), false);
+  });
+});
