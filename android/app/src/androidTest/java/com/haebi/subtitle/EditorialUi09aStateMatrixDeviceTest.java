@@ -121,6 +121,17 @@ public final class EditorialUi09aStateMatrixDeviceTest {
                 waitFor(web, "Boolean(!document.getElementById('editorView').hidden && document.querySelector('#cueList .cue') && document.getElementById('editorCuePosition').textContent.includes('27개'))");
                 assertEquals("false", evaluate(web, "document.getElementById('previewSelectedCue').disabled"));
                 capture(context, "editor-with-27-cues-" + label, web);
+                assertEquals("false", evaluate(web, "document.getElementById('inlinePreview').disabled"));
+                evaluate(web, "document.getElementById('inlinePreview').click();true");
+                waitForInlinePreview(scene);
+                waitFor(web, "Boolean(!document.getElementById('editorView').hidden && document.querySelector('#cueList .cue.selected textarea'))");
+                capture(context, "editor-inline-preview-" + label, web);
+                scene.onActivity(activity -> {
+                    View close = activity.findViewById(android.R.id.content).findViewWithTag("inline-preview-close");
+                    assertNotNull(close);
+                    close.performClick();
+                    assertEquals(View.GONE, activity.findViewById(android.R.id.content).findViewWithTag("inline-preview-panel").getVisibility());
+                });
                 evaluate(web, "document.getElementById('nextPage').click();true");
                 waitFor(web, "Boolean(document.querySelector('#cueList [data-index=\"12\"]'))");
                 capture(context, "editor-cue-second-page-" + label, web);
@@ -132,6 +143,7 @@ public final class EditorialUi09aStateMatrixDeviceTest {
                 evaluate(web, "document.getElementById('editResult').click();true");
                 waitFor(web, "Boolean(!document.getElementById('editorView').hidden && document.querySelector('#cueList .cue'))");
                 assertEquals("true", evaluate(web, "document.getElementById('previewSelectedCue').disabled"));
+                assertEquals("true", evaluate(web, "document.getElementById('inlinePreview').disabled"));
                 capture(context, "editor-without-video-" + label, web);
 
                 show(web, "navSettings", "settingsView");
@@ -259,6 +271,30 @@ public final class EditorialUi09aStateMatrixDeviceTest {
                         "return document.documentElement.scrollWidth<=innerWidth+1 && " +
                         "[...nav.querySelectorAll('button')].every(b=>b.getBoundingClientRect().height>=48);})()"));
         saveScreenshot(context, name);
+    }
+
+    private static void waitForInlinePreview(ActivityScenario<MainActivity> scene) throws Exception {
+        long deadline = System.currentTimeMillis() + 20000L;
+        boolean ready = false;
+        while (System.currentTimeMillis() < deadline && !ready) {
+            AtomicReference<Boolean> state = new AtomicReference<>(false);
+            scene.onActivity(activity -> {
+                View root = activity.findViewById(android.R.id.content);
+                PlayerView view = root.findViewWithTag("inline-preview-player");
+                TextView caption = root.findViewWithTag("inline-preview-caption");
+                View panel = root.findViewWithTag("inline-preview-panel");
+                if (view == null || panel == null || panel.getVisibility() != View.VISIBLE || view.getPlayer() == null || caption == null) return;
+                Player player = view.getPlayer();
+                if (player.getPlaybackState() == Player.STATE_READY && caption.getText().toString().contains("UI09A")) {
+                    assertFalse("Inline preview must open paused", player.getPlayWhenReady());
+                    view.showController();
+                    state.set(true);
+                }
+            });
+            ready = state.get();
+            if (!ready) Thread.sleep(200);
+        }
+        assertTrue("Actual inline Media3 player and saved caption are visible", ready);
     }
 
     private static void capturePreview(Context context, Uri media, String jobId, String label) throws Exception {

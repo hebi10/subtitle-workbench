@@ -161,7 +161,10 @@
 
     <section id="editorView" aria-labelledby="editorHeading" hidden>
       <div class="section-heading"><div class="editor-title-row"><button id="backToJobs" type="button"><span class="es-icon es-icon--back" aria-hidden="true"></span>결과로</button><div><p class="page-kicker">03 / REVIEW</p><h2 id="editorHeading">자막 편집</h2></div></div><span id="cueCount"></span></div>
-      <p id="editorName" class="file-name"></p>
+      <div class="editor-file-row">
+        <p id="editorName" class="file-name"></p>
+        <button id="inlinePreview" type="button" disabled><span class="es-icon es-icon--video" aria-hidden="true"></span>영상 함께 보기</button>
+      </div>
       <p id="readOnlyNote" class="hint" hidden>완료 전 작업은 조회와 부분 내보내기만 가능합니다. 생성이 완료되면 편집할 수 있습니다.</p>
       <div id="editorFeedback" class="editor-feedback"><div class="save-feedback"><p id="saveStatus" role="status">저장된 자막</p><button id="retrySave" type="button" hidden>저장 다시 시도</button></div><nav class="pagination" aria-label="자막 페이지"><button id="prevPage" type="button">이전</button><span id="pageInfo"></span><button id="nextPage" type="button">다음</button></nav></div>
       <section class="editor-primary-workspace" aria-labelledby="editorPrimaryHeading">
