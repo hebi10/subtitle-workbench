@@ -68,7 +68,10 @@ test('3-B web editor supports cue selection, filter reset, retained edits, media
     const secondOriginal = page.locator('#editorBody [data-cue-index="1"] [data-edit-field="original"]');
     assert.equal(await secondOriginal.evaluate(node => node === document.activeElement), true);
     await secondOriginal.fill('편집 상태 미리보기 검증');
+    await page.locator('.editor-cue-disclosure > summary').click();
+    assert.equal(await page.locator('#editorCueOriginal').isVisible(), true);
     assert.equal(await page.locator('#editorCueOriginal').innerText(), '편집 상태 미리보기 검증');
+    await page.locator('.editor-cue-disclosure > summary').click();
     assert.equal(await secondOriginal.evaluate(node => node === document.activeElement), true);
     await secondOriginal.press('Tab');
     assert.equal(await page.locator('#editorBody [data-cue-index="1"] [data-edit-field="original"]').inputValue(), '편집 상태 미리보기 검증');

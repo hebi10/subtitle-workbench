@@ -96,6 +96,12 @@ test('4-A desktop and mobile workspaces preserve UI, source import and exports',
             const status = await page.locator('#runPanel').boundingBox();
             assert.ok(preview && status && controls, 'Source, preview and progress all exist');
             assert.ok(preview.y < status.y, 'Preview must appear above the processing status');
+            const prepare = await page.locator('.generation-actions-card').boundingBox();
+            const start = await page.locator('#startButton').boundingBox();
+            assert.ok(prepare && start && prepare.y >= preview.y + preview.height - 1 && start.y < status.y,
+              'Generation preflight and execution follow the preview before processing status');
+            assert.equal(await page.locator('#startButton').evaluate(n => n.form?.id), 'settingsForm');
+            assert.equal(await page.locator('#cancelButton').evaluate(n => n.form?.id), 'settingsForm');
             if (width === 1280) assert.ok(preview.x > controls.x + controls.width - 2, 'Desktop preview must be on the right');
           }
           if (tab === 'edit') {
@@ -124,6 +130,11 @@ test('4-A desktop and mobile workspaces preserve UI, source import and exports',
     await page.locator('#tab-generate').click();
     await page.evaluate(() => window.scrollTo(0, 0));
     assert.equal(await page.locator('.workspace-tabs').evaluate(node => getComputedStyle(node).flexDirection), 'column');
+    const start = await page.locator('#startButton').boundingBox();
+    const preflight = await page.locator('.generation-actions-card .generate-preflight').boundingBox();
+    assert.ok(start && preflight && preflight.y + preflight.height <= start.y, 'Cost disclosure precedes generation');
+    assert.ok(start.y + start.height <= 900, 'Desktop generation button is visible in the 1440x900 first viewport');
+    assert.equal(await page.locator('#startButton').isDisabled(), true);
     await page.screenshot({ path: join(out, 'design-W01-1440-light.png'), animations: 'disabled' });
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(await page.locator('.workspace-tabs').evaluate(node => getComputedStyle(node).flexDirection), 'row');
@@ -149,6 +160,13 @@ test('4-A desktop and mobile workspaces preserve UI, source import and exports',
     await page.screenshot({ path: join(out, 'edit-imported-1280-light.png'), animations: 'disabled' });
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.evaluate(() => window.scrollTo(0, 0));
+    assert.equal(await page.locator('.editor-cue-disclosure').evaluate(n => n.open), false);
+    assert.equal(await page.locator('#editorCueOriginal').isVisible(), false);
+    await page.locator('.editor-cue-disclosure > summary').click();
+    assert.equal(await page.locator('#editorCueOriginal').isVisible(), true);
+    assert.match(await page.locator('#editorCueOriginal').innerText(), /Sample subtitle/);
+    await page.locator('.editor-cue-disclosure > summary').click();
+    await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({ path: join(out, 'design-W02-1440-light.png'), animations: 'disabled' });
     await page.setViewportSize({ width: 1280, height: 844 });
     await page.emulateMedia({ colorScheme: 'dark' });
@@ -167,6 +185,9 @@ test('4-A desktop and mobile workspaces preserve UI, source import and exports',
     await page.screenshot({ path: join(out, 'export-imported-1280-light.png'), animations: 'disabled' });
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.evaluate(() => window.scrollTo(0, 0));
+    const primaryDownload = await page.locator('#downloads .download-link--primary').boundingBox();
+    assert.ok(primaryDownload && primaryDownload.y + primaryDownload.height <= 900,
+      'Primary SRT download remains visible in desktop first viewport');
     await page.screenshot({ path: join(out, 'design-W03-1440-light.png'), animations: 'disabled' });
     await page.setViewportSize({ width: 1280, height: 844 });
     await page.emulateMedia({ colorScheme: 'dark' });
