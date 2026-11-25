@@ -14,6 +14,8 @@ import android.widget.TextView;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
+import androidx.annotation.OptIn;
+import androidx.media3.common.util.UnstableApi;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.ui.PlayerView;
 
@@ -42,6 +44,7 @@ final class InlinePreviewPanel {
         }
     };
 
+    @OptIn(markerClass = UnstableApi.class)
     InlinePreviewPanel(Activity activity, LinearLayout parent) {
         this.activity = activity;
         this.parent = parent;
@@ -108,6 +111,7 @@ final class InlinePreviewPanel {
         }
     }
 
+    @OptIn(markerClass = UnstableApi.class)
     boolean open(String id, Uri uri, long positionMs, PreviewCueIndex savedCues) {
         if (!fits()) return false;
         close();
