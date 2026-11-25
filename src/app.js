@@ -28,12 +28,13 @@ import {
   visibleSubtitlePreview,
 } from './ui-state.js';
 import {
-  findActiveSubtitle,
+  createSubtitleLookup,
   formatSubtitleForMode,
   parseSubtitleFileText,
 } from './subtitle-player.js';
 import {
   filterSubtitles,
+  canSplitSubtitle,
   getSubtitleEditMetrics,
   mergeShortSubtitles,
   mergeSubtitleWithNext,
@@ -67,6 +68,7 @@ const state = {
   duration: 0,
   subtitles: [],
   playerSubtitles: [],
+  playerLookup: createSubtitleLookup([]),
   activeSubtitleIndex: -1,
   editorSelectedCueIndex: -1,
   editorVisibleCueIndices: [],
@@ -1270,8 +1272,12 @@ function updateEditControls() {
   [refs.applyGlobalOffset, refs.mergeShortSubtitles].forEach((button) => {
     button.disabled = state.isBusy || state.subtitles.length === 0;
   });
+  const cues = sortSubtitles(state.subtitles);
   refs.editorBody.querySelectorAll('input, textarea, button').forEach((control) => {
-    control.disabled = state.isBusy;
+    const action = control.dataset.editorAction;
+    control.disabled = state.isBusy ||
+      (action === 'split' && !canSplitSubtitle(cues[Number(control.dataset.editIndex)])) ||
+      (action === 'seek' && !state.file);
   });
   updateEditorCueNavigation();
 }
@@ -1728,7 +1734,7 @@ function handleEditorAction(button) {
 
   if (button.dataset.editorAction === 'seek') {
     const subtitle = sortSubtitles(state.subtitles)[index];
-    if (subtitle) {
+    if (subtitle && state.file) {
       refs.videoPreview.currentTime = Math.max(0, Number(subtitle.start || 0) + state.subtitleOffsetSeconds);
       renderSubtitlePlayer();
     }
@@ -1763,6 +1769,7 @@ function applyGlobalSubtitleOffset() {
 function syncSubtitleOutputs() {
   state.subtitles = sortSubtitles(state.subtitles);
   state.playerSubtitles = sortSubtitles(state.subtitles);
+  state.playerLookup = createSubtitleLookup(state.playerSubtitles);
   renderPreview(state.subtitles);
   renderEditor();
   renderSubtitlePlayer();
@@ -1780,6 +1787,7 @@ function setPlayerSubtitles(subtitles, label, options = {}) {
   }
 
   state.playerSubtitles = sortSubtitles(subtitles);
+  state.playerLookup = createSubtitleLookup(state.playerSubtitles);
   refs.subtitleFileMeta.textContent = label;
   renderSubtitlePlayer();
   refreshDownloadsForCurrentOffset();
@@ -1787,6 +1795,7 @@ function setPlayerSubtitles(subtitles, label, options = {}) {
 
 function clearPlayerSubtitles() {
   state.playerSubtitles = [];
+  state.playerLookup = createSubtitleLookup([]);
   state.subtitleOffsetSeconds = 0;
   refs.subtitleFileInput.value = '';
   refs.subtitleFileMeta.textContent = 'SRT, VTT, JSON 자막 파일을 다시 불러올 수 있습니다.';
@@ -1819,17 +1828,13 @@ function renderSubtitlePlayer() {
     : '영상이나 오디오를 선택하면 이곳에서 미리 볼 수 있습니다.';
   refs.subtitleOffsetValue.textContent = `${state.subtitleOffsetSeconds.toFixed(1)}초`;
 
-  const activeSubtitle = findActiveSubtitle(
-    state.playerSubtitles,
-    refs.videoPreview.currentTime || 0,
-    state.subtitleOffsetSeconds,
-  );
-  const nextActiveIndex = activeSubtitle ? state.playerSubtitles.indexOf(activeSubtitle) : -1;
+  const active = hasMedia ? state.playerLookup.at(refs.videoPreview.currentTime || 0, state.subtitleOffsetSeconds) : null;
+  const activeSubtitle = active?.subtitle ?? null;
+  const nextActiveIndex = active?.index ?? -1;
   if (nextActiveIndex !== state.activeSubtitleIndex) {
+    refs.editorBody.querySelector(`[data-cue-index="${state.activeSubtitleIndex}"]`)?.classList.remove('is-active-cue');
     state.activeSubtitleIndex = nextActiveIndex;
-    refs.editorBody.querySelectorAll('[data-cue-index]').forEach((row) => {
-      row.classList.toggle('is-active-cue', Number(row.dataset.cueIndex) === nextActiveIndex);
-    });
+    refs.editorBody.querySelector(`[data-cue-index="${nextActiveIndex}"]`)?.classList.add('is-active-cue');
   }
   const mode = refs.subtitleDisplayMode.value;
   const { primary, secondary } = formatSubtitleForMode(activeSubtitle, mode);
