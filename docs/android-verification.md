@@ -160,3 +160,12 @@ Windows 한글 경로에서 Gradle 테스트 실행기의 클래스 검색과 An
 - API 응답을 받고 저장하기 전 프로세스가 종료되거나 네트워크 응답이 유실되면 해당 요청이 중복될 수 있다.
 
 이 검증을 수행한 시점에는 폴더가 Git 저장소가 아니어서 커밋·푸시를 수행하지 않았다. 이후 저장소 초기화와 공개 업로드는 별도 요청에 따라 진행되며, 현재 상태는 Git 이력에서 확인할 수 있다. 앱 배포나 스토어 업로드는 이 검증에 포함되지 않는다.
+
+
+## SW-FIX-11 — 최종 검증 보강 (2026-11-25)
+
+기존 최종 main 전용 Android Emulator Smoke는 API35, 네이티브 화면, 라이트·다크, 100/160% 글꼴, Vosk·키·작업 승인 테스트를 유지합니다. SW-FIX-05의 SQLite 체크포인트와 미확인 유료 요청 회복을 실제 기기 테스트 목록에서 누락하지 않도록 추가 검증을 같은 에뮬레이터 실행에 포함합니다.
+
+- JobStoreTest 12개, MediaChunksDeviceTest 6개, ProcessRecoveryDeviceTest seed→프로세스 종료→verify, seed-paid→프로세스 종료→verify-paid, 열린 SQLite 트랜잭션 마커→강제 종료→롤백 확인, LongMediaDeviceTest 180분 합성 영상 26구간 전체 추출. 테스트의 유료 요청 단계는 모의 저장 상태만 사용하며 외부 API를 호출하지 않습니다.
+- `output/final-device-qa/` 로그를 기존 `subtitle-emulator-integration` artifact에 보존하며, 최종 main SHA가 바뀌면 실패합니다. 26개 완료 마커와 테스트 성공 횟수가 모두 일치해야 통과합니다.
+- 최종 QA는 선행 PR 병합·CI 성공 후 한 번만 실행합니다. 위 검증 보강은 실행 완료 결과가 아닙니다. 실제 3시간 음성 인식/번역, 실물 폴더블·TalkBack·발열, 운영 AdMob/구독/심사 서버는 별도 확인이 필요합니다. Play 업로드 없음.

@@ -10,14 +10,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
 
-/** Run with phase=seed, force-stop the app externally, then run phase=verify. No API requests. */
+/** Run with seed/verify or seed-paid/verify-paid across process death. No API requests. */
 @RunWith(AndroidJUnit4.class)
 public class ProcessRecoveryDeviceTest {
     @Test public void durableCheckpointAcrossProcesses() throws Exception {
         Context context = ApplicationProvider.getApplicationContext();
         String phase = InstrumentationRegistry.getArguments().getString("phase", "roundtrip");
         try (JobStore store = new JobStore(context)) {
-            if (!"verify".equals(phase)) {
+            if (!"verify".equals(phase) && !"verify-paid".equals(phase)) {
                 String id = store.create("content://test/recovery", "복구 검증 영상", 10_800_000, new JSONObject());
                 JSONArray cues = new JSONArray("[{\"start\":1,\"end\":2,\"original\":\"saved\",\"translated\":\"저장됨\"}]");
                 store.saveTranscription(id, 0, new JSONObject().put("text", "saved"), cues, 1);
@@ -35,6 +35,14 @@ public class ProcessRecoveryDeviceTest {
             assertTrue(store.hasTranscription(id, 1));
             assertFalse(store.hasTranslation(id, 1, 0));
             assertFalse(store.isChunkComplete(id, 1));
+            if ("verify-paid".equals(phase)) {
+                assertEquals("running", store.get(id).getString("status"));
+                assertEquals("translating", store.get(id).getString("stage"));
+                // A previously sent request may have been processed. The persisted paid
+                // stage must not be admitted automatically by a fresh worker.
+                assertFalse(store.claim(id));
+                assertTrue(store.get(id).getString("error").contains("추가 비용"));
+            }
             assertEquals("paused", store.get(id).getString("status"));
             assertEquals("저장됨", store.cues(id).getJSONObject(0).getString("translated"));
             JSONObject progress = store.get(id).getJSONObject("progress");
@@ -43,6 +51,20 @@ public class ProcessRecoveryDeviceTest {
             assertEquals(1, progress.getInt("translatedChunks"));
             assertEquals(5, progress.getInt("percent"));
             assertTrue(progress.getLong("lastSavedAt") > 0);
+            if ("seed-paid".equals(phase)) {
+                store.setStatus(id, "queued", "");
+                assertTrue(store.claim(id));
+                store.progress(id, "translating", 1, null, "테스트 유료 요청 단계");
+                assertEquals("running", store.get(id).getString("status"));
+            }
+            if ("verify-paid".equals(phase)) {
+                assertTrue(MainActivity.queueResume(store, id, null));
+                assertTrue(store.claim(id));
+                assertTrue(store.isChunkComplete(id, 0));
+                assertTrue(store.hasTranscription(id, 1));
+                assertFalse(store.hasTranslation(id, 1, 0));
+                store.pauseRunnable(id, "테스트 완료");
+            }
             if ("interrupt-write".equals(phase)) {
                 // The host force-stops this instrumentation after observing the marker.
                 // A subsequent phase=verify must see only the prior committed checkpoint.
