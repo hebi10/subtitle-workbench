@@ -666,6 +666,8 @@ async function loadCurrentJob(jobId) {
     await flushSave();
     if (selection !== selectionRevision) return false;
     if (current?.id === jobId) return true;
+    if (view === 'editor') await nativeCall('closeInlinePreview');
+    if (selection !== selectionRevision) return false;
     const loaded = await nativeCall('loadJob', { jobId });
     if (selection !== selectionRevision) return false;
     // Edits entered while another job loaded must also reach storage before switching.
@@ -776,6 +778,9 @@ function renderResults() {
   syncEditorButtons();
 }
 function setLoadedJob({ job, cues }) {
+  if (current?.id && current.id !== job.id && view === 'editor') {
+    void nativeCall('closeInlinePreview').catch(() => {});
+  }
   clearTimeout(saveTimer);
   current = job; history = createEditHistory(sortSubtitles(cues || []), 30);
   revision = 0; savedRevision = 0; page = 0; selectedIndex = 0;
@@ -896,7 +901,7 @@ function updateEditorCueContext() {
   $('editorCueOriginal').hidden = !showOriginal;
   if (showOriginal) setText('editorCueOriginal', `원문: ${original}`);
   setText('editorVideoNote', current?.uri
-    ? '여기부터 재생하면 선택한 자막 시점의 영상을 Android 미리보기에서 엽니다.'
+    ? '여기부터 재생은 전체 화면으로 열립니다. 영상 함께 보기는 저장된 자막과 편집 화면을 같이 표시합니다.'
     : '연결된 영상이 없어 미리보기를 사용할 수 없습니다. 자막 편집과 저장은 계속 가능합니다.');
   $('prevCue').disabled = position <= 0;
   $('nextCue').disabled = position < 0 || position >= filtered.length - 1;
@@ -926,7 +931,18 @@ async function previewAt(positionMs) {
   await flushSave();
   await nativeCall('preview', { jobId: current.id, positionMs });
 }
+async function openInlinePreview() {
+  if (view !== 'editor' || !current?.uri || !editable() || changingJob) return;
+  const jobId = current.id;
+  const selection = selectionRevision;
+  const navigation = navigationRevision;
+  const positionMs = Math.max(0, Math.round(Number(history.present[selectedIndex]?.start || 0) * 1000));
+  await flushSave();
+  if (view !== 'editor' || current?.id !== jobId || changingJob || selection !== selectionRevision || navigation !== navigationRevision) return;
+  await nativeCall('openInlinePreview', { jobId, positionMs });
+}
 function syncEditorButtons() {
+  if (!busyNodes.has($('inlinePreview'))) $('inlinePreview').disabled = !current?.uri || !editable() || changingJob;
   $('undo').disabled = !editable() || !history.past.length;
   $('redo').disabled = !editable() || !history.future.length;
   $('readOnlyNote').hidden = !current || editable();
@@ -1353,6 +1369,7 @@ for (const [id, action] of Object.entries({
   prevCue: () => moveSelectedCue(-1),
   nextCue: () => moveSelectedCue(1),
   previewSelectedCue: () => previewAt(Math.round(history.present[selectedIndex].start * 1000)),
+  inlinePreview: openInlinePreview,
   openOnDevice: async () => { await flushSave(); await nativeCall('openOnDevice'); },
   openCloudLive: async () => { await flushSave(); await nativeCall('openCloudLive'); },
   openOfflineModel: async () => { await flushSave(); await nativeCall('openOfflineModel'); },

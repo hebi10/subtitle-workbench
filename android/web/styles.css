@@ -2545,3 +2545,21 @@ main > section > .page-description { margin: 0 0 12px; font-size: 13px; line-hei
   }
   #settingsView #subtitleSubscriptionStatus[data-state="verified"] { color: #b0e1c2; }
 }
+
+
+/* SW-DESIGN-04: the native preview occupies its own layout slot, never overlays this editor. */
+#editorView .editor-file-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin: 4px 0 6px; min-width: 0;
+}
+#editorView .editor-file-row #editorName {
+  flex: 1 1 120px; min-width: 0; margin: 0;
+  padding: 8px; overflow-wrap: anywhere;
+}
+#editorView .editor-file-row #inlinePreview {
+  flex: 0 1 auto; min-height: 48px; min-width: 0; padding: 8px;
+  font-size: 12px; white-space: normal; overflow-wrap: anywhere;
+}
+@media (max-width: 360px) {
+  #editorView .editor-file-row #inlinePreview { flex-basis: 100%; }
+}

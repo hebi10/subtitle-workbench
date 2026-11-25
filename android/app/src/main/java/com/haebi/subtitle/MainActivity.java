@@ -39,6 +39,9 @@ public final class MainActivity extends Activity {
     private final ExecutorService connectionIo = Executors.newSingleThreadExecutor();
     private volatile OpenAiClient.Cancellation connectionCancellation;
     private WebView web;
+    private InlinePreviewPanel inlinePreview;
+    private boolean resumed;
+    private boolean editorScreen;
     private MonetizationController monetization;
     private JobStore store;
     private SecretStore secrets;
@@ -61,6 +64,7 @@ public final class MainActivity extends Activity {
         android.widget.LinearLayout content = new android.widget.LinearLayout(this);
         content.setOrientation(android.widget.LinearLayout.VERTICAL);
         root.addView(content, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        inlinePreview = new InlinePreviewPanel(this, content);
         content.addView(web, new android.widget.LinearLayout.LayoutParams(-1, 0, 1f));
         android.widget.FrameLayout adSlot = new android.widget.FrameLayout(this);
         content.addView(adSlot, new android.widget.LinearLayout.LayoutParams(-1, -2));
@@ -116,6 +120,7 @@ public final class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        resumed = true;
         if (web != null) web.onResume();
         if (monetization != null) monetization.resume();
         if (pendingOnDeviceJobId != null && web != null) {
@@ -137,6 +142,7 @@ public final class MainActivity extends Activity {
     @Override public void onBackPressed() { handleBack(); }
 
     private void handleBack() {
+        if (inlinePreview != null && inlinePreview.isOpen()) { inlinePreview.close(); return; }
         web.evaluateJavascript("window.handleNativeBack ? window.handleNativeBack() : false", result -> {
             if (!"true".equals(result)) finish();
         });
@@ -161,7 +167,12 @@ public final class MainActivity extends Activity {
                         .put("settings", readSettings()).put("keyCheck", readConnectionCheck()).put("maxDurationMs", JobStore.MAX_DURATION_MS); break;
                 case "setAdScreen":
                     String adScreen = params.optString("screen", "");
-                    runOnUiThread(() -> { if (!destroyed && monetization != null) monetization.setScreen(adScreen); });
+                    runOnUiThread(() -> {
+                        if (destroyed) return;
+                        editorScreen = "editor".equals(adScreen);
+                        if (!editorScreen && inlinePreview != null) inlinePreview.close();
+                        if (monetization != null) monetization.setScreen(adScreen);
+                    });
                     result = true; break;
                 case "getSubscriptionOptions": case "restoreSubscription": case "buySubscription": case "manageSubscription":
                     String billingRequestId = id;
@@ -269,9 +280,22 @@ public final class MainActivity extends Activity {
                     result = true; break;
                 case "pause": JobService.pause(this, params.getString("jobId")); result = true; break;
                 case "loadJob": result = jobPayload(params.getString("jobId")); break;
-                case "saveCues":
-                    store.saveEdited(params.getString("jobId"), checkedCues(params.getJSONArray("cues")));
+                case "saveCues": {
+                    String editedJobId = params.getString("jobId");
+                    JSONArray editedCues = checkedCues(params.getJSONArray("cues"));
+                    store.saveEdited(editedJobId, editedCues);
+                    // Saving is authoritative. Preview refresh is best effort and may never invalidate a committed save.
+                    long previewSession = inlinePreview == null ? -1 : inlinePreview.sessionFor(editedJobId);
+                    if (previewSession >= 0) {
+                        try {
+                            PreviewCueIndex savedIndex = new PreviewCueIndex(editedCues);
+                            runOnUiThread(() -> { if (!destroyed) inlinePreview.updateCues(editedJobId, previewSession, savedIndex); });
+                        } catch (RuntimeException ignored) {
+                            runOnUiThread(() -> { if (!destroyed) inlinePreview.cueRefreshFailed(editedJobId, previewSession); });
+                        }
+                    }
                     result = true; break;
+                }
                 case "deleteJob":
                     store.deleteCompleted(params.getString("jobId"));
                     result = true; break;
@@ -316,6 +340,37 @@ public final class MainActivity extends Activity {
                     String body = params.getString("text");
                     if (body.getBytes(StandardCharsets.UTF_8).length > MAX_TEXT_BYTES) throw new IllegalArgumentException("내보내기 용량을 초과했습니다.");
                     startPicker(id, EXPORT, null, body, params.optString("name", "subtitles.srt"), params.optString("mime", "text/plain"), null); return;
+                case "closeInlinePreview":
+                    runOnUiThread(() -> { if (!destroyed && inlinePreview != null) inlinePreview.close(); });
+                    result = true; break;
+                case "openInlinePreview": {
+                    String inlineRequestId = id;
+                    String inlineJobId = params.getString("jobId");
+                    long generation = inlinePreview.generation();
+                    JSONObject item = store.get(inlineJobId);
+                    Uri media = Uri.parse(item.optString("uri", ""));
+                    if (!"completed".equals(item.optString("status")) || !"content".equals(media.getScheme()))
+                        throw new IllegalArgumentException("완료된 원본 영상 연결 작업에서만 함께 볼 수 있습니다. 기존 미리보기를 이용해 주세요.");
+                    PreviewCueIndex index = new PreviewCueIndex(store.cues(inlineJobId));
+                    long startMs = Math.max(0L, params.optLong("positionMs", 0L));
+                    runOnUiThread(() -> {
+                        if (destroyed || !resumed || !editorScreen || generation != inlinePreview.generation()) {
+                            reply(inlineRequestId, null, "편집 화면에서 영상 함께 보기를 다시 선택해 주세요.");
+                            return;
+                        }
+                        try {
+                            if (!inlinePreview.open(inlineJobId, media, startMs, index)) {
+                                reply(inlineRequestId, null, "편집 공간이 부족합니다. 키보드를 닫거나 전체 화면 미리보기를 이용해 주세요.");
+                                return;
+                            }
+                            reply(inlineRequestId, true, null);
+                        } catch (RuntimeException error) {
+                            inlinePreview.close();
+                            reply(inlineRequestId, null, "영상을 열 수 없습니다. 원본 파일을 확인해 주세요.");
+                        }
+                    });
+                    return;
+                }
                 case "preview":
                     JSONObject job = store.get(params.getString("jobId"));
                     if (job.optString("uri").isEmpty()) throw new IllegalArgumentException("가져온 자막에는 연결된 영상이 없습니다.");
@@ -613,6 +668,8 @@ public final class MainActivity extends Activity {
     }
 
     @Override protected void onPause() {
+        resumed = false;
+        if (inlinePreview != null) inlinePreview.close();
         if (web != null) web.onPause();
         if (monetization != null) monetization.pause();
         super.onPause();
@@ -620,6 +677,7 @@ public final class MainActivity extends Activity {
 
     @Override protected void onDestroy() {
         destroyed = true;
+        if (inlinePreview != null) inlinePreview.close();
         OpenAiClient.Cancellation active = connectionCancellation;
         if (active != null) active.cancel();
         connectionIo.shutdownNow();

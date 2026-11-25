@@ -25,7 +25,7 @@
         if (['setKey', 'clearKey', 'usePersonalApi', 'setReviewRelay', 'clearReviewRelay'].includes(method) && state.jobs.some((item) => ['running', 'queued'].includes(item.status))) throw new Error('실행 또는 대기 중인 작업을 일시정지해 주세요.');
         switch (method) {
           case 'getSubscriptionOptions': result = state.subscriptionOptions ?? { available: false, purchaseEnabled: false, entitlementVerified: false, plans: [] }; break;
-          case 'setAdScreen': result = true; break;
+          case 'setAdScreen': if (params.screen !== 'editor') state.inlinePreviewJob = null; result = true; break;
           case 'openAdPrivacyOptions': result = true; break;
           case 'status': result = { jobs: state.jobs, hasKey: state.hasKey, hasPersonalKey: state.hasPersonalKey, cloudMode: state.cloudMode, reviewRelay: state.reviewRelay, keyCheck: state.keyCheck, settings: state.settings, maxDurationMs: 10800000 }; break;
           case 'getSettings': result = state.settings; break;
@@ -67,6 +67,10 @@
           case 'resume': if (!sameDestination(job?.settings)) throw new Error('원래 연결로 전환해야 이어할 수 있습니다.'); job.status = 'running'; if (job.stage === 'ready') job.stage = 'extracting'; if (params.translationModel) job.settings = { ...job.settings, translationModel: params.translationModel }; break;
           case 'pause': job.status = 'paused'; break;
           case 'preview': break;
+          case 'openInlinePreview':
+            if (!job?.uri || job.status !== 'completed') throw new Error('완료된 영상 연결 작업에서만 함께 볼 수 있습니다.');
+            state.inlinePreviewJob = job.id; break;
+          case 'closeInlinePreview': state.inlinePreviewJob = null; break;
           case 'export': result = state.cancelNextExport ? null : { saved: true }; state.cancelNextExport = false; break;
           case 'openOnDevice': break;
           case 'openCloudLive': break;
