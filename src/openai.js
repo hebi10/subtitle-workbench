@@ -58,7 +58,7 @@ export async function translateSubtitles({ subtitles, settings, signal, onProgre
           result[originalIndex] = { ...subtitle };
           return { index: originalIndex, subtitle: { ...subtitle } };
         });
-        onCheckpoint?.(patches);
+        return onCheckpoint?.(patches);
       },
     });
     done += batch.length;
@@ -99,7 +99,7 @@ async function translateBatchWithFallback({ batch, targetLanguage, settings, sig
   } catch (error) {
     if (error?.name === 'AbortError' || error?.isApiError) throw error;
     if (batch.length <= 1) {
-      onResult(0, batch.map((subtitle) => markTranslationFailed(subtitle, error.message)));
+      await onResult(0, batch.map((subtitle) => markTranslationFailed(subtitle, error.message)));
       return;
     }
     const fallbackSize = batch.length > 5 ? 5 : 1;
@@ -113,7 +113,7 @@ async function translateBatchWithFallback({ batch, targetLanguage, settings, sig
   }
 
   // Preserve valid siblings before retrying missing IDs. A later request may fail or be cancelled.
-  onResult(0, translated);
+  await onResult(0, translated);
   for (const [index, subtitle] of translated.entries()) {
     if (!isMissingTranslationFailure(subtitle)) continue;
     signal?.throwIfAborted();
@@ -124,7 +124,7 @@ async function translateBatchWithFallback({ batch, targetLanguage, settings, sig
       if (error?.name === 'AbortError' || error?.isApiError) throw error;
       retried = markTranslationFailed(subtitle, error.message);
     }
-    onResult(index, [retried]);
+    await onResult(index, [retried]);
   }
 }
 
