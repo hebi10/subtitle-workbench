@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 import argparse
 import hashlib
 import json
+import re
 
 SRC_SHA = "b57afccc2850f35cb675a837ff0d5437edad0936"
 SRC_RUN = 43562836588
@@ -27,10 +28,16 @@ def record(path, source):
     return {"file":path.name,"width":im.width,"height":im.height,
             "sha256":sha(path.read_bytes()),"source":source}
 
-def build(capture_dir, out, main_sha, font_path):
+def build(capture_dir, out, main_sha, font_path, source_sha=SRC_SHA, source_run=SRC_RUN):
     capture_dir, out = Path(capture_dir), Path(out)
-    if len(main_sha)!=40 or any(ch not in "0123456789abcdef" for ch in main_sha):
-        raise ValueError("Invalid main SHA")
+    if not re.fullmatch(r"[0-9a-f]{40}", main_sha) or not re.fullmatch(r"[0-9a-f]{40}", source_sha):
+        raise ValueError("Invalid source/main SHA")
+    if type(source_run) is not int or source_run <= 0:
+        raise ValueError("Invalid capture run ID")
+    # The new review workflow requires the exact same final main SHA. Preserve the
+    # historical UI-10-I defaults for reproducing the original reviewed image set.
+    if (source_sha, source_run) != (SRC_SHA, SRC_RUN) and main_sha != source_sha:
+        raise ValueError("New captures must come from the exact frozen main SHA")
     out.mkdir(parents=True, exist_ok=True)
     title=ImageFont.truetype(font_path, 68)
     wordmark=ImageFont.truetype(font_path, 38)
@@ -54,8 +61,8 @@ def build(capture_dir, out, main_sha, font_path):
         dst=out / filename
         page.save(dst,format="PNG",optimize=True)
         assets.append(record(dst,{"type":"real-android-emulator-capture",
-            "sourceCommit":SRC_SHA,"mainEquivalentCommit":main_sha,
-            "sourceRunId":SRC_RUN,"sourcePath":sourcepath,
+            "sourceCommit":source_sha,"mainEquivalentCommit":main_sha,
+            "sourceRunId":source_run,"sourcePath":sourcepath,
             "sourceSHA256":sha(raw),"captionOutsideUncroppedCapture":True}))
     graphic=Image.new("RGB",(1024,500),"#f5f5f5")
     d=ImageDraw.Draw(graphic)
@@ -83,12 +90,12 @@ def build(capture_dir, out, main_sha, font_path):
         "assets":assets,
         "screenshotCapture":{"status":"captured-for-review","count":8,
         "source":"Actual Android 15 API35 emulator, generated QA fixtures",
-        "originalSourceCommit":SRC_SHA,"mainEquivalentCommit":main_sha,
-        "sourceWorkflowRun":str(SRC_RUN),
+        "originalSourceCommit":source_sha,"mainEquivalentCommit":main_sha,
+        "sourceWorkflowRun":str(source_run),
         "provenanceFile":"capture-provenance-ui10.json"}}
     (out/"manifest.json").write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-    provenance={"app":"자막라인","sourceGitSha":SRC_SHA,"equivalentMainSHA":main_sha,
-                "emulatorRunId":SRC_RUN,"sourceScreenshots":[a for a in assets if a["file"].startswith("0")],
+    provenance={"app":"자막라인","sourceGitSha":source_sha,"equivalentMainSHA":main_sha,
+                "emulatorRunId":source_run,"sourceScreenshots":[a for a in assets if a["file"].startswith("0")],
                 "dataKind":"deterministic QA fixtures; no user content",
                 "originalAppUISourceByteIdenticalToMain":True}
     (out/"capture-provenance-ui10.json").write_text(
@@ -101,5 +108,7 @@ if __name__=="__main__":
     p.add_argument("--main-sha",required=True)
     p.add_argument("--out",default="assets/play-store/ko-KR")
     p.add_argument("--font",default="/usr/share/fonts/truetype/nanum/NanumSquareB.ttf")
+    p.add_argument("--source-sha", default=SRC_SHA)
+    p.add_argument("--source-run-id", type=int, default=SRC_RUN)
     args=p.parse_args()
-    build(args.capture_dir,args.out,args.main_sha,args.font)
+    build(args.capture_dir,args.out,args.main_sha,args.font,args.source_sha,args.source_run_id)

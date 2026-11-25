@@ -66,3 +66,14 @@ test('current Play declaration and public policy disclose ads and subscription d
   assert.match(policy, /구독 구매 토큰과 Play Integrity 검증 토큰/);
   assert.match(JSON.parse(listingText).fullDescription, /광고 제거 구독.*OpenAI API 사용 요금/s);
 });
+
+
+test('SW-FIX-10 listing distinguishes free import, uncertain request cost and Android-only functionality', async () => {
+  const listing = JSON.parse(await read('docs/play-store/listing-ko.json'));
+  const notes = await read('docs/play-store/release-notes-ko.txt');
+  assert.match(listing.fullDescription, /개인 API 키 없이 불러와 편집/);
+  assert.match(listing.fullDescription, /중단된 API 요청을 다시 전송하면 비용이 발생할 수 있습니다/);
+  assert.match(listing.fullDescription, /ChatGPT 구독과 API 사용료도 별개/);
+  assert.doesNotMatch(listing.fullDescription, /IndexedDB|브라우저 자동 저장/);
+  assert.match(notes, /서버 처리 여부가 불확실한 요청/);
+});
