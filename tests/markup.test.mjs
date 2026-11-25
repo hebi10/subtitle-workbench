@@ -236,3 +236,16 @@ test('Editorial Studio 2.0 3-C preserves SRT/VTT/JSON and exposes result-scoped 
   assert.ok(css.includes('#panel-export .downloads .download-link--primary'));
   assert.ok(css.includes('#panel-export .export-summary-grid'));
 });
+
+
+test('beginner import and API workload remain separate from paid execution', () => {
+  const html = readFileSync('index.html', 'utf8');
+  const app = readFileSync('src/app.js', 'utf8');
+  for (const id of ['generateCostStatus', 'plannedAudioStatus', 'generateImportSubtitles']) {
+    assert.equal((html.match(new RegExp('id="' + id + '"', 'g')) || []).length, 1);
+  }
+  assert.match(html, /ChatGPT 구독 및 앱 광고 제거 구독과 별도/);
+  assert.match(html, /https:\/\/openai\.com\/api\/pricing\//);
+  assert.match(app, /generateImportSubtitles\.addEventListener\('click', \(\) => refs\.subtitleFileInput\.click\(\)\)/);
+  assert.match(app, /extractedSeconds: chunks\.reduce/);
+});

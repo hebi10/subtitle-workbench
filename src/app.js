@@ -2,6 +2,7 @@ import {
   buildChunkPlan,
   createTranslationFailureLogDownload,
   createSubtitleDownloads,
+  describeApiWorkload,
   formatTimestamp,
   formatVtt,
   getTranslationFailures,
@@ -144,6 +145,9 @@ const refs = {
   credentialError: document.querySelector('#credentialError'),
   startRequirement: document.querySelector('#startRequirement'),
   generateFileStatus: document.querySelector('#generateFileStatus'),
+  generateCostStatus: document.querySelector('#generateCostStatus'),
+  plannedAudioStatus: document.querySelector('#plannedAudioStatus'),
+  generateImportSubtitles: document.querySelector('#generateImportSubtitles'),
   generateConnectionStatus: document.querySelector('#generateConnectionStatus'),
   generateLanguageStatus: document.querySelector('#generateLanguageStatus'),
   generateWorkflowStatus: document.querySelector('#generateWorkflowStatus'),
@@ -280,6 +284,7 @@ function bindEvents() {
   });
   refs.settingsForm.addEventListener('submit', (event) => event.preventDefault());
   refs.retryTranslationButton.addEventListener('click', retryTranslation);
+  refs.generateImportSubtitles.addEventListener('click', () => refs.subtitleFileInput.click());
   refs.attachMediaFile.addEventListener('change', () => {
     const [file] = refs.attachMediaFile.files;
     if (file) attachMediaToResult(file);
@@ -590,6 +595,12 @@ function updateStartButtonState() {
   refs.generateFileStatus.textContent = preparation.file;
   refs.generateConnectionStatus.textContent = preparation.connection;
   refs.generateLanguageStatus.textContent = preparation.language;
+  const workload = describeApiWorkload({
+    durationSeconds: hasFile && hasDuration ? state.duration : 0,
+    fileCount: state.selectedFiles.length || 1,
+    translationEnabled: refs.translationEnabled.checked,
+  });
+  if (refs.generateCostStatus.textContent !== workload) refs.generateCostStatus.textContent = workload;
   const next = state.isBusy
     ? { state: 'running', text: '자막 생성 진행 중 · 오른쪽 진행 상태에서 처리 과정을 확인하세요.' }
     : refs.statusBadge.dataset.state === 'failed'
@@ -782,6 +793,12 @@ async function runPipelineForCurrentFile(batchInfo, settings, signal) {
   });
 
   renderChunks(chunks);
+  refs.plannedAudioStatus.textContent = describeApiWorkload({
+    durationSeconds: state.duration, chunkCount: chunks.length,
+    extractedSeconds: chunks.reduce((total, chunk) => total + chunk.extractEnd - chunk.extractStart, 0),
+    translationEnabled: settings.translationEnabled,
+  });
+  refs.plannedAudioStatus.hidden = false;
   setStep('split', 'active');
   setStepProgress('split', 0);
   setProgress(30, `${chunks.length}개 오디오 조각 준비 중`);
@@ -1883,6 +1900,8 @@ function clearOutputs() {
     refs.chunksList.parentElement.open = false;
   }
   refs.chunkSummary.textContent = '없음';
+  refs.plannedAudioStatus.hidden = true;
+  refs.plannedAudioStatus.textContent = '';
   refs.subtitleCount.textContent = '0개';
   refs.logOutput.textContent = '';
   renderPreview([]);
@@ -1926,6 +1945,7 @@ function setBusy(isBusy) {
   });
   refs.fileInput.disabled = isBusy;
   refs.subtitleFileInput.disabled = isBusy;
+  refs.generateImportSubtitles.disabled = isBusy;
   refs.attachMediaFile.disabled = isBusy;
   ['importSubtitlesEmpty', 'importSubtitlesExport', 'goGenerateEmpty', 'goGenerateExport'].forEach((id) => {
     document.getElementById(id).disabled = isBusy;
