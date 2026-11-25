@@ -148,6 +148,7 @@ public final class EditorialFullWebViewDeviceTest {
 
     private static void screenshot(Context context, String filename) throws Exception {
         Thread.sleep(750);
+        EditorialNativeScreensDeviceTest.dismissLauncherAnrIfPresent();
         Bitmap bitmap=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
         assertNotNull(filename, bitmap);
         File folder=context.getExternalFilesDir("editorial-5a-webview");

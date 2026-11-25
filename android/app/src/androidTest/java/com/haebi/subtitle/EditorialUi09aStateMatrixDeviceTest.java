@@ -314,6 +314,7 @@ public final class EditorialUi09aStateMatrixDeviceTest {
 
     private static void saveScreenshot(Context context, String name) throws Exception {
         Thread.sleep(550);
+        EditorialNativeScreensDeviceTest.dismissLauncherAnrIfPresent();
         Bitmap bitmap = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
         assertNotNull("Actual Android screenshot " + name, bitmap);
         File folder = context.getExternalFilesDir("ui09a-state-matrix");
