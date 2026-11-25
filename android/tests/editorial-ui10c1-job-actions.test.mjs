@@ -138,7 +138,29 @@ test('UI-10-C1 state changes, credentials, pagination, deletion confirmation and
     });
     await page.waitForFunction(() => document.querySelector('#jobList .job[data-job-id="ready-c1"]'));
     await expectPrimary(page, 'ready-c1', '준비 확인');
-    await page.locator('#jobList .job[data-job-id="ready-c1"]').getByRole('button', { name: '준비 확인' }).click();
+    const readyCard = page.locator('#jobList .job[data-job-id="ready-c1"]');
+    for (const width of [320, 390, 800]) {
+      await page.setViewportSize({ width, height: 844 });
+      const geometry = await readyCard.evaluate(card => {
+        const heading = card.querySelector('.job-card-heading').getBoundingClientRect();
+        const action = card.querySelector('.job-actions button').getBoundingClientRect();
+        return {
+          pageWidth: document.documentElement.scrollWidth, viewport: innerWidth,
+          headingRight: heading.right, headingBottom: heading.bottom,
+          actionLeft: action.left, actionTop: action.top, actionBottom: action.bottom, actionHeight: action.height,
+        };
+      });
+      assert.ok(geometry.pageWidth <= geometry.viewport + 1, width + ': no horizontal overflow');
+      assert.ok(geometry.actionHeight >= 48, width + ': safe preparation touch target');
+      if (width === 320) {
+        assert.ok(geometry.actionTop >= geometry.headingBottom - 1, 'Narrow card keeps separate action row');
+      } else {
+        assert.ok(geometry.actionLeft >= geometry.headingRight - 1 && geometry.actionTop < geometry.headingBottom,
+          'Ready task details and preparation action share one row');
+      }
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await readyCard.getByRole('button', { name: '준비 확인' }).click();
     assert.equal(await page.locator('#videoView').isVisible(), true);
     await expectPrimary(page, 'ready-c1', '생성 시작', '#preparedJobs');
 
