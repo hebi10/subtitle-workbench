@@ -62,6 +62,8 @@ try {
   // Isolate credentials/settings so fixture execution never reads or rewrites saved user data.
   const memory = new Map();
   const storageAccess = { reads: 0, writes: 0 };
+  // The separate workspace-storage Playwright suite exercises real IndexedDB in an isolated context.
+  Object.defineProperty(window, 'indexedDB', { configurable: true, value: undefined });
   Object.defineProperty(window, 'localStorage', { configurable: true, value: {
     getItem: (key) => { storageAccess.reads += 1; return memory.get(key) ?? null; },
     setItem: (key, value) => { storageAccess.writes += 1; memory.set(key, String(value)); },

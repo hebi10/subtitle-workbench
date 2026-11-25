@@ -15,6 +15,7 @@ import { BrowserFfmpeg } from './ffmpeg-pipeline.js';
 import { mapWithConcurrency } from './limited-concurrency.js';
 import { createJobRunner } from './job-runner.js';
 import { createJobHistoryEntry } from './job-history.js';
+import { createWorkspaceSnapshot, readWorkspace, writeWorkspace, WorkspaceConflict } from './workspace-storage.js';
 import { createEditHistory, commitEdit, undoEdit, redoEdit } from './edit-history.js';
 import { OPENAI_DEFAULTS, requestTranscription, translateSubtitles } from './openai.js';
 import { createCredentialController } from './credential-controller.js';
@@ -85,8 +86,21 @@ const state = {
   retryController: null,
 };
 
+let workspaceRevision = 0;
+let workspaceReady = false;
+let workspaceEnabled = false;
+let workspaceBlocked = false;
+let workspaceStatus = 'loading';
+let workspacePending = null;
+let workspaceDrain = null;
+let workspaceLastSerialized = null;
+let workspaceToggleBusy = false;
+
 const refs = {
   workspace: document.querySelector('.workspace'),
+  workspaceStorageStatus: document.querySelector('#workspaceStorageStatus'),
+  workspaceStorageToggle: document.querySelector('#workspaceStorageToggle'),
+  workspaceStorageRetry: document.querySelector('#workspaceStorageRetry'),
   overallProgress: document.querySelector('#overallProgress'),
   translationRecovery: document.querySelector('#translationRecovery'),
   translationRecoveryText: document.querySelector('#translationRecoveryText'),
@@ -272,6 +286,128 @@ bindEvents();
 renderResultSelector();
 updateEditControls();
 updateTranslationControls();
+await initializeWorkspace();
+
+function renderWorkspaceStorage() {
+  const messages = {
+    loading: '기기 저장 상태 확인 중',
+    off: '자동 저장 꺼짐 · 현재 페이지의 작업은 닫기 전에 내려받으세요.',
+    saving: '이 브라우저에 자막 저장 중',
+    saved: '이 브라우저에 자막 저장 완료',
+    restored: '이 브라우저의 자막 복구 완료 · 원본 영상은 다시 연결하세요.',
+    error: '최신 자막 저장 실패 · 현재 탭의 결과를 먼저 내려받거나 다시 저장하세요.',
+    conflict: '다른 탭에서 저장 기록이 변경되었습니다. 이 탭의 결과를 내려받은 뒤 새로고침하세요.',
+    unavailable: '브라우저 저장소를 사용할 수 없습니다. 결과를 내려받아 보관하세요.',
+  };
+  refs.workspaceStorageStatus.dataset.state = workspaceStatus;
+  const message = messages[workspaceStatus];
+  if (refs.workspaceStorageStatus.textContent !== message) refs.workspaceStorageStatus.textContent = message;
+  refs.workspaceStorageToggle.textContent = workspaceEnabled ? '자동 저장 끄기 및 기록 삭제' : '자동 저장 켜기';
+  refs.workspaceStorageToggle.disabled = !workspaceReady || workspaceBlocked || state.isBusy || Boolean(workspaceDrain) || workspaceToggleBusy;
+  refs.workspaceStorageRetry.hidden = !(workspaceEnabled && workspaceStatus === 'error' && !workspaceBlocked);
+  refs.workspaceStorageRetry.disabled = state.isBusy || Boolean(workspaceDrain) || workspaceToggleBusy;
+}
+
+function workspaceSnapshot(draft = null) {
+  const entries = draft ? state.results.map(entry => entry.id === draft.id ? { ...entry, subtitles: draft.subtitles } : entry) : state.results;
+  return createWorkspaceSnapshot(entries, state.activeResultId);
+}
+
+function storageFailure(error) {
+  workspaceBlocked = error instanceof WorkspaceConflict;
+  workspaceStatus = workspaceBlocked ? 'conflict' : 'error';
+  workspacePending = null;
+  renderWorkspaceStorage();
+}
+
+function queueWorkspaceSave(draft = null) {
+  if (!workspaceEnabled || !workspaceReady || workspaceBlocked || workspaceToggleBusy) return Promise.resolve();
+  let data, serialized;
+  try {
+    data = workspaceSnapshot(draft);
+    serialized = JSON.stringify(data);
+  } catch (error) {
+    storageFailure(error);
+    return workspaceDrain || Promise.resolve();
+  }
+  if (!workspaceDrain && serialized === workspaceLastSerialized) {
+    if (workspaceStatus === 'error') { workspaceStatus = 'saved'; renderWorkspaceStorage(); }
+    return Promise.resolve();
+  }
+  workspacePending = { data, serialized };
+  workspaceStatus = 'saving';
+  if (!workspaceDrain) {
+    workspaceDrain = (async () => {
+      while (workspacePending && !workspaceBlocked) {
+        const current = workspacePending;
+        workspacePending = null;
+        try {
+          workspaceRevision = await writeWorkspace(workspaceRevision, current.data);
+          workspaceLastSerialized = current.serialized;
+          if (!workspacePending && workspaceStatus === 'saving') workspaceStatus = 'saved';
+        } catch (error) { storageFailure(error); }
+      }
+    })().finally(() => {
+      workspaceDrain = null;
+      renderWorkspaceStorage();
+    });
+  }
+  renderWorkspaceStorage();
+  return workspaceDrain;
+}
+
+async function initializeWorkspace() {
+  setBusy(true);
+  try {
+    const stored = await readWorkspace();
+    workspaceRevision = stored.revision;
+    workspaceEnabled = stored.data !== null;
+    if (stored.data) {
+      workspaceLastSerialized = JSON.stringify(stored.data);
+      state.results = stored.data.entries.map(entry => ({
+        ...entry, sourceFile: null, restoredFromWorkspace: true,
+        subtitleCount: entry.subtitles.length, editHistory: createEditHistory(entry.subtitles),
+      }));
+      state.nextResultId = Math.max(0, ...state.results.map(entry => Number(entry.id))) + 1;
+      // Restore while saving is disabled; never overwrite the existing snapshot on startup.
+      setBusy(false);
+      if (stored.data.activeId) {
+        await restoreResult(stored.data.activeId);
+        activateTab('edit');
+      }
+      workspaceStatus = state.results.length ? 'restored' : 'saved';
+    } else workspaceStatus = 'off';
+  } catch {
+    workspaceBlocked = true;
+    workspaceStatus = 'unavailable';
+  } finally {
+    workspaceReady = true;
+    setBusy(false);
+    renderWorkspaceStorage();
+  }
+}
+
+async function toggleWorkspaceStorage() {
+  if (!workspaceReady || workspaceBlocked || state.isBusy || workspaceDrain || workspaceToggleBusy) return;
+  if (workspaceEnabled && !window.confirm('이 브라우저에 저장된 자막 기록을 삭제하고 자동 저장을 끕니다. 현재 탭의 자막은 유지됩니다. 계속하시겠습니까?')) return;
+  workspaceToggleBusy = true;
+  setBusy(true);
+  const enable = !workspaceEnabled;
+  try {
+    const data = enable ? workspaceSnapshot() : null;
+    workspaceStatus = 'saving';
+    renderWorkspaceStorage();
+    workspaceRevision = await writeWorkspace(workspaceRevision, data);
+    workspaceEnabled = enable;
+    workspaceLastSerialized = data ? JSON.stringify(data) : null;
+    workspaceStatus = enable ? 'saved' : 'off';
+  } catch (error) { storageFailure(error); }
+  finally {
+    workspaceToggleBusy = false;
+    setBusy(false);
+    renderWorkspaceStorage();
+  }
+}
 
 function bindEvents() {
   window.addEventListener('pagehide', () => {
@@ -280,6 +416,8 @@ function bindEvents() {
     jobRunner.cancel();
     state.ffmpeg?.terminate();
   });
+  refs.workspaceStorageToggle.addEventListener('click', toggleWorkspaceStorage);
+  refs.workspaceStorageRetry.addEventListener('click', () => queueWorkspaceSave());
   refs.settingsForm.addEventListener('submit', (event) => event.preventDefault());
   refs.retryTranslationButton.addEventListener('click', retryTranslation);
   refs.attachMediaFile.addEventListener('change', () => {
@@ -399,6 +537,10 @@ function bindEvents() {
       refs.editorCueOriginal.textContent = event.target.value || '원문 없음';
     } else if (event.target.dataset.editField === 'translated') {
       refs.editorCueTranslated.textContent = event.target.value || '번역 없음';
+    }
+    const field = event.target.dataset.editField;
+    if (state.activeResultId && !event.isComposing && (field === 'original' || field === 'translated')) {
+      void queueWorkspaceSave({ id: state.activeResultId, subtitles: updateSubtitleTextAt(state.subtitles, index, field, event.target.value) });
     }
   });
 
@@ -641,7 +783,7 @@ async function handleSubtitleFileSelect() {
 async function selectFiles(files) {
   if (state.isBusy || files.length === 0) return;
   const entry = state.results.find((result) => result.id === state.activeResultId);
-  if (files.length === 1 && entry && !entry.sourceFile && state.subtitles.length > 0) {
+  if (files.length === 1 && entry && !entry.restoredFromWorkspace && !entry.sourceFile && state.subtitles.length > 0) {
     await attachMediaToResult(files[0]);
     return;
   }
@@ -667,6 +809,7 @@ async function attachMediaToResult(file) {
     const entry = state.results.find((result) => result.id === state.activeResultId);
     if (entry) {
       entry.sourceFile = file;
+      entry.restoredFromWorkspace = false;
       entry.duration = state.duration;
       entry.fileSize = file.size;
     }
@@ -969,10 +1112,19 @@ function saveNewResult(subtitles, fileName, options = {}) {
 async function translateWithCheckpoint(entry, options, preserveHistory = false) {
   const snapshot = options.subtitles.map((subtitle) => ({ ...subtitle }));
   try {
+    await queueWorkspaceSave();
     return await translateSubtitles({
       ...options,
-      onCheckpoint: (patches) => {
+      onCheckpoint: async (patches) => {
         for (const { index, subtitle } of patches) snapshot[index] = subtitle;
+        entry.subtitles = snapshot.map(subtitle => ({ ...subtitle }));
+        entry.subtitleCount = snapshot.length;
+        state.subtitles = entry.subtitles;
+        entry.translationPending = true;
+        if (snapshot.some(cue => cue.status === 'translated' || cue.status === 'edited')) {
+          entry.outputLanguage = entry.translationSettings?.targetLanguage || 'original';
+        }
+        await queueWorkspaceSave();
       },
     });
   } catch (error) {
@@ -998,7 +1150,7 @@ function renderTranslationRecovery() {
   const entry = state.results.find((result) => result.id === state.activeResultId);
   refs.translationRecovery.hidden = !entry?.translationPending;
   if (!entry?.translationPending) return;
-  refs.translationRecoveryText.textContent = `원문과 완료된 번역을 보존했습니다. 다운로드하거나 ${entry.translationSettings.targetLanguage}의 남은 번역만 다시 시도할 수 있습니다. 응답을 받지 못한 요청의 재시도에는 추가 비용이 발생할 수 있습니다. 새로고침하면 작업 결과가 사라지므로 먼저 다운로드해 주세요.`;
+  refs.translationRecoveryText.textContent = `원문과 완료된 번역을 보존했습니다. 다운로드하거나 ${entry.translationSettings.targetLanguage}의 남은 번역만 다시 시도할 수 있습니다. 응답을 받지 못한 요청의 재시도에는 추가 비용이 발생할 수 있습니다. 자동 저장 상태를 확인하고 필요한 결과를 별도 파일로 내려받으세요.`;
   refs.retryTranslationButton.disabled = !canStartSubtitleJob({
     hasFile: true, isBusy: state.isBusy, connectionMode: getConnectionMode(),
     apiKey: getActiveApiKey(), proxyUrl: refs.proxyUrl.value,
@@ -1080,7 +1232,8 @@ async function restoreResult(id) {
     else { refs.videoPreview.removeAttribute('src'); refs.videoPreview.load(); }
     refs.fileMeta.textContent = entry.sourceFile
       ? `${entry.sourceFile.name} · ${formatBytes(entry.sourceFile.size)}`
-      : '자막 파일 · 영상 또는 오디오를 선택해 미리 볼 수 있습니다.';
+      : entry.restoredFromWorkspace ? '복구된 자막 · 편집 탭에서 원본 미디어를 다시 연결할 수 있습니다.'
+        : '자막 파일 · 영상 또는 오디오를 선택해 미리 볼 수 있습니다.';
     refs.durationValue.textContent = secondsToClock(state.duration);
     state.activeResultId = entry.id;
     state.outputFileName = entry.fileName;
@@ -1625,6 +1778,7 @@ function syncSubtitleOutputs() {
   renderResultSelector();
   updateEditControls();
   renderTranslationRecovery();
+  void queueWorkspaceSave();
 }
 
 function setPlayerSubtitles(subtitles, label, options = {}) {
@@ -1653,12 +1807,14 @@ function adjustSubtitleSync(deltaSeconds) {
   state.subtitleOffsetSeconds = Math.round(nextOffset * 10) / 10;
   renderSubtitlePlayer();
   refreshDownloadsForCurrentOffset();
+  void queueWorkspaceSave();
 }
 
 function resetSubtitleSync() {
   state.subtitleOffsetSeconds = 0;
   renderSubtitlePlayer();
   refreshDownloadsForCurrentOffset();
+  void queueWorkspaceSave();
 }
 
 function renderSubtitlePlayer() {
@@ -1724,7 +1880,7 @@ function renderExportOverview() {
     : !state.subtitles.length
       ? { state: 'empty', text: '내려받을 자막이 없습니다. 기존 자막을 불러오거나 생성 탭에서 작업하세요.' }
       : entry?.translationPending
-        ? { state: 'partial', text: '부분 번역 결과 · 현재 페이지의 원문을 보존한 상태에서 SRT·VTT·JSON을 내려받을 수 있습니다.' }
+        ? { state: 'partial', text: '부분 번역 결과 · 원문과 완료된 번역을 보존한 상태에서 SRT·VTT·JSON을 내려받을 수 있습니다.' }
         : getTranslationFailures(state.subtitles).length
           ? { state: 'partial', text: '번역 오류가 포함되어 있습니다. 원문 자막을 확인한 뒤 파일을 내려받으세요.' }
           : { state: 'ready', text: '자막 파일 준비 완료 · SRT를 먼저 권장합니다. 실제 저장 여부는 브라우저 다운로드 내역에서 확인하세요.' };
@@ -1945,6 +2101,7 @@ function setBusy(isBusy) {
   updateTranslationControls();
   updateConnectionMode();
   updateStartButtonState();
+  renderWorkspaceStorage();
 }
 
 function appendLog(message) {

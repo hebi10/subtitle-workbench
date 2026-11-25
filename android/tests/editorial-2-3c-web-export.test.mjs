@@ -98,7 +98,7 @@ test('3-C export keeps selected job, file formats, partial failure, real downloa
     await page.locator('#exportResultSelect').selectOption(incompleteId);
     assert.equal(await page.locator('#exportResultStatus').getAttribute('data-state'), 'pending');
     assert.equal(await page.locator('#exportWorkflowStatus').getAttribute('data-state'), 'partial');
-    assert.match(await page.locator('#exportWorkflowStatus').innerText(), /원문을 보존/);
+    assert.match(await page.locator('#exportWorkflowStatus').innerText(), /원문과 완료된 번역을 보존/);
     assert.match(await page.locator('#exportResultStatus').innerText(), /원문 보존/);
     assert.equal(await page.locator('#translationFailureSummary').isVisible(), false);
     assert.equal(await page.locator('#downloads a[download]').count(), 3);
