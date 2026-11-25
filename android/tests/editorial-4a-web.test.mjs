@@ -167,6 +167,11 @@ test('4-A desktop and mobile workspaces preserve UI, source import and exports',
     assert.match(await page.locator('#editorCueOriginal').innerText(), /Sample subtitle/);
     await page.locator('.editor-cue-disclosure > summary').click();
     await page.evaluate(() => window.scrollTo(0, 0));
+    const firstOriginal = page.locator('#editorBody [data-cue-index] [data-edit-field="original"]').first();
+    const originalBounds = await firstOriginal.boundingBox();
+    assert.ok(originalBounds && originalBounds.y >= 0 && originalBounds.y + Math.min(originalBounds.height, 48) <= 900,
+      'Desktop first viewport exposes at least one usable original subtitle input');
+    assert.equal(await page.locator('#jobResults').isVisible(), true);
     await page.screenshot({ path: join(out, 'design-W02-1440-light.png'), animations: 'disabled' });
     await page.setViewportSize({ width: 1280, height: 844 });
     await page.emulateMedia({ colorScheme: 'dark' });
@@ -185,10 +190,25 @@ test('4-A desktop and mobile workspaces preserve UI, source import and exports',
     await page.screenshot({ path: join(out, 'export-imported-1280-light.png'), animations: 'disabled' });
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.evaluate(() => window.scrollTo(0, 0));
+    assert.equal(await page.locator('#jobResults').isVisible(), false, 'Export has one visible job selector');
+    assert.equal(await page.locator('#exportResultSelect').isVisible(), true);
+    assert.equal(await page.locator('#exportResultSelect').inputValue(), await page.locator('#jobResultSelect').inputValue());
     const primaryDownload = await page.locator('#downloads .download-link--primary').boundingBox();
     assert.ok(primaryDownload && primaryDownload.y + primaryDownload.height <= 900,
       'Primary SRT download remains visible in desktop first viewport');
+    const downloadBounds = await page.locator('#downloads a[download]').evaluateAll(nodes => nodes
+      .filter(node => /\.(srt|vtt|json)$/i.test(node.download))
+      .map(node => ({ top: node.getBoundingClientRect().top, bottom: node.getBoundingClientRect().bottom })));
+    assert.equal(downloadBounds.length, 3);
+    assert.ok(downloadBounds.every(({ top, bottom }) => top >= 0 && bottom <= 900),
+      'All three standard file formats are visible in the desktop first viewport');
     await page.screenshot({ path: join(out, 'design-W03-1440-light.png'), animations: 'disabled' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.locator('#jobResults').isVisible(), false);
+    assert.equal(await page.locator('#exportResultSelect').isVisible(), true);
+    await page.locator('#tab-edit').click();
+    assert.equal(await page.locator('#jobResults').isVisible(), true, 'Job selector returns on the edit tab');
+    await page.locator('#tab-export').click();
     await page.setViewportSize({ width: 1280, height: 844 });
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.screenshot({ path: join(out, 'export-imported-1280-dark.png'), animations: 'disabled' });

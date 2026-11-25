@@ -2643,3 +2643,54 @@ summary:focus-visible, a:focus-visible, .workspace-tab:focus-visible {
 @media (max-width: 360px) {
   #panel-generate .generation-actions-card .generate-preflight-items { grid-template-columns: minmax(0,1fr); }
 }
+
+/* SW-DESIGN-07-A: keep the actual editor and file actions above repeated chrome. */
+.workspace-content:has(#panel-export.is-active) #jobResults {
+  display: none;
+}
+@media (min-width: 1280px) {
+  .workspace-content:has(#panel-edit.is-active) .job-results {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) minmax(200px, .85fr);
+    gap: 6px 10px;
+    margin: 0 0 8px;
+    padding: 6px 10px;
+  }
+  .workspace-content:has(#panel-edit.is-active) .job-results p {
+    font-size: 12px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+  #panel-edit > .workflow-state-note { margin-bottom: 8px; padding: 8px 10px; }
+  #panel-edit .editor-main .panel-head-row > div { flex: 1 1 0; min-width: 0; }
+  #panel-edit .editor-main .studio-panel-description { max-width: none; }
+  #panel-edit .editor-cue-context { gap: 6px; padding: 8px; margin: 6px 0; }
+  #panel-edit .editor-cue-meta > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 8px;
+    padding: 6px 8px;
+  }
+  #panel-edit .editor-cue-meta dt { margin: 0; }
+  #panel-edit .editor-toolbar {
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.2fr);
+    align-items: stretch;
+    gap: 6px;
+    padding: 6px;
+    margin-top: 6px;
+  }
+  #panel-edit .editor-toolgroup { padding: 6px; }
+  #panel-edit .editor-toolgroup .studio-toolgroup-label { margin-bottom: 4px; }
+  #panel-edit .editor-toolgroup-fields { gap: 6px; }
+  #panel-edit .editor-toolgroup-fields label { gap: 4px; }
+  #panel-edit .editor-timing-tools {
+    grid-template-columns: minmax(0, 1fr) minmax(0, .95fr) minmax(0, 1.15fr);
+  }
+  #panel-edit .editor-timing-tools label { grid-row: auto; }
+  #panel-edit .editor-timing-tools button { white-space: normal; overflow-wrap: anywhere; }
+  #panel-edit .edit-history-controls { padding: 6px; margin: 6px 0; }
+  #panel-edit .editor-table-wrap { margin-top: 6px; }
+  #panel-export > .panel-card .panel-head { margin-bottom: 8px; }
+  #panel-export .export-result-field { grid-template-columns: auto minmax(0, 1fr); align-items: center; }
+}
