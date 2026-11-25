@@ -2523,3 +2523,12 @@ summary:focus-visible, a:focus-visible, .workspace-tab:focus-visible {
 #workspaceStorageHelp { color:var(--muted); font-size:12px; line-height:1.5; margin-top:4px; }
 .workspace-local-storage button { min-height:48px; max-width:100%; white-space:normal; }
 @media (max-width:600px) { .workspace-local-storage > div, .workspace-local-storage button { flex-basis:100%; } }
+
+/* SW-FIX-09: keep the whole preview reachable when a wide display has little vertical room. */
+@media (max-height: 500px) {
+  #panel-edit .player-card { position: static; }
+  #panel-edit #editPlayerMount .video-preview:not([hidden]),
+  #panel-generate #generatePlayerMount .video-preview:not([hidden]) {
+    max-height: min(220px, 45vh);
+  }
+}
