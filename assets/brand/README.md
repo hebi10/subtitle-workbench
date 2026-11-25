@@ -43,3 +43,8 @@
 - 이 문서의 이전 ‘해비 자막’ 표기는 2026-11-11 승인된 이미지 자산의 출처 기록으로 보존합니다.
 - 기존 1-B 프레임형 심볼·워드마크 PNG와 Play 이미지의 바이트는 이번 텍스트 전용 PR에서 수정하지 않습니다. 이후 실제 화면 캡처/브랜드 원본 검증 후 새 이미지로 교체합니다.
 - `com.haebi.subtitle`, Android 서명, SQLite·Keystore, 기존 테스트 트랙을 유지합니다.
+
+## SW-FIX-10 · 2026-11-25 현재 브랜드 및 스토어 자료
+- 표시명은 자막라인, 영문 제품명은 Subtitle Workbench, Android 패키지는 `com.haebi.subtitle`을 유지합니다. 위의 해비 자막 표기와 `canonical.json`은 과거 승인 자산의 출처이며 현재 표시명이 아닙니다.
+- `assets/play-store/ko-KR/manifest.json`의 자막라인 아이콘·대표 그래픽·실제 Android 화면 8장은 2026-11-14 UI-10-I 자산입니다. 이후 코드 변경이 있어 최신 화면으로 주장하지 않습니다. 승인된 앱 심볼 및 기존 이미지의 바이트/해시는 임의 변경하지 않습니다.
+- 최종 main QA의 실제 Android Emulator Smoke 산출물을 재사용하는 `store-assets-review.yml`은 8장과 출처·해시를 별도 검토용 artifact로 생성합니다. Chromium의 Native bridge fixture 캡처는 UI 검증용이며 스토어 실제 Android 화면을 대체하지 않습니다. 시각 검수와 별도 승인 후에만 공식 이미지 교체·Play 등록을 진행합니다.
