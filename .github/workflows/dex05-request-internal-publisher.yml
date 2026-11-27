@@ -1,0 +1,36 @@
+name: DEX-05 request existing verified internal publisher
+
+on:
+  push:
+    branches:
+      - ops/dex05-internal-25
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: dex05-approved-internal-25
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Request only the existing guarded OPS-04 publisher on exact main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: '2a022a958103a87f9a7d01a9fc58363b09f04f30'
+          APPROVED_INPUTS: '{"mode":"publish","expected_main_sha":"2a022a958103a87f9a7d01a9fc58363b09f04f30","build_run_id":"45977349453","artifact_name":"subtitle-signed-aab-25","aab_sha256":"aebf70bf623898af4769f275277362c58e9391eb4f22c11e25b428196900c7d4","version_code":"25","version_name":"0.10.0","batch_id":"2026-11-27-subtitle-workbench","final_release_approved":"true","approval_phrase":"PUBLISH_VERIFIED_INTERNAL_AAB"}'
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/ops/dex05-internal-25'
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)" = "$RELEASE_SHA"
+          existing="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/play-internal-release.yml/runs" --method GET -f branch=main -f event=workflow_dispatch -f "head_sha=$RELEASE_SHA" --jq .total_count)"
+          if [[ "$existing" != "0" ]]; then
+            echo "::error::An OPS-04 run already exists for this source. Inspect its result before retrying."
+            exit 1
+          fi
+          printf '%s' "$APPROVED_INPUTS" | gh workflow run play-internal-release.yml --repo "$GITHUB_REPOSITORY" --ref main --json
+          echo "Requested the existing OPS-04 internal publisher with the verified build and digest."
