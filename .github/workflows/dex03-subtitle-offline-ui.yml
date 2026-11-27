@@ -1,0 +1,75 @@
+name: DEX-03 Subtitle Workbench optimized offline APK entry
+
+on:
+  push:
+    branches: [codex/dex03-subtitle-offline-ui]
+
+permissions:
+  contents: read
+
+jobs:
+  release-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CANDIDATE_SHA: ff25930c68f454710931055c7e8e670d7d982ab1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: sdkmanager --install 'platforms;android-36' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build optimized device QA APK from the exact PR head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "$CANDIDATE_SHA"
+          test "$(git diff --name-only HEAD^ HEAD | sort)" = "$(printf '%s\n' '.github/qa/dex03-subtitle-offline-ui.py' '.github/workflows/dex03-subtitle-offline-ui.yml')"
+          cat >> android/app/build.gradle <<'GRADLE'
+
+          android {
+              buildTypes {
+                  dex03Qa {
+                      initWith release
+                      matchingFallbacks = ['release']
+                      signingConfig signingConfigs.debug
+                  }
+              }
+              testBuildType 'dex03Qa'
+          }
+          GRADLE
+          (cd android && ./gradlew --no-daemon :app:assembleDex03Qa)
+          test -s android/app/build/outputs/mapping/dex03Qa/mapping.txt
+          mkdir -p dex03-evidence
+          sha256sum android/app/build/outputs/apk/dex03Qa/app-dex03Qa.apk > dex03-evidence/apk-sha256.txt
+      - name: Enable emulator KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test optimized app WebView offline entry and native model screen on Android 15
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          working-directory: android
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: python3 ../.github/qa/dex03-subtitle-offline-ui.py
+      - name: Preserve device evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: subtitle-dex03-optimized-offline-qa
+          path: dex03-evidence/
+          if-no-files-found: warn
+          retention-days: 7
