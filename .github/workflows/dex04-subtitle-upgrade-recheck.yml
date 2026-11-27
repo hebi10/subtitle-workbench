@@ -1,0 +1,93 @@
+name: DEX-04 Subtitle Workbench optimized main upgrade QA
+
+on:
+  push:
+    branches: [codex/dex04-subtitle-upgrade-recheck]
+
+permissions:
+  contents: read
+
+jobs:
+  release-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      BASE_SHA: 2f7e96d01103b4f27e3a423fa32b5d183eb8c5a0
+      CANDIDATE_SHA: 2a022a958103a87f9a7d01a9fc58363b09f04f30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: sdkmanager --install 'platforms;android-36' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build previous and exact merged-main APKs with one QA key
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "$CANDIDATE_SHA"
+          test "$(git diff --name-only HEAD^ HEAD | sort)" = "$(printf '%s\n' '.github/qa/dex04-subtitle-upgrade-recheck.py' '.github/workflows/dex04-subtitle-upgrade-recheck.yml')"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$CANDIDATE_SHA"
+          baseline="$RUNNER_TEMP/subtitle-dex04-baseline"
+          git worktree add --detach "$baseline" "$BASE_SHA"
+          mkdir -p dex04-evidence dex04-apks
+          add_qa_variant() {
+            cat >> "$1/android/app/build.gradle" <<'GRADLE'
+
+          android {
+              buildTypes {
+                  dex03Qa {
+                      initWith release
+                      matchingFallbacks = ['release']
+                      signingConfig signingConfigs.debug
+                  }
+              }
+          }
+          GRADLE
+          }
+          add_qa_variant "$baseline"
+          add_qa_variant "$GITHUB_WORKSPACE"
+          (cd "$baseline/android" && ./gradlew --no-daemon :app:assembleDex03Qa)
+          (cd android && ./gradlew --no-daemon :app:assembleDex03Qa :app:bundleDex03Qa)
+          cp "$baseline/android/app/build/outputs/apk/dex03Qa/app-dex03Qa.apk" dex04-apks/baseline.apk
+          cp android/app/build/outputs/apk/dex03Qa/app-dex03Qa.apk dex04-apks/optimized.apk
+          test -s android/app/build/outputs/mapping/dex03Qa/mapping.txt
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          for apk in baseline optimized; do
+            "$APKSIGNER" verify --print-certs "dex04-apks/$apk.apk" | grep 'certificate SHA-256 digest' > "dex04-evidence/$apk-signing-digest.txt"
+          done
+          cmp dex04-evidence/{baseline,optimized}-signing-digest.txt
+          printf '%s\n' "$BASE_SHA" "$CANDIDATE_SHA" > dex04-evidence/source-shas.txt
+          sha256sum dex04-apks/*.apk android/app/build/outputs/bundle/dex03Qa/*.aab > dex04-evidence/artifact-sha256.txt
+      - name: Enable emulator KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Check SRT and settings across in-place APK upgrade on Android 15
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          working-directory: android
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: python3 ../.github/qa/dex04-subtitle-upgrade-recheck.py
+      - name: Verify main remained at the tested source
+        run: test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$CANDIDATE_SHA"
+      - name: Preserve device evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: subtitle-dex04-optimized-main-regression
+          path: dex04-evidence/
+          if-no-files-found: warn
+          retention-days: 7
