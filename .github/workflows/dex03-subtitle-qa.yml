@@ -1,0 +1,126 @@
+name: DEX-03 Subtitle Workbench release QA
+
+on:
+  push:
+    branches: [codex/dex03-subtitle-qa]
+
+permissions:
+  contents: read
+
+jobs:
+  release-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      BASE_SHA: 2f7e96d01103b4f27e3a423fa32b5d183eb8c5a0
+      CANDIDATE_SHA: ff25930c68f454710931055c7e8e670d7d982ab1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: sdkmanager --install 'platforms;android-36' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compare app bundles using identical QA release variants
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "$CANDIDATE_SHA"
+          baseline="$RUNNER_TEMP/sw-dex03-baseline"
+          git worktree add --detach "$baseline" "$BASE_SHA"
+          mkdir -p dex03-evidence
+          add_qa_variant() {
+            cat >> "$1/android/app/build.gradle" <<'GRADLE'
+
+          android {
+              buildTypes {
+                  dex03Qa {
+                      initWith release
+                      matchingFallbacks = ['release']
+                      signingConfig signingConfigs.debug
+                  }
+              }
+              testBuildType 'dex03Qa'
+          }
+          GRADLE
+          }
+          add_qa_variant "$baseline"
+          add_qa_variant "$GITHUB_WORKSPACE"
+          (cd "$baseline/android" && ./gradlew --no-daemon :app:bundleDex03Qa)
+          (cd android && ./gradlew --no-daemon :app:bundleDex03Qa :app:assembleDex03Qa)
+          cp android/app/build/outputs/mapping/dex03Qa/mapping.txt dex03-evidence/mapping.txt
+          test -s dex03-evidence/mapping.txt
+          python3 - "$baseline/android/app/build/outputs/bundle/dex03Qa/app-dex03Qa.aab" android/app/build/outputs/bundle/dex03Qa/app-dex03Qa.aab <<'PYTHON'
+          import hashlib, json, os, re, sys, zipfile
+          from pathlib import Path
+
+          def inspect(filename):
+              path = Path(filename)
+              with zipfile.ZipFile(path) as bundle:
+                  dex = [item for item in bundle.infolist()
+                         if re.search(r'/dex/classes(?:\d+)?\.dex$', item.filename)]
+                  markers = set()
+                  for item in dex:
+                      content = bundle.read(item)
+                      markers.update(re.findall(rb'~~(?:D8|R8)\{.{0,256}?"version":"[^"]+"', content))
+                  test_assets = ('base/assets/web/index.html', 'base/assets/shared/core.js')
+                  assert all(asset in bundle.namelist() for asset in test_assets)
+              assert dex
+              return {'bytes': sum(item.file_size for item in dex), 'entries': len(dex),
+                      'bundle_sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+                      'markers': sorted(mark.decode('utf-8', 'replace') for mark in markers)}
+
+          before, after = map(inspect, sys.argv[1:])
+          assert after['bytes'] < before['bytes']
+          report = {
+              'baseline_sha': os.environ['BASE_SHA'], 'candidate_sha': os.environ['CANDIDATE_SHA'],
+              'before': before, 'after': after, 'reduction_pct': round(100 * (1 - after['bytes'] / before['bytes']), 2),
+              'mapping_bytes': Path('dex03-evidence/mapping.txt').stat().st_size,
+          }
+          output = json.dumps(report, indent=2) + '\n'
+          Path('dex03-evidence/dex.json').write_text(output)
+          print(output)
+          PYTHON
+      - name: Preserve optimized measurement before starting emulator
+        uses: actions/upload-artifact@v4
+        with:
+          name: subtitle-dex03-release-mapping-and-measurement
+          path: dex03-evidence/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enable emulator KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test optimized app WebView, subtitle editor and offline entry on Android 15
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          working-directory: android
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            adb shell svc wifi disable
+            adb shell svc data disable
+            ./gradlew connectedDex03QaAndroidTest --no-daemon --stacktrace -Pandroid.testInstrumentationRunnerArguments.class=com.haebi.subtitle.EditorialFullWebViewDeviceTest,com.haebi.subtitle.OfflineVoskDeviceTest
+            adb pull /sdcard/Android/data/com.haebi.subtitle/files/editorial-5a-webview/ ../dex03-evidence/webview/
+      - name: Preserve device evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: subtitle-dex03-optimized-device-evidence
+          path: |
+            dex03-evidence/webview/
+            android/app/build/outputs/androidTest-results/connected/
+          if-no-files-found: warn
+          retention-days: 7
