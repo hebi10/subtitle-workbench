@@ -23,8 +23,8 @@
       <div class="section-heading"><div><p class="page-kicker">01 / NEW TASK</p><h2 id="videoHeading">새 자막 작업</h2></div></div>
       <p class="page-description">파일·마이크·오프라인 AI로 자막을 만드세요.</p>
       <section id="firstRunGuide" class="es2-state-panel first-run-guide" aria-labelledby="firstRunGuideHeading" hidden>
-        <div class="first-run-heading"><h3 id="firstRunGuideHeading" class="es2-section-title">처음 시작하시나요?</h3><button id="dismissFirstRunGuide" type="button" aria-label="처음 사용 안내 닫기">닫기</button></div>
-        <p class="es2-supporting-text">사용할 작업 방식을 선택하세요.</p>
+        <div class="first-run-heading"><span class="first-run-mark es-icon es-icon--video" aria-hidden="true"></span><h3 id="firstRunGuideHeading" class="es2-section-title">자막라인에 오신 것을 환영합니다</h3></div>
+        <p class="es2-supporting-text">영상과 음성을 자막으로 만들고, 번역과 편집을 할 수 있습니다. 시작할 작업을 선택하세요.</p>
         <div class="es2-action-row first-run-actions" role="group" aria-label="처음 사용할 작업 방식">
           <button id="guideFile" type="button" aria-pressed="false"><strong>영상·음성 파일</strong><span>API 연결 필요</span></button>
           <button id="guideMic" type="button" aria-pressed="false"><strong>마이크 인식</strong><span>기기 인식은 API 불필요</span></button>
@@ -36,6 +36,7 @@
           <p class="es2-supporting-text">이미 SRT·VTT·JSON이 있다면 인식 없이 바로 편집할 수 있습니다.</p>
           <button id="guideImportSubtitles" type="button">기존 자막 불러오기</button>
         </details>
+        <button id="dismissFirstRunGuide" class="primary" type="button" aria-label="처음 사용 안내 닫기">안내 확인</button>
       </section>
       <section id="sourceChoices" class="source-choices" aria-labelledby="sourceChoicesHeading">
         <h3 id="sourceChoicesHeading">작업 방식 선택</h3>
@@ -51,8 +52,8 @@
           <span class="source-capacity">영상 최대 3시간</span>
         </div>
         <div class="start-actions">
-          <button id="pickVideo" class="primary" type="button" disabled><span class="es-icon es-icon--video" aria-hidden="true"></span>영상 선택</button>
-          <button id="importSubtitles" type="button"><span class="es-icon es-icon--add" aria-hidden="true"></span>자막 불러오기</button>
+          <button id="pickVideo" class="primary" type="button" disabled><span class="es-icon es-icon--video" aria-hidden="true"></span><span>영상·음성 파일 선택</span></button>
+          <button id="importSubtitles" type="button"><span class="es-icon es-icon--add" aria-hidden="true"></span><span>자막 불러오기</span></button>
         </div>
         <p class="source-import-note">SRT·VTT·JSON은 API 없이 불러올 수 있습니다.</p>
         <section id="connectionCard" class="connection-summary" aria-label="API 연결 상태" data-state="missing">

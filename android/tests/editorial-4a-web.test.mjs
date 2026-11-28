@@ -96,10 +96,13 @@ test('4-A desktop and mobile workspaces preserve UI, source import and exports',
             const status = await page.locator('#runPanel').boundingBox();
             assert.ok(preview && status && controls, 'Source, preview and progress all exist');
             assert.ok(preview.y < status.y, 'Preview must appear above the processing status');
+            const languages = await page.locator('.subtitle-settings').boundingBox();
             const prepare = await page.locator('.generation-actions-card').boundingBox();
             const start = await page.locator('#startButton').boundingBox();
-            assert.ok(prepare && start && prepare.y >= preview.y + preview.height - 1 && start.y < status.y,
-              'Generation preflight and execution follow the preview before processing status');
+            assert.equal(await page.locator('#settingsForm .generation-actions-card').count(), 1);
+            assert.ok(languages && prepare && start && prepare.y >= languages.y + languages.height - 1
+              && start.y >= prepare.y && start.y + start.height <= controls.y + controls.height,
+              'Generation preflight and execution sit directly below the language settings in the input area');
             assert.equal(await page.locator('#startButton').evaluate(n => n.form?.id), 'settingsForm');
             assert.equal(await page.locator('#cancelButton').evaluate(n => n.form?.id), 'settingsForm');
             if (width === 1280) assert.ok(preview.x > controls.x + controls.width - 2, 'Desktop preview must be on the right');

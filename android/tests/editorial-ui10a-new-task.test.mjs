@@ -110,6 +110,15 @@ test('UI-10-A first-use guide selects free paths without creating paid requests'
     assert.equal(await page.locator('.first-run-requirements').evaluate(x => x.open), false);
     assert.equal(await page.locator('#preparedJobsHeading').isVisible(), false);
     assert.equal(await page.locator('#importSubtitles').isEnabled(), true);
+    const welcomeAlignment = await page.locator('.first-run-heading').evaluate(node => {
+      const center = element => {
+        const { left, width } = element.getBoundingClientRect();
+        return left + width / 2;
+      };
+      return ['.first-run-mark', 'h3'].map(selector =>
+        Math.abs(center(node.querySelector(selector)) - center(node)));
+    });
+    assert.ok(welcomeAlignment.every(offset => offset <= 1), 'The welcome icon and title are centered');
     await mkdir(output, { recursive: true });
     await page.screenshot({ path: join(output, 'ui10a-first-use-light-390.png'), fullPage: true });
 
@@ -225,11 +234,12 @@ test('UI-10-A returning user gets one source selector, real prepared jobs and re
         const [pick, importFile] = geometry.fileActions;
         assert.ok(geometry.fileActions.every(rect => rect.height >= 48),
           width + '/' + theme + ': both file actions remain reachable');
-        if (width === 320) {
-          assert.ok(importFile.top >= pick.bottom - 1, 'Narrow phones keep separate full-width action rows');
+        if (width <= 390) {
+          assert.ok(importFile.top >= pick.bottom - 1 && Math.abs(pick.left - importFile.left) <= 1
+            && Math.abs(pick.right - importFile.right) <= 1, 'Phones keep separate full-width action rows');
         } else {
           assert.ok(Math.abs(pick.top - importFile.top) <= 1 && importFile.left >= pick.right - 1,
-            'File selection and subtitle import share one row at normal text size');
+            'File selection and subtitle import share one row on wider screens');
         }
         if (width === 390) {
           await page.screenshot({
